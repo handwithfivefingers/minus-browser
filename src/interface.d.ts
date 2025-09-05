@@ -14,6 +14,7 @@ declare global {
       VIEW_CHANGE_URL: (params: IViewChangeProps) => Promise<unknown>;
       VIEW_TITLE_CHANGED: (cb: (value: { id: string; title: string }) => void) => void;
       VIEW_URL_CHANGED: (cb: (value: { id: string; url: string }) => void) => void;
+      VIEW_FAVICON_CHANGED: (cb: (value: { id: string; favicon: string }) => void) => void;
       VIEW_RESPONSIVE: (data: IShowViewProps) => void;
       VIEW_HIDE: ({ id: string }) => void;
 

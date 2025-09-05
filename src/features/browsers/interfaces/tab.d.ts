@@ -5,8 +5,7 @@ export interface ITab {
   index: number;
   isPinned: boolean;
   isFocused: boolean;
-  backwardHistory: string[];
-  forwardHistory: string[];
+  favicon?: string;
   updateTitle(title: string): void;
   updateUrl(url: string): void;
   onBackward(): void;

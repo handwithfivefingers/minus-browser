@@ -2,8 +2,9 @@ import { IconChevronRight, IconHome, IconPlus, IconSpider } from "@tabler/icons-
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { ITab } from "~/features/browsers";
-import { useTab } from "~/hooks/useTab";
+import { useTab } from "~/features/ui/hooks/useTab";
 import clsx from "clsx";
+import { Avatar } from "./avatar";
 
 const SideMenu = () => {
   const [tabs, setTabs] = useState<ITab[]>([]);
@@ -94,7 +95,7 @@ const NavItem = ({ children, to, className }: { children: React.ReactNode; to: s
     <Link
       to={to}
       className={clsx(
-        `h-10 w-10 p-1 rounded-md flex justify-center cursor-pointer hover:bg-indigo-500/50 hover:text-white transition-colors relative overflow-hidden`,
+        `h-10 w-10 p-1 rounded-md flex justify-center items-center cursor-pointer hover:bg-indigo-500/50 hover:text-white transition-colors relative overflow-hidden`,
         {
           [`bg-indigo-500/50 text-white`]: pathname === to,
           [`text-indigo-500`]: pathname !== to,
@@ -109,15 +110,21 @@ const NavItem = ({ children, to, className }: { children: React.ReactNode; to: s
 
 const TabItem = (props: ITab & { className?: string }) => {
   const [title, setTitle] = useState(props.title);
+  const [favicon, setFavicon] = useState(props?.favicon || "");
   useEffect(() => {
-    const cb = ({ id, title }: { id: string; title: string }) => {
+    const titleChangedCB = ({ id, title }: { id: string; title: string }) => {
       props.id === id && setTitle(title);
     };
-    window.api.VIEW_TITLE_CHANGED(cb);
+    const faviconChangedCB = ({ id, favicon }: { id: string; favicon: string }) => {
+      console.log("function", favicon);
+      props.id === id && setFavicon(favicon);
+    };
+    window.api.VIEW_TITLE_CHANGED(titleChangedCB);
+    window.api.VIEW_FAVICON_CHANGED(faviconChangedCB);
   }, []);
   return (
     <NavItem to={`/${props.id}`} className={props.className}>
-      <IconSpider />
+      <Avatar src={favicon} />
       <span className="text-[8px] text-center">{title.length > 7 ? title.substring(0, 7).padEnd(10, ".") : title}</span>
     </NavItem>
   );

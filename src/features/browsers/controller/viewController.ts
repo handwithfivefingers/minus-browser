@@ -24,6 +24,7 @@ export enum ViewEventType {
 export enum TAB_UPDATE_TYPE {
   TAB_UPDATED_TITLE = "TAB_UPDATED_TITLE",
   TAB_UPDATED_URL = "TAB_UPDATED_URL",
+  TAB_UPDATED_FAVICON = "TAB_UPDATED_FAVICON",
 }
 
 interface IShowViewProps {
@@ -83,40 +84,7 @@ export class ViewController {
     ipcMain.on(TabEventType.DELETE_TAB, (event, id: string) => this.tabManager.deleteTab(id));
     ipcMain.on(TabEventType.SELECT_TAB, (event, id: string) => this.tabManager.selectTab(id));
 
-    ipcMain.on(ViewEventType.SHOW_VIEW_BY_ID, async (event, props: IShowViewProps) => {
-      try {
-        const { id } = props;
-        log.info("TYPE >>>>", 1);
-        const tab = this.tabManager.getTab(id);
-        console.log("tab", tab, id);
-        console.log("this.tabManager", this.tabManager);
-        console.log("this.tabManager", this.tabManager.tabs.get(`${id}`));
-        if (!tab) return;
-        tab.onFocus();
-
-        log.info("TYPE >>>>", 2);
-
-        const isViewExist = this.viewManager[id];
-        if (!isViewExist) {
-          const { view } = this.createContentView(id, tab.url);
-          this.viewManager[id] = view;
-          this.loadContentView(id);
-          await view.webContents.loadURL(tab.url);
-          view.webContents.on("page-title-updated", () => {
-            if (this.viewActive && this.viewManager[this.viewActive]) {
-              this.updateViewTitle(this.viewActive, this.viewManager[this.viewActive]);
-              this.updateViewURL(this.viewActive, this.viewManager[this.viewActive]);
-            }
-          });
-        } else {
-          this.loadContentView(id);
-        }
-        this.handleActiveView(id);
-        this.handleResizeView(props);
-      } catch (error) {
-        console.error("error", error);
-      }
-    });
+    ipcMain.on(ViewEventType.SHOW_VIEW_BY_ID, async (event, props: IShowViewProps) => this.handleShowViewById(props));
     ipcMain.on(ViewEventType.VIEW_CHANGE_URL, (event, { url, id }) => this.handleURLChange(url, id));
 
     ipcMain.on(ViewEventType.VIEW_RESPONSIVE, (event, props: IShowViewProps) => this.handleResizeView(props));
@@ -140,6 +108,42 @@ export class ViewController {
     this.viewManager = {};
     this.window = null;
     this.tabManager = null;
+  }
+
+  async handleShowViewById(props: IShowViewProps) {
+    try {
+      const { id } = props;
+      const tab = this.tabManager.getTab(id);
+      log.info("tab", tab, id);
+      log.info("this.tabManager", this.tabManager);
+      log.info("this.tabManager", this.tabManager.tabs.get(`${id}`));
+      if (!tab) return;
+      tab.onFocus();
+      const isViewExist = this.viewManager[id];
+      if (!isViewExist) {
+        const { view } = this.createContentView(id, tab.url);
+        this.viewManager[id] = view;
+        this.loadContentView(id);
+        await view.webContents.loadURL(tab.url);
+        view.webContents.on("page-title-updated", () => {
+          if (this.viewActive && this.viewManager[this.viewActive]) {
+            this.updateViewTitle(this.viewActive, this.viewManager[this.viewActive]);
+            this.updateViewURL(this.viewActive, this.viewManager[this.viewActive]);
+          }
+        });
+        view.webContents.on("page-favicon-updated", (event, favicons) => {
+          if (this.viewActive && this.viewManager[this.viewActive]) {
+            this.updateViewFavicon(this.viewActive, favicons[0]);
+          }
+        });
+      } else {
+        this.loadContentView(id);
+      }
+      this.handleActiveView(id);
+      this.handleResizeView(props);
+    } catch (error) {
+      log.error("handleShowViewById error", error);
+    }
   }
 
   createContentView(id: string, domain: string) {
@@ -175,6 +179,14 @@ export class ViewController {
     this.window.webContents.send(TAB_UPDATE_TYPE.TAB_UPDATED_URL, {
       id,
       url: view.webContents.getURL(),
+    });
+  }
+
+  updateViewFavicon(id: string, favicon: string) {
+    this.tabManager.updateTab(id, { favicon });
+    this.window.webContents.send(TAB_UPDATE_TYPE.TAB_UPDATED_FAVICON, {
+      id,
+      favicon,
     });
   }
 

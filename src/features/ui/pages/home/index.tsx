@@ -15,7 +15,6 @@ const Home = () => {
 
   useLayoutEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-
     interval = setInterval(() => {
       const [hours, minutes] = new Date().toLocaleTimeString().split(":");
       if (!hourRef.current || !minRef.current) return;

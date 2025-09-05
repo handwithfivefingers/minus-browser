@@ -1,6 +1,3 @@
-// See the Electron documentation for details on how to use preload scripts:
-// https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
-
 import { contextBridge, ipcRenderer } from "electron";
 enum TabEventType {
   CREATE_TAB = "CREATE_TAB",
@@ -29,6 +26,7 @@ enum ViewEventType {
 enum TAB_UPDATE_TYPE {
   TAB_UPDATED_TITLE = "TAB_UPDATED_TITLE",
   TAB_UPDATED_URL = "TAB_UPDATED_URL",
+  TAB_UPDATED_FAVICON = "TAB_UPDATED_FAVICON",
 }
 
 interface IShowViewProps {
@@ -55,6 +53,9 @@ contextBridge.exposeInMainWorld("api", {
   },
   VIEW_URL_CHANGED: (callback: (value: { id: string; url: string }) => void) => {
     return ipcRenderer.on(TAB_UPDATE_TYPE.TAB_UPDATED_URL, (_event, value) => callback(value));
+  },
+  VIEW_FAVICON_CHANGED: (callback: (value: { id: string; favicon: string }) => void) => {
+    return ipcRenderer.on(TAB_UPDATE_TYPE.TAB_UPDATED_FAVICON, (_event, value) => callback(value));
   },
   VIEW_RESPONSIVE: (data: IShowViewProps) => ipcRenderer.send(ViewEventType.VIEW_RESPONSIVE, data),
   VIEW_HIDE: (data: { id: string }) => ipcRenderer.send(ViewEventType.HIDE_VIEW, data),

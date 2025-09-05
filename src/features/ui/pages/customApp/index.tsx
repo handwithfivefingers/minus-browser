@@ -1,16 +1,12 @@
 import { IconInnerShadowTopLeft } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
-import Header from "~/components/header";
 import { ITab } from "~/features/browsers";
-import { useContentView } from "~/hooks/useContentView";
-import { useTab } from "~/hooks/useTab";
+import { useContentView } from "~/features/ui/hooks/useContentView";
+import { useTab } from "~/features/ui/hooks/useTab";
+import { isValidDomain } from "../../libs";
+import Header from "~/features/ui/components/header";
 
-const isValidDomain = (url: string) => {
-  const regex = new RegExp(/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/, "g");
-  const isValid = regex.test(url);
-  return isValid;
-};
 const CustomApp = () => {
   const webviewRef = useRef<HTMLDivElement | null>(null);
   const { customApp: tabId } = useParams();
@@ -51,7 +47,6 @@ const CustomApp = () => {
       const screen = { x, y, width, height };
       const resp = await GET_TAB(tabId);
       await SHOW_VIEW_BY_ID({ id: tabId, screen });
-      console.log("resp", resp);
       setTab(resp);
     } catch (error) {
       console.log("error", error);

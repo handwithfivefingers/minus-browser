@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router";
-import { SideMenu } from "~/components/sidebar";
-import Spotlight from "~/components/spotlight";
+import { SideMenu } from "~/features/ui/components/sidebar";
+import Spotlight from "~/features/ui/components/spotlight";
 import { ThemeProvider } from "~/context/theme";
 
 const Layout = () => {
