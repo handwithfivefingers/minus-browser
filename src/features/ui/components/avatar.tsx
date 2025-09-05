@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 
 interface IAvatar {
   src?: string;
@@ -6,15 +6,31 @@ interface IAvatar {
   alt?: string;
 }
 export const Avatar = (props: IAvatar) => {
+  const blockRef = useRef<HTMLDivElement>(null);
   return (
     <div
-      className="relative bg-slate-300 rounded"
+      className="relative  rounded"
       style={{
         width: props.size || 20,
+        background: "var(--color-slate-300)",
       }}
+      ref={blockRef}
     >
       <span className="block pb-[100%]" />
-      {props.src && <img src={props.src} alt={props.alt || "Avatar"} className="absolute top-0 left-0 w-full h-full" />}
+      {props.src && (
+        <img
+          src={props?.src}
+          alt={props.alt || "Avatar"}
+          className="absolute top-0 left-0 w-full h-full"
+          onLoad={() => {
+            blockRef.current.style.background = "transparent";
+          }}
+          onError={() => {
+            blockRef.current.style.background = "var(--color-slate-300)";
+          }}
+          style={{ objectFit: "cover" }}
+        />
+      )}
     </div>
   );
 };

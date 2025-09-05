@@ -1,6 +1,6 @@
 import { IconChevronRight, IconHome, IconPlus, IconSpider } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { ITab } from "~/features/browsers";
 import { useTab } from "~/features/ui/hooks/useTab";
 import clsx from "clsx";
@@ -10,8 +10,14 @@ const SideMenu = () => {
   const [tabs, setTabs] = useState<ITab[]>([]);
   const [collapse, setCollapse] = useState(true);
   const { GET_TABS, CREATE_TAB } = useTab();
+  const navigate = useNavigate();
   useEffect(() => {
     getScreenData();
+    window.api.ON_TABS_UPDATED((v) => {
+      getScreenData();
+      if (v.id) navigate(v.id);
+      else navigate("/");
+    });
   }, []);
 
   const getScreenData = async () => {
@@ -26,8 +32,7 @@ const SideMenu = () => {
 
   const handleCreateTab = async () => {
     try {
-      const resp = await CREATE_TAB();
-      console.log("resp", resp);
+      await CREATE_TAB();
       return getScreenData();
     } catch (error) {
       console.log("error", error);
@@ -122,6 +127,7 @@ const TabItem = (props: ITab & { className?: string }) => {
     window.api.VIEW_TITLE_CHANGED(titleChangedCB);
     window.api.VIEW_FAVICON_CHANGED(faviconChangedCB);
   }, []);
+
   return (
     <NavItem to={`/${props.id}`} className={props.className}>
       <Avatar src={favicon} />

@@ -1,20 +1,6 @@
 import log from "electron-log";
 import { v4 as uuid_v4 } from "uuid";
 import { ITab, ITabManager } from "../interfaces";
-export enum TabEventType {
-  CREATE_TAB = "CREATE_TAB",
-  UPDATE_TAB = "UPDATE_TAB",
-  DELETE_TAB = "DELETE_TAB",
-  SELECT_TAB = "SELECT_TAB",
-  FOCUS_TAB = "FOCUS_TAB",
-  BLUR_TAB = "BLUR_TAB",
-  BACKWARD_TAB = "BACKWARD_TAB",
-  FORWARD_TAB = "FORWARD_TAB",
-  GET_TABS = "GET_TABS",
-  GET_TAB = "GET_TAB",
-  TOGGLE_DEV_TOOLS = "TOGGLE_DEV_TOOLS",
-  ON_RELOAD = "ON_RELOAD",
-}
 
 class Tab implements ITab {
   id: string = uuid_v4();
@@ -97,7 +83,7 @@ class TabManager implements ITabManager {
     return this.tabs.get(id);
   }
 
-  createTab(tab: Partial<ITab>) {
+  createTab(tab?: Partial<ITab>) {
     try {
       this.index = this.getLastIndex + 1;
       const newTab = new Tab({
@@ -107,8 +93,7 @@ class TabManager implements ITabManager {
       });
       this.tabs.set(newTab.id, newTab);
       this.activeTab = newTab;
-      console.log("createTab this.tabs", this.tabs);
-      return true;
+      return newTab.id;
     } catch (error) {
       console.log("createTab error", error);
       return false;
@@ -128,6 +113,13 @@ class TabManager implements ITabManager {
   deleteTab(id: string) {
     if (!this.tabs.has(id)) return "Tab not found";
     this.tabs.delete(id);
+  }
+
+  getNextTab() {
+    const tabs = this.getTabs;
+  }
+  getPreviousTab() {
+    const tabs = this.getTabs;
   }
 
   toJSON() {

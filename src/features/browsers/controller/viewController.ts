@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain, Notification, WebContentsView, app, session } from "electron";
 import { ITab } from "../interfaces";
-import TabManager, { TabEventType } from "./tabManager";
+import TabManager from "./tabManager";
 import log from "electron-log";
 import { storeManager } from "../stores";
 import fs from "node:fs";
@@ -12,7 +12,23 @@ interface IShowViewProps {
   url: string;
 }
 
-export enum ViewEventType {
+enum TabEventType {
+  CREATE_TAB = "CREATE_TAB",
+  UPDATE_TAB = "UPDATE_TAB",
+  DELETE_TAB = "DELETE_TAB",
+  SELECT_TAB = "SELECT_TAB",
+  FOCUS_TAB = "FOCUS_TAB",
+  BLUR_TAB = "BLUR_TAB",
+  BACKWARD_TAB = "BACKWARD_TAB",
+  FORWARD_TAB = "FORWARD_TAB",
+  GET_TABS = "GET_TABS",
+  GET_TAB = "GET_TAB",
+  TOGGLE_DEV_TOOLS = "TOGGLE_DEV_TOOLS",
+  ON_RELOAD = "ON_RELOAD",
+  ON_CLOSE_TAB = "ON_CLOSE_TAB",
+}
+
+enum ViewEventType {
   SHOW_VIEW_BY_ID = "SHOW_VIEW_BY_ID",
   VIEW_RESPONSIVE = "VIEW_RESPONSIVE",
   SHOW_VIEW = "SHOW_VIEW",
@@ -21,10 +37,11 @@ export enum ViewEventType {
   VIEW_CHANGE_URL = "VIEW_CHANGE_URL",
 }
 
-export enum TAB_UPDATE_TYPE {
+enum TAB_UPDATE_TYPE {
   TAB_UPDATED_TITLE = "TAB_UPDATED_TITLE",
   TAB_UPDATED_URL = "TAB_UPDATED_URL",
   TAB_UPDATED_FAVICON = "TAB_UPDATED_FAVICON",
+  TAB_UPDATED = "TAB_UPDATED",
 }
 
 interface IShowViewProps {
@@ -36,6 +53,7 @@ interface IShowViewProps {
     y: number;
   };
 }
+
 export class ViewController {
   tabManager: TabManager;
 
@@ -54,13 +72,8 @@ export class ViewController {
   }
 
   constructor(window: BrowserWindow) {
-    storeManager.readFiles().then((data) => {
-      log.info("storeManager data", data);
-      this.tabManager = new TabManager(data as { tabs: ITab[]; index: number });
-      this.window = window;
-      log.info("tabManager", this.tabManager);
-      this.init();
-    });
+    this.window = window;
+    this.preloadData();
 
     window.webContents.on("render-process-gone", function (event, detailed) {
       log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
@@ -73,13 +86,24 @@ export class ViewController {
     });
   }
 
+  async preloadData() {
+    try {
+      const data = await storeManager.readFiles();
+      this.tabManager = new TabManager(data as { tabs: ITab[]; index: number });
+    } catch (error) {
+      this.tabManager = new TabManager({ tabs: [], index: 0 });
+      log.info("preloadData error", error);
+    } finally {
+      this.init();
+    }
+  }
+
   init() {
     ipcMain.handle(TabEventType.GET_TABS, () => this.tabManager.getTabs);
     ipcMain.handle(TabEventType.GET_TAB, (event, id: string) => this.tabManager.getTab(id));
     ipcMain.handle(TabEventType.CREATE_TAB, (event, tab: Partial<ITab>) => this.tabManager.createTab(tab));
-
-    ipcMain.on(TabEventType.UPDATE_TAB, (event, id: string, updateParams: Partial<ITab>) =>
-      this.tabManager.updateTab(id, updateParams)
+    ipcMain.on(TabEventType.UPDATE_TAB, (event, id: string, params: Partial<ITab>) =>
+      this.tabManager.updateTab(id, params)
     );
     ipcMain.on(TabEventType.DELETE_TAB, (event, id: string) => this.tabManager.deleteTab(id));
     ipcMain.on(TabEventType.SELECT_TAB, (event, id: string) => this.tabManager.selectTab(id));
@@ -94,6 +118,7 @@ export class ViewController {
 
     ipcMain.on(TabEventType.BACKWARD_TAB, () => this.onGoBack());
     ipcMain.on(TabEventType.FORWARD_TAB, () => this.onGoForward());
+    ipcMain.on(TabEventType.ON_CLOSE_TAB, (event, props: { id: string }) => this.onCloseTab(props.id));
 
     ipcMain.on(TabEventType.TOGGLE_DEV_TOOLS, (event, props: { id: string }) => this.handleToggleDevTools(props.id));
     ipcMain.on(TabEventType.ON_RELOAD, (event, props: { id: string }) => this.handleReloadTab(props.id));
@@ -101,7 +126,6 @@ export class ViewController {
 
   destroy() {
     this.viewActive = "";
-    // this.viewManager = {};
     for (let key in this.viewManager) {
       this.viewManager[key].webContents.session.flushStorageData();
     }
@@ -114,9 +138,6 @@ export class ViewController {
     try {
       const { id } = props;
       const tab = this.tabManager.getTab(id);
-      log.info("tab", tab, id);
-      log.info("this.tabManager", this.tabManager);
-      log.info("this.tabManager", this.tabManager.tabs.get(`${id}`));
       if (!tab) return;
       tab.onFocus();
       const isViewExist = this.viewManager[id];
@@ -148,11 +169,12 @@ export class ViewController {
 
   createContentView(id: string, domain: string) {
     const domainURL = new URL(domain);
-    const ses = session.fromPartition(`persist:${domainURL.origin}`);
+    const ses = session.fromPartition(`persist:${domainURL.hostname}`);
     console.log("ses", ses.cookies);
     const view = new WebContentsView({
       webPreferences: {
-        partition: `persist:${domainURL.origin}`,
+        // session: ses,
+        partition: `persist:${domainURL.hostname}`,
         nodeIntegration: false,
         contextIsolation: true,
       },
@@ -227,6 +249,22 @@ export class ViewController {
       currentView.webContents.navigationHistory.goForward();
       const url = currentView.webContents.getURL();
       this.tabManager.updateTab(this.viewActive, { url });
+    }
+  }
+  onCloseTab(tabId: string) {
+    let previousTabId = "";
+    for (let viewTabId in this.viewManager) {
+      if (viewTabId === tabId) {
+        this.window.contentView.removeChildView(this.viewManager[viewTabId]);
+        delete this.viewManager[viewTabId];
+        this.tabManager.deleteTab(tabId);
+        if (previousTabId) {
+          this.handleActiveView(previousTabId);
+          this.window.webContents.send(TAB_UPDATE_TYPE.TAB_UPDATED, { id: previousTabId });
+          return;
+        }
+      }
+      previousTabId = viewTabId;
     }
   }
 

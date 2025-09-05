@@ -57,7 +57,12 @@ const CustomApp = () => {
       const isValid = isValidDomain(url);
       if (!isValid) {
         return VIEW_CHANGE_URL({ id: tabId, url: "https://www.google.com/search?q=" + url });
-      } else VIEW_CHANGE_URL({ id: tabId, url: `https://${url}` });
+      } else {
+        VIEW_CHANGE_URL({
+          id: tabId,
+          url: `https://${url}`,
+        });
+      }
     } catch (error) {
       console.log("VIEW_CHANGE_URL error", error);
     }
@@ -92,6 +97,13 @@ const CustomApp = () => {
       console.log("onToggleDevTools error", error);
     }
   };
+  const onCloseTab = async () => {
+    try {
+      return window.api.ON_CLOSE_TAB(tabId);
+    } catch (error) {
+      console.log("onCloseTab error", error);
+    }
+  };
   return (
     <div className="h-screen rounded-md relative overflow-hidden">
       <Header
@@ -101,6 +113,7 @@ const CustomApp = () => {
         onForward={onForward}
         onToggleDevTools={onToggleDevTools}
         onReload={onReload}
+        onCloseTab={onCloseTab}
       />
       <div className="h-[calc(100vh-48px)] rounded-md relative overflow-hidden">
         <div

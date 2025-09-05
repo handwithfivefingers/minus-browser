@@ -12,6 +12,7 @@ enum TabEventType {
   GET_TAB = "GET_TAB",
   TOGGLE_DEV_TOOLS = "TOGGLE_DEV_TOOLS",
   ON_RELOAD = "ON_RELOAD",
+  ON_CLOSE_TAB = "ON_CLOSE_TAB",
 }
 
 enum ViewEventType {
@@ -27,6 +28,7 @@ enum TAB_UPDATE_TYPE {
   TAB_UPDATED_TITLE = "TAB_UPDATED_TITLE",
   TAB_UPDATED_URL = "TAB_UPDATED_URL",
   TAB_UPDATED_FAVICON = "TAB_UPDATED_FAVICON",
+  TAB_UPDATED = "TAB_UPDATED",
 }
 
 interface IShowViewProps {
@@ -57,6 +59,9 @@ contextBridge.exposeInMainWorld("api", {
   VIEW_FAVICON_CHANGED: (callback: (value: { id: string; favicon: string }) => void) => {
     return ipcRenderer.on(TAB_UPDATE_TYPE.TAB_UPDATED_FAVICON, (_event, value) => callback(value));
   },
+  ON_TABS_UPDATED: (callback: (value: { id: string }) => void) => {
+    return ipcRenderer.on(TAB_UPDATE_TYPE.TAB_UPDATED, (_event, value) => callback(value));
+  },
   VIEW_RESPONSIVE: (data: IShowViewProps) => ipcRenderer.send(ViewEventType.VIEW_RESPONSIVE, data),
   VIEW_HIDE: (data: { id: string }) => ipcRenderer.send(ViewEventType.HIDE_VIEW, data),
   GET_TABS: () => ipcRenderer.invoke(TabEventType.GET_TABS),
@@ -66,6 +71,7 @@ contextBridge.exposeInMainWorld("api", {
   CREATE_TAB: () => ipcRenderer.invoke(TabEventType.CREATE_TAB),
 
   ON_RELOAD: (tabId: string) => ipcRenderer.send(TabEventType.ON_RELOAD, { id: tabId }),
+  ON_CLOSE_TAB: (tabId: string) => ipcRenderer.send(TabEventType.ON_CLOSE_TAB, { id: tabId }),
   ON_BACKWARD: () => ipcRenderer.send(TabEventType.BACKWARD_TAB),
   ON_FORWARD: () => ipcRenderer.send(TabEventType.FORWARD_TAB),
 
