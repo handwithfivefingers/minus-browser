@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen } from "electron";
+import { app, BrowserWindow, Menu, screen } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
@@ -14,6 +14,8 @@ new LogController();
 new CustomAppController();
 const preloadPath = path.join(__dirname, "/preload.js");
 let viewController: ViewController;
+Menu.setApplicationMenu(null);
+
 const createWindow = () => {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
@@ -44,17 +46,7 @@ const createWindow = () => {
 
   mainWindow.show();
   viewController = new ViewController(mainWindow);
-};
-
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-// const NOTIFICATION_TITLE = "App started";
-// const NOTIFICATION_BODY = "Notification from the Main process";
-
-// function showNotification() {
-//   new Notification({ title: NOTIFICATION_TITLE, body: NOTIFICATION_BODY }).show();
-// }
+};  
 
 app.on("ready", () => {
   log.initialize();
