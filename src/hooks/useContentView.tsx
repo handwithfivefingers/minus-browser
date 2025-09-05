@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { ITab } from "~/features/browsers";
-import { IViewChangeProps } from "~/preload.d";
+import { IViewChangeProps } from "~/interface";
 interface IShowViewProps {
   id: string;
   screen: {
