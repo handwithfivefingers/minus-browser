@@ -15,9 +15,6 @@ new CustomAppController();
 const preloadPath = path.join(__dirname, "/preload.js");
 let viewController: ViewController;
 const createWindow = () => {
-  // Create the browser window.
-  log.info("preloadPath", preloadPath);
-
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
   const mainWindow = new BrowserWindow({
@@ -28,7 +25,6 @@ const createWindow = () => {
       nodeIntegration: true,
       contextIsolation: true,
       preload: preloadPath,
-      partition: "persist:truyenApp",
     },
   });
   mainWindow.webContents.setUserAgent(
