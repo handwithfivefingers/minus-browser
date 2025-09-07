@@ -1,9 +1,13 @@
-import { BrowserWindow, ipcMain, Notification, WebContentsView, app, session } from "electron";
-import { ITab } from "../interfaces";
-import TabManager from "./tabManager";
+import { app, BrowserWindow, ipcMain, Notification, session, WebContentsView } from "electron";
 import log from "electron-log";
+import fs, { readFileSync, writeFileSync } from "node:fs";
+import { ITab } from "../interfaces";
 import { storeManager } from "../stores";
-import fs from "node:fs";
+import TabManager from "./tabManager";
+import crossFetch from "cross-fetch";
+import { ElectronBlocker, fullLists, Request } from "@ghostery/adblocker-electron";
+import { IPCEvent } from "../classes";
+
 interface IShowViewProps {
   width: number;
   height: number;
@@ -53,15 +57,14 @@ interface IShowViewProps {
     y: number;
   };
 }
-
 export class ViewController {
   tabManager: TabManager;
 
   window: BrowserWindow;
 
-  viewManager: Record<ITab["id"], WebContentsView> = {};
+  viewManager: Record<string, WebContentsView> = {};
 
-  viewActive: ITab["id"] = "";
+  viewActive: string = "";
 
   get views() {
     const lists = new Map();
@@ -73,8 +76,7 @@ export class ViewController {
 
   constructor(window: BrowserWindow) {
     this.window = window;
-    this.preloadData();
-
+    this.init();
     window.webContents.on("render-process-gone", function (event, detailed) {
       log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
       if (detailed.reason == "crashed") {
@@ -86,42 +88,96 @@ export class ViewController {
     });
   }
 
-  async preloadData() {
-    try {
-      const data = await storeManager.readFiles();
-      this.tabManager = new TabManager(data as { tabs: ITab[]; index: number });
-    } catch (error) {
-      this.tabManager = new TabManager({ tabs: [], index: 0 });
-      log.info("preloadData error", error);
-    } finally {
-      this.init();
-    }
+  async getTabs() {
+    const data = await storeManager.readFiles();
+    this.tabManager = new TabManager(data as { tabs: ITab[]; index: number });
+    const sampleData = {
+      index: 0,
+      tabs: [],
+    };
+    return Object.assign(sampleData, data);
   }
 
   init() {
-    ipcMain.handle(TabEventType.GET_TABS, () => this.tabManager.getTabs);
-    ipcMain.handle(TabEventType.GET_TAB, (event, id: string) => this.tabManager.getTab(id));
-    ipcMain.handle(TabEventType.CREATE_TAB, (event, tab: Partial<ITab>) => this.tabManager.createTab(tab));
-    ipcMain.on(TabEventType.UPDATE_TAB, (event, id: string, params: Partial<ITab>) =>
-      this.tabManager.updateTab(id, params)
-    );
-    ipcMain.on(TabEventType.DELETE_TAB, (event, id: string) => this.tabManager.deleteTab(id));
-    ipcMain.on(TabEventType.SELECT_TAB, (event, id: string) => this.tabManager.selectTab(id));
+    ipcMain.handle("HANDLE", (event, args) => this.onInvoke(args));
+    ipcMain.on("ON", (event, args) => this.onListener(args));
+    // ipcMain.handle("CLOUD_SAVE", () => this.cloudSave());
+    // ipcMain.handle(TabEventType.GET_TABS, () => this.tabManager.getTabs);
+    // ipcMain.handle(TabEventType.GET_TAB, (event, id: string) => this.tabManager.getTab(id));
+    // ipcMain.handle(TabEventType.CREATE_TAB, (event, tab: Partial<ITab>) => this.tabManager.createTab(tab));
+    // ipcMain.on(TabEventType.UPDATE_TAB, (event, id: string, params: Partial<ITab>) =>
+    //   this.tabManager.updateTab(id, params)
+    // );
+    // ipcMain.on(TabEventType.DELETE_TAB, (event, id: string) => this.tabManager.deleteTab(id));
+    // ipcMain.on(TabEventType.SELECT_TAB, (event, id: string) => this.tabManager.selectTab(id));
 
-    ipcMain.on(ViewEventType.SHOW_VIEW_BY_ID, async (event, props: IShowViewProps) => this.handleShowViewById(props));
-    ipcMain.on(ViewEventType.VIEW_CHANGE_URL, (event, { url, id }) => this.handleURLChange(url, id));
+    // ipcMain.on(ViewEventType.SHOW_VIEW_BY_ID, async (event, props: IShowViewProps) => this.handleShowViewById(props));
+    // ipcMain.on(ViewEventType.VIEW_CHANGE_URL, (event, { url, id }) => this.handleURLChange(url, id));
 
-    ipcMain.on(ViewEventType.VIEW_RESPONSIVE, (event, props: IShowViewProps) => this.handleResizeView(props));
-    ipcMain.on(ViewEventType.HIDE_VIEW, (event, props: { id: string }) => this.handleHideView(props.id));
+    // ipcMain.on(ViewEventType.VIEW_RESPONSIVE, (event, props: IShowViewProps) => this.handleResizeView(props));
+    // ipcMain.on(ViewEventType.HIDE_VIEW, (event, props: { id: string }) => this.handleHideView(props.id));
 
-    // HANDLE TAB_FORWARD_BACKWARD
+    // // HANDLE TAB_FORWARD_BACKWARD
 
-    ipcMain.on(TabEventType.BACKWARD_TAB, () => this.onGoBack());
-    ipcMain.on(TabEventType.FORWARD_TAB, () => this.onGoForward());
-    ipcMain.on(TabEventType.ON_CLOSE_TAB, (event, props: { id: string }) => this.onCloseTab(props.id));
+    // ipcMain.on(TabEventType.BACKWARD_TAB, () => this.onGoBack());
+    // ipcMain.on(TabEventType.FORWARD_TAB, () => this.onGoForward());
+    // ipcMain.on(TabEventType.ON_CLOSE_TAB, (event, props: { id: string }) => this.onCloseTab(props.id));
 
-    ipcMain.on(TabEventType.TOGGLE_DEV_TOOLS, (event, props: { id: string }) => this.handleToggleDevTools(props.id));
-    ipcMain.on(TabEventType.ON_RELOAD, (event, props: { id: string }) => this.handleReloadTab(props.id));
+    // ipcMain.on(TabEventType.TOGGLE_DEV_TOOLS, (event, props: { id: string }) => this.handleToggleDevTools(props.id));
+    // ipcMain.on(TabEventType.ON_RELOAD, (event, props: { id: string }) => this.handleReloadTab(props.id));
+  }
+
+  onInvoke(args: { channel: string; data: any }) {
+    const { channel, data } = args;
+    log.warn(`  >>>>>>>>>>>>>>>>>>>>>> START onInvoke ${channel}`);
+    log.info(data);
+    log.warn(`  >>>>>>>>>>>>>>>>>>>>>> END onInvoke ${channel}`);
+    switch (channel) {
+      case "CLOUD_SAVE":
+        return this.cloudSave();
+      case TabEventType.GET_TABS:
+        return this.getTabs();
+      case TabEventType.GET_TAB:
+        return this.tabManager.getTab(data);
+      case TabEventType.CREATE_TAB:
+        return this.tabManager.createTab(data as ITab);
+      default:
+        return;
+    }
+  }
+  onListener(args: { channel: string; data: any }) {
+    const { channel, data } = args;
+    log.warn(`  >>>>>>>>>>>>>>>>>>>>>> START onListener ${channel}`);
+    log.info(data);
+    log.warn(`  >>>>>>>>>>>>>>>>>>>>>> END onListener ${channel}`);
+    switch (channel) {
+      case TabEventType.UPDATE_TAB:
+        return this.tabManager.updateTab(data);
+      case TabEventType.DELETE_TAB:
+        return this.tabManager.deleteTab(data.id);
+      case TabEventType.SELECT_TAB:
+        return this.tabManager.selectTab(data.id);
+      case ViewEventType.SHOW_VIEW_BY_ID:
+        return this.handleShowViewById(data);
+      case ViewEventType.VIEW_CHANGE_URL:
+        return this.handleURLChange(data);
+      case ViewEventType.VIEW_RESPONSIVE:
+        return this.handleResizeView(data);
+      case ViewEventType.HIDE_VIEW:
+        return this.handleHideView(data);
+      case TabEventType.BACKWARD_TAB:
+        return this.onGoBack();
+      case TabEventType.FORWARD_TAB:
+        return this.onGoForward();
+      case TabEventType.ON_CLOSE_TAB:
+        return this.onCloseTab(data);
+      case TabEventType.TOGGLE_DEV_TOOLS:
+        return this.handleToggleDevTools(data);
+      case TabEventType.ON_RELOAD:
+        return this.handleReloadTab(data);
+      default:
+        return;
+    }
   }
 
   destroy() {
@@ -130,21 +186,17 @@ export class ViewController {
       this.viewManager[key].webContents.session.flushStorageData();
     }
     this.viewManager = {};
-    this.window = null;
-    this.tabManager = null;
+    this.window = null as unknown as BrowserWindow;
   }
 
-  async handleShowViewById(props: IShowViewProps) {
+  async handleShowViewById(props: Omit<IShowViewProps, "id"> & { tab: ITab }) {
     try {
-      const { id } = props;
-      const tab = this.tabManager.getTab(id);
-      if (!tab) return;
-      tab.onFocus();
-      const isViewExist = this.viewManager[id];
+      const { tab, screen } = props;
+      const isViewExist = this.viewManager[tab.id];
       if (!isViewExist) {
-        const { view } = this.createContentView(id, tab.url);
-        this.viewManager[id] = view;
-        this.loadContentView(id);
+        const { view } = await this.createContentView(tab.id);
+        this.viewManager[tab.id] = view;
+        this.loadContentView(tab.id);
         await view.webContents.loadURL(tab.url);
         view.webContents.on("page-title-updated", () => {
           if (this.viewActive && this.viewManager[this.viewActive]) {
@@ -158,23 +210,22 @@ export class ViewController {
           }
         });
       } else {
-        this.loadContentView(id);
+        this.loadContentView(tab.id);
       }
-      this.handleActiveView(id);
-      this.handleResizeView(props);
+      if (!this.window.contentView.getVisible()) this.window.contentView.setVisible(true);
+      this.handleActiveView(tab.id);
+      this.handleResizeView({ id: tab.id, screen } as IShowViewProps);
     } catch (error) {
       log.error("handleShowViewById error", error);
     }
   }
 
-  createContentView(id: string, domain: string) {
-    const domainURL = new URL(domain);
-    const ses = session.fromPartition(`persist:${domainURL.hostname}`);
-    console.log("ses", ses.cookies);
+  async createContentView(id: string) {
+    const ses = session.fromPartition(`persist:${id}`);
     const view = new WebContentsView({
       webPreferences: {
-        // session: ses,
-        partition: `persist:${domainURL.hostname}`,
+        session: ses,
+        partition: `persist:${id}`,
         nodeIntegration: false,
         contextIsolation: true,
       },
@@ -196,8 +247,9 @@ export class ViewController {
     });
   }
 
-  updateViewURL(id: string, view: WebContentsView) {
-    this.tabManager.updateTab(id, { url: view.webContents.getURL() });
+  async updateViewURL(id: string, view: WebContentsView) {
+    this.tabManager.updateTab({ id, url: view.webContents.getURL() });
+
     this.window.webContents.send(TAB_UPDATE_TYPE.TAB_UPDATED_URL, {
       id,
       url: view.webContents.getURL(),
@@ -205,17 +257,19 @@ export class ViewController {
   }
 
   updateViewFavicon(id: string, favicon: string) {
-    this.tabManager.updateTab(id, { favicon });
+    this.tabManager.updateTab({ id, favicon });
+
     this.window.webContents.send(TAB_UPDATE_TYPE.TAB_UPDATED_FAVICON, {
       id,
       favicon,
     });
   }
 
-  async handleURLChange(url: string, id: string) {
+  async handleURLChange({ url, id }: { url: string; id: string }) {
     const view = this.viewManager[id];
-    this.tabManager.updateTab(id, { url });
     if (view) {
+      this.tabManager.updateTab({ id, url });
+      await this.requestDisableAds(view);
       await view.webContents.loadURL(url);
     }
   }
@@ -225,7 +279,12 @@ export class ViewController {
     if (view) view.setBounds(screen);
   }
 
-  handleHideView(tabId: string) {
+  handleHideView({ id: tabId }: { id: string }) {
+    if (!tabId) {
+      this.viewActive = "";
+      this.window.contentView.setVisible(false);
+      return;
+    }
     const view = this.viewManager[tabId];
     if (view) {
       view.setVisible(false);
@@ -233,24 +292,27 @@ export class ViewController {
   }
 
   onGoBack() {
+    if (!this.viewActive) return;
     const currentView = this.viewManager[this.viewActive];
     if (!currentView) return;
     if (currentView.webContents.navigationHistory.canGoBack()) {
       currentView.webContents.navigationHistory.goBack();
       const url = currentView.webContents.getURL();
-      this.tabManager.updateTab(this.viewActive, { url });
+      this.tabManager.updateTab({ id: this.viewActive, url });
     }
   }
 
   onGoForward() {
+    if (!this.viewActive) return;
     const currentView = this.viewManager[this.viewActive];
     if (!currentView) return;
     if (currentView.webContents.navigationHistory.canGoForward()) {
       currentView.webContents.navigationHistory.goForward();
       const url = currentView.webContents.getURL();
-      this.tabManager.updateTab(this.viewActive, { url });
+      this.tabManager.updateTab({ id: this.viewActive, url });
     }
   }
+
   onCloseTab(tabId: string) {
     let previousTabId = "";
     for (let viewTabId in this.viewManager) {
@@ -275,14 +337,14 @@ export class ViewController {
     }
   }
 
-  handleReloadTab(id: string) {
+  async handleReloadTab(id: string) {
     const view = this.viewManager[id];
     if (view) {
       view.webContents.reload();
     } else {
       const tab = this.tabManager.getTab(id);
       if (!tab) return;
-      const { view } = this.createContentView(id, tab.url);
+      const { view } = await this.createContentView(id, tab.url);
       this.viewManager[id] = view;
       this.handleActiveView(id);
       this.loadContentView(id);
@@ -314,7 +376,47 @@ export class ViewController {
     }
   }
 
-  // For Retry Reconnection
+  async requestDisableAds(view: WebContentsView) {
+    const blocker = await ElectronBlocker.fromLists(
+      crossFetch,
+      fullLists,
+      {
+        enableCompression: true,
+      },
+      {
+        path: "engine.bin",
+        read: async (...args) => readFileSync(...args),
+        write: async (...args) => writeFileSync(...args),
+      }
+    );
+    blocker.enableBlockingInSession(view.webContents.session);
+
+    blocker.on("request-blocked", (request: Request) => {
+      log.info("blocked", request.tabId, request.url);
+    });
+
+    blocker.on("request-redirected", (request: Request) => {
+      log.info("redirected", request.tabId, request.url);
+    });
+
+    blocker.on("request-whitelisted", (request: Request) => {
+      log.info("whitelisted", request.tabId, request.url);
+    });
+
+    blocker.on("csp-injected", (request: Request, csps: string) => {
+      log.info("csp", request.url, csps);
+    });
+
+    blocker.on("script-injected", (script: string, url: string) => {
+      log.info("script", script.length, url);
+    });
+
+    blocker.on("style-injected", (style: string, url: string) => {
+      log.info("style", style.length, url);
+    });
+
+    blocker.on("filter-matched", console.log.bind(console, "filter-matched"));
+  }
 
   timeout: NodeJS.Timeout | null = null;
   maxReconnectAttempts = 5;
@@ -372,6 +474,7 @@ export class ViewController {
       this.timeout = null;
     }
   }
+
   resetReconnectAttempts() {
     this.maxReconnectAttempts = 0;
     this.clearReconnectInterval();
