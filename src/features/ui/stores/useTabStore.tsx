@@ -3,109 +3,105 @@ import { ITab } from "~/features/browsers";
 import { Tab } from "~/features/browsers/controller/tabManager";
 
 interface TabStore {
-  tabs: Map<string, Tab>;
+  tabs: Tab[];
   activeTab: Tab | undefined | null;
   index: number;
-  action: {
-    initialize: (props: { tabs: ITab[]; index: number }) => void;
-    getTabs: () => Tab[];
-    getLastIndex: () => number;
-    createTab: (tab?: Partial<ITab>) => void;
-    setActiveTab: (id: string) => void;
-    getActiveTab: (id: string) => ITab | null;
-  };
+  tabsIndex: { [key: string]: number };
+  initialize: (tabs: ITab[]) => void;
+  getTabById: (id: string) => Tab | null;
+  addNewTab: (tab?: Partial<Tab>) => void;
+  updateTab: (id: string, tab: Partial<Tab>) => void;
+  setActiveTab: (id: string) => void;
 }
 const useTabStore = create<TabStore>((set, get) => ({
-  tabs: new Map(),
+  tabs: [],
   activeTab: null,
+  tabsIndex: {},
   index: 0,
-  action: {
-    initialize: ({ tabs, index }: { tabs: ITab[]; index: number }) => {
-      try {
-        const newTabs = new Map(tabs.map((tab) => [tab.id, new Tab(tab)]));
-        return set(() => ({ tabs: newTabs, index, activeTab: newTabs.get(String(index)) || null }));
-      } catch (error) {
-        console.log("initialize error", error);
+
+  initialize: (tabs: ITab[]) => {
+    return set((state) => {
+      const newTabs: Tab[] = [];
+      const tabsIndex: { [key: string]: number } = {};
+      let index = 0;
+      for (index; index < tabs.length; index++) {
+        const tab = tabs[index];
+        const newTab = new Tab(tab);
+        newTabs.push(newTab);
+        tabsIndex[newTab.id] = index;
       }
-    },
+      return {
+        ...state,
+        tabs: newTabs,
+        index: index,
+        tabsIndex,
+      };
+      // const newTabs = tabs.map((tab) => new Tab(tab));
+      // const tabsIndex: { [key: string]: number } = {};
+      // newTabs.forEach((tab, idx) => {
+      //   tabsIndex[tab.id] = idx;
+      // }
 
-    getTabs: () => {
-      const tabs = get().tabs;
-      if (tabs.size) return Array.from(tabs.values());
-      return [];
-    },
+      // const tabsIndex: { [key: string]: number } = {};
+      // tabs.forEach((tab, idx) => {
+      //   tabsIndex[tab.id] = idx;
+      // });
+      // const activeTab = tabs.find((tab) => tab.isFocused) || null;
+      // return {
+      //   ...state,
+      //   tabs: tabs.map((tab) => new Tab(tab)),
+      //   index: tabs.length > 0 ? Math.max(...tabs.map((tab) => tab.index)) : 0,
+      //   tabsIndex,
+      //   activeTab,
+      // };
+    });
+  },
 
-    getActiveTab: (id: string) => {
-      const tabs = get().tabs;
-      return tabs.get(id) || null;
-    },
+  getTabById: (id: string) => {
+    const currentIndex = get().tabsIndex[id];
+    console.log("currentIndex", currentIndex);
+    if (currentIndex === undefined) return null;
+    return get().tabs[currentIndex];
+  },
+  addNewTab: (tab?: Partial<Tab>) => {
+    console.log("addNewTab");
+    return set((state) => {
+      const tabObject = new Tab({
+        index: state.index,
+        isFocused: false,
+        ...tab,
+      });
+      let newIndex = state.index + 1;
 
-    setActiveTab: (id: string) => {
-      const tab = get().tabs.get(id);
-      if (tab) {
-        set({ activeTab: tab, index: tab.index });
+      console.log("tabObject", tabObject);
+      return {
+        ...state,
+        tabs: [...state.tabs, tabObject],
+        index: newIndex,
+        tabsIndex: { ...state.tabsIndex, [tabObject.id]: state.index },
+        activeTab: { ...tabObject, isFocused: true },
+      };
+    });
+  },
+  updateTab: (id: string, tab: Partial<Tab>) => {
+    const currentIndex = get().tabsIndex[id];
+    if (currentIndex === undefined) return;
+    return set((state) => {
+      const updatedTab = new Tab({ ...state.tabs[currentIndex], ...tab });
+      state.tabs[currentIndex] = updatedTab;
+      if (state.activeTab?.id === id) {
+        state.activeTab = updatedTab;
       }
-    },
-    getLastIndex() {
-      const tabs = get().tabs;
-      if (tabs.size === 0) return 0;
-      const indices = Array.from(tabs.values()).map((tab) => tab.index);
-      return Math.max(...indices);
-    },
-    createTab: (tab?: Partial<ITab>) => {
-      return set((state) => {
-        const index = state.action.getLastIndex() + 1;
-        const newTab = new Tab({
-          index: index,
-          isFocused: true,
-          ...tab,
-        });
-        const newTabs = get().tabs;
-        newTabs.set(newTab.id, newTab);
-        return { tabs: newTabs, index, activeTab: newTab };
-      });
-    },
-    updateTab: (id: string, update: Partial<ITab>) => {
-      return set((state) => {
-        const tabs = state.tabs;
-        const tab = tabs.get(id);
-        if (tab) {
-          const updatedTab = { ...tab, ...update };
-          tabs.set(id, new Tab(updatedTab));
-        }
-        return { tabs };
-      });
-    },
-    deleteTab: (id: string) => {
-      return set((state) => {
-        const tabs = state.tabs;
-        tabs.delete(id);
-        return { tabs };
-      });
-    },
-    closeTab: (id: string) => {
-      return set((state) => {
-        const tabs = state.tabs;
-        const tab = tabs.get(id);
-        if (tab) {
-          const updatedTab = { ...tab, isFocused: false };
-          tabs.set(id, new Tab(updatedTab));
-        }
-        return { tabs };
-      });
-    },
-    selectTab: (id: string) => {
-      return set((state) => {
-        const tabs = state.tabs;
-        const tab = tabs.get(id);
-        if (tab) {
-          const updatedTab = { ...tab, isFocused: true };
-          tabs.set(id, new Tab(updatedTab));
-          return { tabs, activeTab: updatedTab };
-        }
-        return { tabs };
-      });
-    },
+      return { ...state };
+    });
+  },
+
+  setActiveTab: (id: string) => {
+    const currentIndex = get().tabsIndex[id];
+    if (currentIndex === undefined) return;
+    return set((state) => {
+      return { activeTab: state.tabs[currentIndex] };
+    });
   },
 }));
 

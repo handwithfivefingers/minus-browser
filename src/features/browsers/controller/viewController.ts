@@ -1,12 +1,11 @@
-import { app, BrowserWindow, ipcMain, Notification, session, WebContentsView } from "electron";
+import { ElectronBlocker, fullLists } from "@ghostery/adblocker-electron";
+import crossFetch from "cross-fetch";
+import { app, BrowserWindow, ipcMain, session, WebContentsView } from "electron";
 import log from "electron-log";
-import fs, { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { ITab } from "../interfaces";
 import { storeManager } from "../stores";
-import TabManager from "./tabManager";
-import crossFetch from "cross-fetch";
-import { ElectronBlocker, fullLists, Request } from "@ghostery/adblocker-electron";
-import { IPCEvent } from "../classes";
+import { AdBlocker } from "./adsBlockController";
 
 interface IShowViewProps {
   width: number;
@@ -57,14 +56,47 @@ interface IShowViewProps {
     y: number;
   };
 }
-export class ViewController {
-  tabManager: TabManager;
 
+type IPC<T = any> = {
+  channel: string;
+  data?: T;
+};
+
+interface IHandleResizeView {
+  tab: ITab;
+  screen: IShowViewProps;
+}
+interface IViewController {
   window: BrowserWindow;
+  viewManager: Record<string, WebContentsView>;
+  viewActive: string;
+  getTabs: () => Promise<{ tabs: ITab[]; index: number }>;
+  handleShowViewById: (props: { data: IHandleResizeView }) => Promise<void>;
 
-  viewManager: Record<string, WebContentsView> = {};
+  createContentView: (id: string) => Promise<{ view: WebContentsView; contentView: Electron.WebContents }>;
+  loadContentView: (id: string) => void;
 
+  handleResizeView: (props: { data: IHandleResizeView }) => void;
+  handleHideView: (props: { data: { id: string } }) => void;
+  onGoBack: () => void;
+  onCloseTab: (tabId: string) => void;
+  handleToggleDevTools: (props: { data: { id: string } }) => void;
+  handleReloadTab: (props: { data: ITab }) => Promise<void>;
+  handleActiveView: (id: string) => void;
+  discardInactiveView: () => void;
+  requestDisableAds: (view: WebContentsView) => Promise<void>;
+  cloudSave: () => Promise<void>;
+  destroy: () => void;
+  init: () => void;
+}
+export class ViewController implements IViewController {
+  window: BrowserWindow;
+  viewManager: Record<string, WebContentsView & { isOpenedDevTools?: boolean }> = {};
   viewActive: string = "";
+  private invokeHandlers: Record<string, (data?: any) => any>;
+  private listenerHandlers: Record<string, (data?: any) => void>;
+  domainAlreadyBlockAds = {};
+  private adBlocker: AdBlocker;
 
   get views() {
     const lists = new Map();
@@ -76,6 +108,7 @@ export class ViewController {
 
   constructor(window: BrowserWindow) {
     this.window = window;
+    this.initializeHandlers();
     this.init();
     window.webContents.on("render-process-gone", function (event, detailed) {
       log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
@@ -90,93 +123,58 @@ export class ViewController {
 
   async getTabs() {
     const data = await storeManager.readFiles();
-    this.tabManager = new TabManager(data as { tabs: ITab[]; index: number });
-    const sampleData = {
+    const sampleData: { tabs: ITab[]; index: number } = {
       index: 0,
       tabs: [],
     };
     return Object.assign(sampleData, data);
   }
 
-  init() {
-    ipcMain.handle("HANDLE", (event, args) => this.onInvoke(args));
-    ipcMain.on("ON", (event, args) => this.onListener(args));
-    // ipcMain.handle("CLOUD_SAVE", () => this.cloudSave());
-    // ipcMain.handle(TabEventType.GET_TABS, () => this.tabManager.getTabs);
-    // ipcMain.handle(TabEventType.GET_TAB, (event, id: string) => this.tabManager.getTab(id));
-    // ipcMain.handle(TabEventType.CREATE_TAB, (event, tab: Partial<ITab>) => this.tabManager.createTab(tab));
-    // ipcMain.on(TabEventType.UPDATE_TAB, (event, id: string, params: Partial<ITab>) =>
-    //   this.tabManager.updateTab(id, params)
-    // );
-    // ipcMain.on(TabEventType.DELETE_TAB, (event, id: string) => this.tabManager.deleteTab(id));
-    // ipcMain.on(TabEventType.SELECT_TAB, (event, id: string) => this.tabManager.selectTab(id));
+  private initializeHandlers() {
+    this.invokeHandlers = {
+      [TabEventType.GET_TABS]: () => this.getTabs(),
+      CLOUD_SAVE: () => this.cloudSave(),
+    };
 
-    // ipcMain.on(ViewEventType.SHOW_VIEW_BY_ID, async (event, props: IShowViewProps) => this.handleShowViewById(props));
-    // ipcMain.on(ViewEventType.VIEW_CHANGE_URL, (event, { url, id }) => this.handleURLChange(url, id));
-
-    // ipcMain.on(ViewEventType.VIEW_RESPONSIVE, (event, props: IShowViewProps) => this.handleResizeView(props));
-    // ipcMain.on(ViewEventType.HIDE_VIEW, (event, props: { id: string }) => this.handleHideView(props.id));
-
-    // // HANDLE TAB_FORWARD_BACKWARD
-
-    // ipcMain.on(TabEventType.BACKWARD_TAB, () => this.onGoBack());
-    // ipcMain.on(TabEventType.FORWARD_TAB, () => this.onGoForward());
-    // ipcMain.on(TabEventType.ON_CLOSE_TAB, (event, props: { id: string }) => this.onCloseTab(props.id));
-
-    // ipcMain.on(TabEventType.TOGGLE_DEV_TOOLS, (event, props: { id: string }) => this.handleToggleDevTools(props.id));
-    // ipcMain.on(TabEventType.ON_RELOAD, (event, props: { id: string }) => this.handleReloadTab(props.id));
+    this.listenerHandlers = {
+      [ViewEventType.SHOW_VIEW_BY_ID]: (data) => this.handleShowViewById(data),
+      [ViewEventType.VIEW_CHANGE_URL]: (data) => this.handleURLChange(data),
+      [ViewEventType.VIEW_RESPONSIVE]: (data) => this.handleResizeView(data),
+      [ViewEventType.HIDE_VIEW]: (data) => this.handleHideView(data),
+      [TabEventType.BACKWARD_TAB]: () => this.onGoBack(),
+      [TabEventType.ON_CLOSE_TAB]: (data) => this.onCloseTab(data),
+      [TabEventType.TOGGLE_DEV_TOOLS]: (data) => this.handleToggleDevTools(data),
+      [TabEventType.ON_RELOAD]: (data) => this.handleReloadTab(data),
+    };
+  }
+  async init() {
+    ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
+    ipcMain.on("send", (event, args: IPC) => this.onListener(args));
+    this.adBlocker = await new AdBlocker();
   }
 
-  onInvoke(args: { channel: string; data: any }) {
+  private onInvoke(args: IPC) {
     const { channel, data } = args;
     log.warn(`  >>>>>>>>>>>>>>>>>>>>>> START onInvoke ${channel}`);
     log.info(data);
     log.warn(`  >>>>>>>>>>>>>>>>>>>>>> END onInvoke ${channel}`);
-    switch (channel) {
-      case "CLOUD_SAVE":
-        return this.cloudSave();
-      case TabEventType.GET_TABS:
-        return this.getTabs();
-      case TabEventType.GET_TAB:
-        return this.tabManager.getTab(data);
-      case TabEventType.CREATE_TAB:
-        return this.tabManager.createTab(data as ITab);
-      default:
-        return;
+    log.info(`[IPC Invoke] channel: ${channel}`, data);
+    const handler = this.invokeHandlers[channel];
+    if (handler) {
+      return handler(data);
     }
+    log.warn(`No invoke handler for channel: ${channel}`);
   }
-  onListener(args: { channel: string; data: any }) {
+
+  private onListener(args: IPC) {
     const { channel, data } = args;
-    log.warn(`  >>>>>>>>>>>>>>>>>>>>>> START onListener ${channel}`);
+    log.info(`[IPC Listen] channel: ${channel}`, data);
     log.info(data);
-    log.warn(`  >>>>>>>>>>>>>>>>>>>>>> END onListener ${channel}`);
-    switch (channel) {
-      case TabEventType.UPDATE_TAB:
-        return this.tabManager.updateTab(data);
-      case TabEventType.DELETE_TAB:
-        return this.tabManager.deleteTab(data.id);
-      case TabEventType.SELECT_TAB:
-        return this.tabManager.selectTab(data.id);
-      case ViewEventType.SHOW_VIEW_BY_ID:
-        return this.handleShowViewById(data);
-      case ViewEventType.VIEW_CHANGE_URL:
-        return this.handleURLChange(data);
-      case ViewEventType.VIEW_RESPONSIVE:
-        return this.handleResizeView(data);
-      case ViewEventType.HIDE_VIEW:
-        return this.handleHideView(data);
-      case TabEventType.BACKWARD_TAB:
-        return this.onGoBack();
-      case TabEventType.FORWARD_TAB:
-        return this.onGoForward();
-      case TabEventType.ON_CLOSE_TAB:
-        return this.onCloseTab(data);
-      case TabEventType.TOGGLE_DEV_TOOLS:
-        return this.handleToggleDevTools(data);
-      case TabEventType.ON_RELOAD:
-        return this.handleReloadTab(data);
-      default:
-        return;
+    const handler = this.listenerHandlers[channel];
+    if (handler) {
+      handler(data);
+    } else {
+      log.warn(`No listener handler for channel: ${channel}`);
     }
   }
 
@@ -189,32 +187,42 @@ export class ViewController {
     this.window = null as unknown as BrowserWindow;
   }
 
-  async handleShowViewById(props: Omit<IShowViewProps, "id"> & { tab: ITab }) {
+  async handleShowViewById(props: { data: IHandleResizeView }) {
     try {
-      const { tab, screen } = props;
+      const { tab } = props.data;
       const isViewExist = this.viewManager[tab.id];
       if (!isViewExist) {
         const { view } = await this.createContentView(tab.id);
         this.viewManager[tab.id] = view;
         this.loadContentView(tab.id);
         await view.webContents.loadURL(tab.url);
-        view.webContents.on("page-title-updated", () => {
-          if (this.viewActive && this.viewManager[this.viewActive]) {
-            this.updateViewTitle(this.viewActive, this.viewManager[this.viewActive]);
-            this.updateViewURL(this.viewActive, this.viewManager[this.viewActive]);
-          }
-        });
-        view.webContents.on("page-favicon-updated", (event, favicons) => {
-          if (this.viewActive && this.viewManager[this.viewActive]) {
-            this.updateViewFavicon(this.viewActive, favicons[0]);
-          }
-        });
       } else {
+        if (isViewExist.isOpenedDevTools) {
+          isViewExist.webContents.openDevTools();
+        }
         this.loadContentView(tab.id);
       }
       if (!this.window.contentView.getVisible()) this.window.contentView.setVisible(true);
-      this.handleActiveView(tab.id);
-      this.handleResizeView({ id: tab.id, screen } as IShowViewProps);
+      this.handleResizeView(props);
+
+      if (Object.keys(this.viewManager).length) {
+        for (let viewID in this.viewManager) {
+          if (viewID !== tab.id) {
+            this.viewManager[viewID].webContents.closeDevTools();
+            this.viewManager[viewID].setVisible(false);
+          }
+        }
+      }
+      // console.log("this.viewManager", this.viewManager);
+      // const newURL = new URL(tab.url);
+      // if (!this.domainAlreadyBlockAds[newURL.origin]) {
+      //   const ses = this.viewManager[tab.id].webContents.session;
+      //   await enableAggressiveAdBlocking(ses);
+      //   this.domainAlreadyBlockAds = {
+      //     ...this.domainAlreadyBlockAds,
+      //     [newURL.origin]: true,
+      //   };
+      // }
     } catch (error) {
       log.error("handleShowViewById error", error);
     }
@@ -231,7 +239,43 @@ export class ViewController {
       },
     });
     const contentView = view.webContents;
+    this.adBlocker.setupViewEventHandlers(view);
+    this.addViewEventListeners(view, id);
     return { view, contentView };
+  }
+  addViewEventListeners(view: WebContentsView, id: string) {
+    const didStartLoad = () => {
+      // log.info("didStartLoad");
+      this.window.webContents.send(`did-start-load:${id}`);
+    };
+    const didStopLoad = () => {
+      // log.info("didStopLoad");
+      this.window.webContents.send(`did-stop-loading:${id}`);
+    };
+    const pageTitleUpdated = () => {
+      // log.info("page-title-updated");
+      this.window.webContents.send(`page-title-updated:${id}`, {
+        title: view.webContents.getTitle(),
+        url: view.webContents.getURL(),
+      });
+    };
+    const pageFaviconUpdated = (event: Electron.Event, favicons: string[]) => {
+      // log.info("page-favicon-updated");
+      this.window.webContents.send(`page-favicon-updated:${id}`, { favicon: favicons[0] });
+    };
+
+    view.webContents.on("did-start-loading", didStartLoad);
+    view.webContents.on("did-stop-loading", didStopLoad);
+    view.webContents.on("page-title-updated", pageTitleUpdated);
+    view.webContents.on("page-favicon-updated", pageFaviconUpdated);
+
+    view.webContents.on("destroyed", () => {
+      log.info("destroyed");
+      view.webContents.off("did-start-loading", didStartLoad);
+      view.webContents.off("did-stop-loading", didStopLoad);
+      view.webContents.off("page-title-updated", pageTitleUpdated);
+      view.webContents.off("page-favicon-updated", pageFaviconUpdated);
+    });
   }
 
   loadContentView(id: string) {
@@ -240,55 +284,49 @@ export class ViewController {
     view.setVisible(true);
   }
 
-  updateViewTitle(id: string, view: WebContentsView) {
-    this.window.webContents.send(TAB_UPDATE_TYPE.TAB_UPDATED_TITLE, {
-      id,
-      title: view.webContents.getTitle(),
-    });
-  }
-
-  async updateViewURL(id: string, view: WebContentsView) {
-    this.tabManager.updateTab({ id, url: view.webContents.getURL() });
-
-    this.window.webContents.send(TAB_UPDATE_TYPE.TAB_UPDATED_URL, {
-      id,
-      url: view.webContents.getURL(),
-    });
-  }
-
-  updateViewFavicon(id: string, favicon: string) {
-    this.tabManager.updateTab({ id, favicon });
-
-    this.window.webContents.send(TAB_UPDATE_TYPE.TAB_UPDATED_FAVICON, {
-      id,
-      favicon,
-    });
-  }
-
-  async handleURLChange({ url, id }: { url: string; id: string }) {
-    const view = this.viewManager[id];
-    if (view) {
-      this.tabManager.updateTab({ id, url });
-      await this.requestDisableAds(view);
+  async handleURLChange(props: { data: { id: string; url: string } }) {
+    try {
+      const { id, url } = props.data;
+      const view = this.viewManager[id];
+      if (!view) {
+        console.error(`View with id ${id} not found`);
+        return;
+      }
+      // await this.adBlocker.ensureViewHasAdBlocking(view);
       await view.webContents.loadURL(url);
+      // this.requestDisableAds(view);
+      console.log(`✅ Loaded URL with ad blocking: ${url}`);
+    } catch (error) {
+      console.error("❌ Error loading URL:", error);
     }
   }
 
-  handleResizeView({ id, screen }: IShowViewProps) {
-    const view = this.viewManager[id];
-    if (view) view.setBounds(screen);
+  async requestDisableAds(view: WebContentsView) {
+    const blocker = await ElectronBlocker.fromLists(
+      crossFetch,
+      fullLists,
+      {
+        enableCompression: true,
+      },
+      {
+        path: "engine.bin",
+        read: async (...args) => readFileSync(...args),
+        write: async (...args) => writeFileSync(...args),
+      }
+    );
+    blocker.enableBlockingInSession(view.webContents.session);
   }
 
-  handleHideView({ id: tabId }: { id: string }) {
-    if (!tabId) {
-      this.viewActive = "";
-      this.window.contentView.setVisible(false);
-      return;
-    }
-    const view = this.viewManager[tabId];
-    if (view) {
-      view.setVisible(false);
-    }
+  handleResizeView(props: { data: IHandleResizeView }) {
+    const { tab, screen } = props.data;
+    if (!tab || !screen || !this.viewManager[tab.id]) return;
+    this.viewManager[tab.id].setBounds(screen);
+  }
+
+  handleHideView(props: { data: { id: string } }) {
+    if (!props.data || !props.data.id) return;
+    const view = this.viewManager[props.data.id];
+    view.setVisible(false);
   }
 
   onGoBack() {
@@ -297,19 +335,6 @@ export class ViewController {
     if (!currentView) return;
     if (currentView.webContents.navigationHistory.canGoBack()) {
       currentView.webContents.navigationHistory.goBack();
-      const url = currentView.webContents.getURL();
-      this.tabManager.updateTab({ id: this.viewActive, url });
-    }
-  }
-
-  onGoForward() {
-    if (!this.viewActive) return;
-    const currentView = this.viewManager[this.viewActive];
-    if (!currentView) return;
-    if (currentView.webContents.navigationHistory.canGoForward()) {
-      currentView.webContents.navigationHistory.goForward();
-      const url = currentView.webContents.getURL();
-      this.tabManager.updateTab({ id: this.viewActive, url });
     }
   }
 
@@ -319,7 +344,7 @@ export class ViewController {
       if (viewTabId === tabId) {
         this.window.contentView.removeChildView(this.viewManager[viewTabId]);
         delete this.viewManager[viewTabId];
-        this.tabManager.deleteTab(tabId);
+        // this.tabManager.deleteTab(tabId);
         if (previousTabId) {
           this.handleActiveView(previousTabId);
           this.window.webContents.send(TAB_UPDATE_TYPE.TAB_UPDATED, { id: previousTabId });
@@ -330,24 +355,31 @@ export class ViewController {
     }
   }
 
-  handleToggleDevTools(id: string) {
-    const view = this.viewManager[id];
-    if (view) {
-      view.webContents.toggleDevTools();
-    }
+  /**
+   * @todo
+   * 1. handle toggle dev tools
+   * 2. show dev tools
+   * 3. add flag devtools for future use
+   * 4. when call @function handleHideView  -> close dev tools
+   * 5. when call @function handleShowViewById  -> check flag -> show dev tools
+   */
+  handleToggleDevTools(props: { data: { id: string } }) {
+    if (!props.data || !props.data.id) return;
+    const view = this.viewManager[props.data.id];
+    let isOpenedDevTools = view.webContents.isDevToolsOpened();
+    view.webContents.toggleDevTools();
+    view.isOpenedDevTools = !isOpenedDevTools;
   }
 
-  async handleReloadTab(id: string) {
-    const view = this.viewManager[id];
+  async handleReloadTab(props: { data: ITab }) {
+    const view = this.viewManager[props.data.id];
     if (view) {
       view.webContents.reload();
     } else {
-      const tab = this.tabManager.getTab(id);
-      if (!tab) return;
-      const { view } = await this.createContentView(id, tab.url);
-      this.viewManager[id] = view;
-      this.handleActiveView(id);
-      this.loadContentView(id);
+      const { view } = await this.createContentView(props.data.id);
+      this.viewManager[props.data.id] = view;
+      this.handleActiveView(props.data.id);
+      this.loadContentView(props.data.id);
     }
   }
 
@@ -376,114 +408,71 @@ export class ViewController {
     }
   }
 
-  async requestDisableAds(view: WebContentsView) {
-    const blocker = await ElectronBlocker.fromLists(
-      crossFetch,
-      fullLists,
-      {
-        enableCompression: true,
-      },
-      {
-        path: "engine.bin",
-        read: async (...args) => readFileSync(...args),
-        write: async (...args) => writeFileSync(...args),
-      }
-    );
-    blocker.enableBlockingInSession(view.webContents.session);
-
-    blocker.on("request-blocked", (request: Request) => {
-      log.info("blocked", request.tabId, request.url);
-    });
-
-    blocker.on("request-redirected", (request: Request) => {
-      log.info("redirected", request.tabId, request.url);
-    });
-
-    blocker.on("request-whitelisted", (request: Request) => {
-      log.info("whitelisted", request.tabId, request.url);
-    });
-
-    blocker.on("csp-injected", (request: Request, csps: string) => {
-      log.info("csp", request.url, csps);
-    });
-
-    blocker.on("script-injected", (script: string, url: string) => {
-      log.info("script", script.length, url);
-    });
-
-    blocker.on("style-injected", (style: string, url: string) => {
-      log.info("style", style.length, url);
-    });
-
-    blocker.on("filter-matched", console.log.bind(console, "filter-matched"));
-  }
-
-  timeout: NodeJS.Timeout | null = null;
-  maxReconnectAttempts = 5;
-  currentConnectionAttempt = 0;
-
-  isNetworkError(errorCode: number, errorDescription: string) {
-    const networkErrorCodes = [
-      -2, // ERR_FAILED
-      -21, // ERR_NETWORK_CHANGED
-      -105, // ERR_NAME_NOT_RESOLVED
-      -106, // ERR_INTERNET_DISCONNECTED
-      -107, // ERR_SSL_PROTOCOL_ERROR
-      -109, // ERR_ADDRESS_UNREACHABLE
-      -118, // ERR_CONNECTION_TIMED_OUT
-      -130, // ERR_PROXY_CONNECTION_FAILED
-    ];
-
-    const networkErrorPatterns = [
-      "ERR_NAME_NOT_RESOLVED",
-      "ERR_INTERNET_DISCONNECTED",
-      "ERR_NETWORK_CHANGED",
-      "ERR_CONNECTION_TIMED_OUT",
-      "ERR_ADDRESS_UNREACHABLE",
-    ];
-
-    return (
-      networkErrorCodes.includes(errorCode) ||
-      networkErrorPatterns.some((pattern) => errorDescription.includes(pattern))
-    );
-  }
-
-  handleNetworkError(wc: WebContentsView["webContents"], url: string) {
-    if (this.currentConnectionAttempt >= this.maxReconnectAttempts) {
-      console.log("Max reconnection attempts reached");
-      new Notification({
-        title: "Error",
-        body: "Max reconnection attempts reached. Please check your internet connection.",
-      }).show();
-      return;
-    }
-    this.clearReconnectInterval();
-    this.timeout = setTimeout(() => {
-      this.currentConnectionAttempt += 1;
-      wc.loadURL(url);
-    }, 15000);
-    new Notification({
-      title: "Error",
-      body: `Network error detected, ${this.currentConnectionAttempt + 1} attempting to reconnect...`,
-    }).show();
-  }
-
-  clearReconnectInterval() {
-    if (this.timeout) {
-      clearTimeout(this.timeout);
-      this.timeout = null;
-    }
-  }
-
-  resetReconnectAttempts() {
-    this.maxReconnectAttempts = 0;
-    this.clearReconnectInterval();
-  }
-
   async cloudSave() {
-    log.info("cloudSave");
-    const data = this.tabManager.toString();
-    log.info("cloudSave tabManager data", data);
-    return fs.writeFileSync(storeManager.configFile, data, "utf-8");
+    // const data = this.tabManager.toString();
+    log.info("cloudSave tabManager data");
+    // return fs.writeFileSync(storeManager.configFile, data, "utf-8");
   }
+
+  // timeout: NodeJS.Timeout | null = null;
+  // maxReconnectAttempts = 5;
+  // currentConnectionAttempt = 0;
+
+  // isNetworkError(errorCode: number, errorDescription: string) {
+  //   const networkErrorCodes = [
+  //     -2, // ERR_FAILED
+  //     -21, // ERR_NETWORK_CHANGED
+  //     -105, // ERR_NAME_NOT_RESOLVED
+  //     -106, // ERR_INTERNET_DISCONNECTED
+  //     -107, // ERR_SSL_PROTOCOL_ERROR
+  //     -109, // ERR_ADDRESS_UNREACHABLE
+  //     -118, // ERR_CONNECTION_TIMED_OUT
+  //     -130, // ERR_PROXY_CONNECTION_FAILED
+  //   ];
+
+  //   const networkErrorPatterns = [
+  //     "ERR_NAME_NOT_RESOLVED",
+  //     "ERR_INTERNET_DISCONNECTED",
+  //     "ERR_NETWORK_CHANGED",
+  //     "ERR_CONNECTION_TIMED_OUT",
+  //     "ERR_ADDRESS_UNREACHABLE",
+  //   ];
+
+  //   return (
+  //     networkErrorCodes.includes(errorCode) ||
+  //     networkErrorPatterns.some((pattern) => errorDescription.includes(pattern))
+  //   );
+  // }
+
+  // handleNetworkError(wc: WebContentsView["webContents"], url: string) {
+  //   if (this.currentConnectionAttempt >= this.maxReconnectAttempts) {
+  //     console.log("Max reconnection attempts reached");
+  //     new Notification({
+  //       title: "Error",
+  //       body: "Max reconnection attempts reached. Please check your internet connection.",
+  //     }).show();
+  //     return;
+  //   }
+  //   this.clearReconnectInterval();
+  //   this.timeout = setTimeout(() => {
+  //     this.currentConnectionAttempt += 1;
+  //     wc.loadURL(url);
+  //   }, 15000);
+  //   new Notification({
+  //     title: "Error",
+  //     body: `Network error detected, ${this.currentConnectionAttempt + 1} attempting to reconnect...`,
+  //   }).show();
+  // }
+
+  // clearReconnectInterval() {
+  //   if (this.timeout) {
+  //     clearTimeout(this.timeout);
+  //     this.timeout = null;
+  //   }
+  // }
+
+  // resetReconnectAttempts() {
+  //   this.maxReconnectAttempts = 0;
+  //   this.clearReconnectInterval();
+  // }
 }

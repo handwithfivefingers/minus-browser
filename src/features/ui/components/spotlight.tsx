@@ -91,4 +91,4 @@ const SportlightContent = () => {
   );
 };
 
-export default Spotlight;
+export { Spotlight };

@@ -1,0 +1,17 @@
+.title {
+  z-index: 2;
+  position: relative;
+  font-size: 10px;
+  height: 12px;
+  line-height: 1;
+  font-weight: 300;
+  overflow: hidden;
+  white-space: normal;
+  letter-spacing: 0.5px;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  color: #000;
+  text-shadow: none;
+  text-transform: capitalize;
+}

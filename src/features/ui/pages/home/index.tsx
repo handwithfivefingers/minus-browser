@@ -8,6 +8,17 @@ interface ITodoItem {
   id: string;
 }
 const Home = () => {
+  useEffect(() => {
+    document.title = "Minus - Home";
+  }, []);
+  return (
+    <div className="relative px-2 bg-slate-800 h-full">
+      <TodoHome />
+    </div>
+  );
+};
+
+const TodoHome = () => {
   const hourRef = useRef<HTMLSpanElement | null>(null);
   const minRef = useRef<HTMLSpanElement | null>(null);
   const [todos, setTodos] = useState<ITodoItem[]>([]);
@@ -64,31 +75,28 @@ const Home = () => {
       setTodos(nextState);
     });
   };
-
   return (
-    <div className="relative px-2 bg-slate-800 h-full">
-      <div className="flex justify-center h-full items-center-safe py-40 flex-col gap-8">
-        <div className="flex-1 flex-shrink-0">
-          <span ref={hourRef} className="font-medium text-8xl text-white" />
-          <span className="font-medium text-8xl text-white">:</span>
-          <span ref={minRef} className="font-medium text-8xl text-white" />
+    <div className="flex justify-center h-full items-center-safe py-40 flex-col gap-8">
+      <div className="flex-1 flex-shrink-0">
+        <span ref={hourRef} className="font-medium text-8xl text-white" />
+        <span className="font-medium text-8xl text-white">:</span>
+        <span ref={minRef} className="font-medium text-8xl text-white" />
+      </div>
+      <div className="h-full w-full max-w-80 flex gap-2 flex-col">
+        <div className="flex gap-2 flex-col max-h-[275px] overflow-auto scrollbar">
+          {todos?.map((item) => {
+            return <TodoItem {...item} key={item.id} onSave={onSave} onDelete={() => onDelete(item)} />;
+          })}
         </div>
-        <div className="h-full w-full max-w-80 flex gap-2 flex-col">
-          <div className="flex gap-2 flex-col max-h-[275px] overflow-auto scrollbar">
-            {todos?.map((item) => {
-              return <TodoItem {...item} key={item.id} onSave={onSave} onDelete={() => onDelete(item)} />;
-            })}
-          </div>
 
-          <button
-            className="text-white cursor-pointer sticky bottom-0 flex gap-2 items-center mx-auto bg-indigo-500/50 rounded p-2"
-            onClick={addNewTodo}
-            disabled={isPending}
-          >
-            <IconPlus />
-            <span>New Todo</span>
-          </button>
-        </div>
+        <button
+          className="text-white cursor-pointer sticky bottom-0 flex gap-2 items-center mx-auto bg-indigo-500/50 rounded p-2"
+          onClick={addNewTodo}
+          disabled={isPending}
+        >
+          <IconPlus />
+          <span>New Todo</span>
+        </button>
       </div>
     </div>
   );

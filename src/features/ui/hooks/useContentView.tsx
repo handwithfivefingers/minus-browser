@@ -1,7 +1,13 @@
 import { useMemo } from "react";
-import { IViewChangeProps } from "~/interface";
+import { ITab } from "../../browsers/interfaces";
+
+const EVENT_TYPE = {
+  SHOW_VIEW_BY_ID: "SHOW_VIEW_BY_ID",
+  VIEW_CHANGE_URL: "VIEW_CHANGE_URL",
+};
+
 interface IShowViewProps {
-  id: string;
+  tab: ITab;
   screen: {
     width: number;
     height: number;
@@ -9,28 +15,40 @@ interface IShowViewProps {
     y: number;
   };
 }
+
+interface IViewChange {
+  id: string;
+  url?: string;
+  title?: string;
+  favicon?: string;
+}
+
+interface IUseContentView {
+  showViewByID: (params: IShowViewProps) => Promise<void>;
+}
+
 export const useContentView = () => {
   const apis = useMemo(() => {
     return {
-      SHOW_VIEW_BY_ID: async ({ id, screen }: IShowViewProps) => {
+      showViewByID: async (params: IShowViewProps) => {
         try {
-          const response = await window.api.SHOW_VIEW_BY_ID({ id, screen });
+          const response = await window.api.EMIT(EVENT_TYPE.SHOW_VIEW_BY_ID, params);
           return response;
         } catch (error) {
           console.error("Error getting tabs:", error);
         }
       },
-
-      VIEW_CHANGE_URL: async ({ id, url }: IViewChangeProps) => {
-        try {
-          const response = await window.api.VIEW_CHANGE_URL({ id, url });
-          return response;
-        } catch (error) {
-          console.error("Error getting tabs:", error);
-        }
-      },
+      // onViewChange: async ({ id, url }: IViewChange) => {
+      //   try {
+      //     const response = await window.api.LISTENERS("TAB_UPDATED_URL", { id, url });
+      //     const resp = await window.api.
+      //     return response;
+      //   } catch (error) {
+      //     console.error("Error getting tabs:", error);
+      //   }
+      // },
     };
   }, []);
 
-  return apis;
+  return apis as IUseContentView;
 };

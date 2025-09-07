@@ -1,21 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Outlet } from "react-router";
-import { SideMenu } from "~/features/ui/components/sidebar";
-import Spotlight from "~/features/ui/components/spotlight";
-import { ThemeProvider } from "~/context/theme";
+import { SideMenu, Spotlight } from "../components";
+import { ThemeProvider } from "../context/theme";
+import { Tab } from "~/features/browsers/controller/tabManager";
+import { useTabStore } from "../stores/useTabStore";
 
 const Layout = () => {
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    const toggleSpotlight = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey)) {
-        setShow((p) => !p);
+  const tabStores = useTabStore();
+  useLayoutEffect(() => {
+    const getScreenData = async () => {
+      try {
+        const data = await window.api.INVOKE<Tab[]>("GET_TABS");
+        console.log("data", data);
+        tabStores.initialize(data);
+      } catch (error) {
+        console.error("Error getting tabs:", error);
       }
     };
-    document.addEventListener("keydown", toggleSpotlight);
-    return () => document.removeEventListener("keydown", toggleSpotlight);
+    getScreenData();
+    window.tabStores = tabStores;
   }, []);
-
   return (
     <ThemeProvider>
       <div className="flex h-screen overflow-hidden">
@@ -26,10 +30,22 @@ const Layout = () => {
           </div>
         </div>
       </div>
-
-      {show && <Spotlight />}
     </ThemeProvider>
   );
+};
+
+const SpotlightProvider = () => {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const toggleSpotlight = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey)) {
+        setShow((p) => !p);
+      }
+    };
+    document.addEventListener("keydown", toggleSpotlight);
+    return () => document.removeEventListener("keydown", toggleSpotlight);
+  }, []);
+  return show ? <Spotlight /> : null;
 };
 
 export default Layout;

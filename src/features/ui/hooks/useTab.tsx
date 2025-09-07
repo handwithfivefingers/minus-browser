@@ -6,7 +6,7 @@ export const useTab = () => {
     return {
       GET_TABS: async () => {
         try {
-          const response = await window.api.GET_TABS();
+          const response = await window.api.INVOKE("GET_TABS");
           return response;
         } catch (error) {
           console.error("Error getting tabs:", error);
@@ -14,7 +14,7 @@ export const useTab = () => {
       },
       GET_TAB: async (id: string) => {
         try {
-          const response = await window.api.GET_TAB(id);
+          const response = await window.api.INVOKE("GET_TAB", id);
           return response;
         } catch (error) {
           console.error("Error getting tabs:", error);
@@ -22,7 +22,7 @@ export const useTab = () => {
       },
       CREATE_TAB: async (tab?: Partial<ITab>) => {
         try {
-          const response = await window.api.CREATE_TAB(tab);
+          const response = await window.api.INVOKE("CREATE_TAB", tab);
           console.log("create tab ", response);
           return response;
         } catch (error) {

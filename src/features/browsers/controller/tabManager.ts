@@ -2,15 +2,14 @@ import log from "electron-log";
 import { v4 as uuid_v4 } from "uuid";
 import { ITab, ITabManager } from "../interfaces";
 
-class Tab implements ITab {
+export class Tab implements ITab {
   id: string = uuid_v4();
-  title: string = "Blank";
+  title: string = "New Tab";
   url: string = "https://google.com";
   isPinned: boolean = false;
-  isFocused: boolean = true;
+  isFocused: boolean = false;
   index: number;
-  backwardHistory: string[] = [];
-  forwardHistory: string[] = [];
+  favicon: string = "";
 
   constructor(props: Partial<ITab>) {
     Object.assign(this, props);
@@ -22,16 +21,6 @@ class Tab implements ITab {
 
   updateUrl(url: string) {
     this.url = url;
-  }
-
-  onBackward() {
-    this.forwardHistory.push(this.url);
-    this.url = this.backwardHistory.pop();
-  }
-
-  onForward() {
-    this.backwardHistory.push(this.url);
-    this.url = this.forwardHistory.pop();
   }
 
   onFocus() {
@@ -49,7 +38,7 @@ interface ITabManagerProps {
 class TabManager implements ITabManager {
   tabs: Map<string, Tab> = new Map();
   index = 0;
-  activeTab: ITab;
+  activeTab: ITab | undefined;
 
   get getLastIndex() {
     const tabs = this.getTabs;
@@ -74,13 +63,11 @@ class TabManager implements ITabManager {
   selectTab(id: string) {
     if (this.activeTab) this.activeTab.onBlur();
     this.activeTab = this.tabs.get(id);
-    this.activeTab.onFocus();
+    if (this.activeTab) this.activeTab.onFocus();
   }
 
   getTab(id: string) {
-    const isExist = this.tabs.has(id);
-    if (!isExist) return false;
-    return this.tabs.get(id);
+    return this.tabs.get(id) || false;
   }
 
   createTab(tab?: Partial<ITab>) {
@@ -100,7 +87,7 @@ class TabManager implements ITabManager {
     }
   }
 
-  updateTab(id: string, updateParams: Partial<ITab>) {
+  updateTab({ id, ...updateParams }: Partial<ITab> & { id: string }) {
     const isExist = this.tabs.has(id);
     if (!isExist) return "Tab not found";
     const updatedTab = {

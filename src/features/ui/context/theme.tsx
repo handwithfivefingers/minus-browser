@@ -21,6 +21,11 @@ const initState: IThemeContent = {
   mode: "light",
   webView: null,
 };
+
+interface IThemeApiContext {
+  setMode: (mode: "light" | "dark") => void;
+  setWebview: (webviewRef: HTMLDivElement) => void;
+}
 const ThemeContext = createContext(initState);
 
 const reducer = <T,>(state: IThemeContent, action: IAction<T>) => {
@@ -39,10 +44,7 @@ const reducer = <T,>(state: IThemeContent, action: IAction<T>) => {
       return state;
   }
 };
-interface IThemeApiContext {
-  setMode: (mode: "light" | "dark") => void;
-  setWebview: (webviewRef: HTMLDivElement) => void;
-}
+
 const ThemeApisContext = createContext({} as IThemeApiContext);
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {

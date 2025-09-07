@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import { useRef } from "react";
 
 interface IAvatar {
   src?: string;
@@ -23,9 +23,11 @@ export const Avatar = (props: IAvatar) => {
           alt={props.alt || "Avatar"}
           className="absolute top-0 left-0 w-full h-full"
           onLoad={() => {
+            if (!blockRef.current) return;
             blockRef.current.style.background = "transparent";
           }}
           onError={() => {
+            if (!blockRef.current) return;
             blockRef.current.style.background = "var(--color-slate-300)";
           }}
           style={{ objectFit: "cover" }}

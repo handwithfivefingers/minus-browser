@@ -9,23 +9,21 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
-import { useThemeValues } from "~/context/theme";
 import { isValidDomain } from "../libs";
-
+import clsx from "clsx";
 interface IHeader {
   url?: string;
   onSearch: (v: string) => void;
   onBackWard: () => void;
-  onForward: () => void;
   onToggleDevTools: () => void;
   onReload: () => void;
   onCloseTab: () => void;
+  id: string;
 }
-const Header = ({ url, onSearch, onBackWard, onForward, onToggleDevTools, onReload, onCloseTab }: IHeader) => {
+const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onCloseTab }: IHeader) => {
   const ref = useRef<HTMLInputElement>(null);
   const [focus, setFocus] = useState(false);
-  const v = useThemeValues();
-
+  const [isLoading, setIsLoading] = useState(false);
   useEffect(() => {
     if (url && ref.current && url !== ref.current.value) {
       ref.current.value = url;
@@ -37,13 +35,24 @@ const Header = ({ url, onSearch, onBackWard, onForward, onToggleDevTools, onRelo
     }
   }, [url]);
 
+  useEffect(() => {
+    if (!id) return;
+    const onDidStartLoad = () => {
+      setIsLoading(true);
+    };
+    const onDidFinishLoad = () => {
+      setIsLoading(false);
+    };
+    window.api.LISTENER(`did-start-load:${id}`, onDidStartLoad);
+    window.api.LISTENER(`did-stop-loading:${id}`, onDidFinishLoad);
+  }, [id]);
   const handleSearch = () => {
+    if (!ref.current) return;
     let v = ref.current.value;
     if (v.startsWith("http://")) v = v.slice(7);
     else if (v.startsWith("https://")) v = v.slice(8);
     onSearch(v);
   };
-
   const isValidHttps = url && isValidDomain(url) && new URL(url).protocol === "https:";
   const isValidHttp = url && isValidDomain(url) && new URL(url).protocol === "http:";
 
@@ -52,9 +61,6 @@ const Header = ({ url, onSearch, onBackWard, onForward, onToggleDevTools, onRelo
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
         <button className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1" onClick={onBackWard}>
           <IconChevronLeft size={16} />
-        </button>
-        <button className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1" onClick={onForward}>
-          <IconChevronRight size={16} />
         </button>
       </div>
       <div
@@ -66,13 +72,20 @@ const Header = ({ url, onSearch, onBackWard, onForward, onToggleDevTools, onRelo
         {" "}
         <button
           onClick={onCloseTab}
-          className="hover:text-white transition-all px-1.5 py-1 h-[calc(100%-4px)] hover:bg-red-700/50 cursor-pointer active:translate-y-0.5 text-red-700  absolute -left-10 top-0.5 rounded-full"
+          className={clsx(
+            "hover:text-white transition-all px-1.5 py-1 h-[calc(100%-4px)] hover:bg-red-700/50 cursor-pointer active:translate-y-0.5 text-red-700  absolute -left-10 top-0.5 rounded-full"
+          )}
         >
           <IconX size={16} />
         </button>
         <button
           onClick={onReload}
-          className="hover:text-white transition-all px-1.5 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute left-0.5 top-0.5 rounded-full"
+          className={clsx(
+            "hover:text-white transition-all px-1.5 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute left-0.5 top-0.5 rounded-full",
+            {
+              "animate-spin": isLoading,
+            }
+          )}
         >
           <IconReload size={16} />
         </button>

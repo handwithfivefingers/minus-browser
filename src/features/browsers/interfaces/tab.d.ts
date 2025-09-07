@@ -8,8 +8,6 @@ export interface ITab {
   favicon?: string;
   updateTitle(title: string): void;
   updateUrl(url: string): void;
-  onBackward(): void;
-  onForward(): void;
   onFocus(): void;
   onBlur(): void;
 }
@@ -20,6 +18,6 @@ export interface ITabManager {
   getTabs: ITab[];
   getTab: (id: string) => ITab | boolean;
   createTab: (tab: Partial<ITab>) => void;
-  updateTab: (id: string, tabParams: Partial<ITab>) => void;
+  updateTab: (params: Partial<ITab> & { id: string }) => void;
   deleteTab: (id: string) => void;
 }
