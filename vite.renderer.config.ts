@@ -9,10 +9,6 @@ export default defineConfig({
         find: "~",
         replacement: "/src",
       },
-    //   {
-    //     find: "@tabler/icons-react",
-    //     replacement: "@tabler/icons-react/dist/esm/icons/index.mjs",
-    //   },
     ],
   },
 });

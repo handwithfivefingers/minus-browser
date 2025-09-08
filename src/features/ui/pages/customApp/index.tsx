@@ -1,66 +1,18 @@
 import { IconInnerShadowTopLeft } from "@tabler/icons-react";
 import { useEffect, useRef } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { ITab } from "~/features/browsers";
 import Header from "~/features/ui/components/header";
 import { useContentView } from "../../hooks/useContentView";
-import { useTabStore } from "../../stores/useTabStore";
 import { isValidDomain } from "../../libs";
+import { useTabStore } from "../../stores/useTabStore";
 
 const CustomApp = () => {
-  const webviewRef = useRef<HTMLDivElement | null>(null);
   const { customApp: tabId } = useParams();
   const tabStore = useTabStore();
-  const { getTabById, setActiveTab, updateTab, tabs } = tabStore;
-  const { showViewByID } = useContentView();
-  const tab = getTabById(tabId ? tabId : "");
-  useEffect(() => {
-    window.tabStore = tabStore;
-  }, []);
-  // const { GET_TAB } = useTab();
-  // const [tab, setTab] = useState<ITab | null>(null);
-
-  // useEffect(() => {
-  //   if (!tabId) return;
-  //   getContentView();
-
-  //   const autoSize = () => {
-  //     const { x, y, width, height } = webviewRef.current.getBoundingClientRect();
-  //     // window.api.VIEW_RESPONSIVE({ id: tabId, screen: { x, y, width, height } });
-  //     window.api.INVOKE("VIEW_RESPONSIVE", { id: tabId, screen: { x, y, width, height } });
-  //   };
-  //   const resizeObserver = new ResizeObserver(() => {
-  //     autoSize();
-  //   });
-
-  //   resizeObserver?.observe(webviewRef.current);
-
-  //   return () => {
-  //     window.api.INVOKE("VIEW_HIDE", { id: tabId });
-  //     if (!resizeObserver) return;
-  //     if (webviewRef.current) resizeObserver?.unobserve(webviewRef.current);
-  //   };
-  // }, [tabId]);
-
-  // useEffect(() => {
-  //   window.api.LISTENERS("VIEW_URL_CHANGED", (value: { id: string; url: string }) => {
-  //     if (value.id === tabId) {
-  //       setTab({ ...tab, url: value.url });
-  //     }
-  //   });
-  // }, []);
-
-  const getContentView = async (tab: ITab) => {
-    try {
-      if (!webviewRef.current) return;
-      const { x, y, width, height } = webviewRef.current.getBoundingClientRect();
-      const screen = { x, y, width, height };
-      const data = { screen, tab: { ...tab } };
-      await showViewByID(data);
-    } catch (error) {
-      console.log("error", error);
-    }
-  };
+  const { tabsIndex, tabs } = tabStore;
+  const tab = tabs[tabsIndex[tabId]];
+  const navigate = useNavigate();
   const handleSearch = async (url: string) => {
     try {
       console.log("handleSearch", url);
@@ -98,32 +50,47 @@ const CustomApp = () => {
     }
   };
   const onCloseTab = async () => {
-    // try {
-    //   return window.api.ON_CLOSE_TAB(tabId);
-    // } catch (error) {
-    //   console.log("onCloseTab error", error);
+    window.api.EMIT("ON_CLOSE_TAB", tab);
+    const resp = tabStore.closeTab(tab);
+    console.log("resp", resp);
+    navigate(`/`);
+
+    // if (resp?.nextTab?.id) {
+    //   navigate(`/${resp.nextTab.id}`, {
+    //     replace: true,
+    //     flushSync: true,
+    //   });
+    // } else {
+    //   navigate(`/`);
     // }
   };
 
-  // useLayoutEffect(() => {
-  //   if (!webviewRef.current) return;
-  //   if (!tab) return;
-  //   const autoSize = () => {
-  //     if (!webviewRef.current) return;
-  //     const { x, y, width, height } = webviewRef.current.getBoundingClientRect();
-  //     window.api.EMIT("VIEW_RESPONSIVE", { tab, screen: { x, y, width, height } });
-  //   };
-  //   const resizeObserver = new ResizeObserver(() => autoSize());
-  //   resizeObserver?.observe(webviewRef.current);
-  //   return () => webviewRef.current && resizeObserver?.unobserve(webviewRef.current as Element);
-  // }, []);
+  return (
+    <div className="h-screen rounded-md relative overflow-hidden">
+      <Header
+        id={tab?.id}
+        url={tab?.url}
+        onSearch={handleSearch}
+        onBackWard={onBackWard}
+        onToggleDevTools={onToggleDevTools}
+        onReload={onReload}
+        onCloseTab={onCloseTab}
+      />
+      <WebViewInstance id={tabId} />
+    </div>
+  );
+};
 
+const WebViewInstance = ({ id }: { id: string }) => {
+  const webviewRef = useRef<HTMLDivElement | null>(null);
+  const { tabsIndex, setActiveTab, updateTab, tabs } = useTabStore();
+  const { showViewByID } = useContentView();
+  const tab = tabs[tabsIndex[id]];
   useEffect(() => {
     if (!webviewRef.current) return;
     if (!tab) return;
     setActiveTab(tab.id);
     getContentView(tab);
-
     const autoSize = () => {
       if (!webviewRef.current) return;
       const { x, y, width, height } = webviewRef.current.getBoundingClientRect();
@@ -138,30 +105,31 @@ const CustomApp = () => {
     window.api.LISTENER(`page-favicon-updated:${tab.id}`, (value: { favicon: string }) => {
       updateTab(tab.id, { favicon: value.favicon });
     });
+
     return () => {
       tab.id && window.api.EMIT("HIDE_VIEW", { id: tab.id });
       webviewRef.current && resizeObserver?.unobserve(webviewRef.current as Element);
     };
   }, [tab]);
 
+  const getContentView = async (tab: ITab) => {
+    try {
+      if (!webviewRef.current) return;
+      const { x, y, width, height } = webviewRef.current.getBoundingClientRect();
+      const screen = { x, y, width, height };
+      const data = { screen, tab: { ...tab } };
+      await showViewByID(data);
+    } catch (error) {
+      console.log("error", error);
+    }
+  };
   return (
-    <div className="h-screen rounded-md relative overflow-hidden">
-      <Header
-        id={tab?.id}
-        url={tab?.url}
-        onSearch={handleSearch}
-        onBackWard={onBackWard}
-        onToggleDevTools={onToggleDevTools}
-        onReload={onReload}
-        onCloseTab={onCloseTab}
-      />
-      <div className="h-[calc(100vh-48px)] rounded-md relative overflow-hidden">
-        <div
-          className="mx-auto absolute z-0 left-0 top-0 w-full h-full flex justify-center items-center"
-          ref={webviewRef}
-        >
-          <IconInnerShadowTopLeft className="animate-spin" />
-        </div>
+    <div className="h-[calc(100vh-48px)] rounded-md relative overflow-hidden">
+      <div
+        className="mx-auto absolute z-0 left-0 top-0 w-full h-full flex justify-center items-center"
+        ref={webviewRef}
+      >
+        <IconInnerShadowTopLeft className="animate-spin" />
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ const config: ForgeConfig = {
   // makers: [new MakerSquirrel({}), new MakerZIP({}, ["darwin"]), new MakerRpm({}), new MakerDeb({}), new MakerDMG({})],
   makers: [
     new MakerSquirrel({}),
-    new MakerZIP({}, ["darwin"]),
+    // new MakerZIP({}, ["darwin"]),
     new MakerDMG({
       name: "TruyenApp",
       format: "ULFO",

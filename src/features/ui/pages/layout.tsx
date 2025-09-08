@@ -6,20 +6,26 @@ import { Tab } from "~/features/browsers/controller/tabManager";
 import { useTabStore } from "../stores/useTabStore";
 
 const Layout = () => {
-  const tabStores = useTabStore();
+  const { initialize, tabs, index } = useTabStore();
   useLayoutEffect(() => {
     const getScreenData = async () => {
       try {
-        const data = await window.api.INVOKE<Tab[]>("GET_TABS");
-        console.log("data", data);
-        tabStores.initialize(data);
+        const data = await window.api.INVOKE<{ tabs: Tab[]; index: number }>("GET_TABS");
+        console.log("getScreenData", data);
+        initialize(data);
       } catch (error) {
         console.error("Error getting tabs:", error);
       }
     };
     getScreenData();
-    window.tabStores = tabStores;
   }, []);
+
+  useEffect(() => {
+    if (tabs.length) {
+      window.api.INVOKE("CLOUD_SAVE", { data: tabs, index });
+    }
+  }, [tabs, index]);
+
   return (
     <ThemeProvider>
       <div className="flex h-screen overflow-hidden">

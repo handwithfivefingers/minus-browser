@@ -26,6 +26,9 @@ class StoreManager {
       });
     });
   };
+  saveFiles: <T>(data: T) => void = (data) => {
+    fs.writeFileSync(this.configFile, JSON.stringify(data));
+  };
 
   getCookieFromStores = async (url: string) => {
     try {
@@ -70,11 +73,9 @@ class StoreManager {
       if (cookies.length > 0) {
         for (let cookie of cookies) {
           const cookieObject = { ...cookie, url: url, name: cookie.name, value: cookie.value };
-          session.defaultSession.cookies
-            .set(cookieObject)
-            .catch((err) => {
-              log.error("fn getOrCreateView() >>> set cookie  error: ", err);
-            });
+          session.defaultSession.cookies.set(cookieObject).catch((err) => {
+            log.error("fn getOrCreateView() >>> set cookie  error: ", err);
+          });
         }
       }
       return this.storage.get(url);

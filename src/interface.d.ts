@@ -1,9 +1,9 @@
 declare global {
   interface Window {
     api: {
-      INVOKE: <T>(channel: string, data?: any) => Promise<T>;
-      EMIT: <T>(channel: string, data?: any) => Promise<T>;
-      LISTENERS: (channel: string, func: (...args: any[]) => void) => void;
+      INVOKE: <T>(channel: string, data?: any) => Promise<T> | T;
+      EMIT: <T>(channel: string, data?: any) => Promise<T> | T;
+      LISTENER: (channel: string, func: (...args: any[]) => void) => void;
     };
   }
 }

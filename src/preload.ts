@@ -50,7 +50,3 @@ contextBridge.exposeInMainWorld("api", {
   },
   LISTENER: (channel: string, callback?: any) => ipcRenderer.on(channel, (_event, value) => callback(value)),
 });
-
-// window.addEventListener("load", () => {
-//   const youtubeAds = /ytp-ad-(btn|text)/;
-// });

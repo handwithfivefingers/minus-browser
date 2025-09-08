@@ -8,9 +8,6 @@ interface ITodoItem {
   id: string;
 }
 const Home = () => {
-  useEffect(() => {
-    document.title = "Minus - Home";
-  }, []);
   return (
     <div className="relative px-2 bg-slate-800 h-full">
       <TodoHome />

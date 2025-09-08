@@ -1,9 +1,7 @@
-import { ElectronBlocker, fullLists } from "@ghostery/adblocker-electron";
-import crossFetch from "cross-fetch";
+// import { ElectronBlocker, fullLists } from "@ghostery/adblocker-electron";
+// import crossFetch from "cross-fetch";
 import { session, WebContentsView } from "electron";
 import log from "electron-log";
-import { readFileSync, writeFileSync } from "node:fs";
-
 export const ALL_LISTS = new Set([
   "https://easylist.to/easylist/easylist.txt",
   "https://easylist.to/easylist/easyprivacy.txt",
@@ -22,134 +20,18 @@ export const ALL_LISTS = new Set([
   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/badware.txt",
   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt",
   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/unbreak.txt",
-  ...fullLists,
 ]);
 
-// // Helper to initialize adblocker and apply to all sessions
-// async function enableAdBlocking() {
-//   // Disable ad-blocking for all YouTube-related domains by skipping ad-blocker logic for these URLs
-//   const youtubeDomains = ["youtube.com", "youtube-nocookie.com", "googlevideo.com"];
-//   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
-//     const url = details.url;
-//     if (youtubeDomains.some((domain) => url.includes(domain))) {
-//       // Do nothing for YouTube, let all requests through
-//       callback({ cancel: false });
-//       return;
-//     }
-//     // Only apply ad-blocker logic for non-YouTube domains (ad-blocker initialization below)
-//     callback({ cancel: false });
-//   });
-
-//   // Now, only initialize ad-blocker for non-YouTube domains
-//   // (ad-blocker logic remains unchanged below)
-
-//   try {
-//     const blocker = await ElectronBlocker.fromPrebuiltAdsAndTracking(crossFetch, {
-//       path: "engine.bin",
-//       read: async (...args) => readFileSync(...args),
-//       write: async (...args) => writeFileSync(...args),
-//     });
-//     blocker.enableBlockingInSession(session.defaultSession);
-//     blocker.on("request-blocked", ({ url, type }) => {
-//       log.info(`[adblock] Blocked: ${type} ${url}`);
-//     });
-//     blocker.on("request-whitelisted", ({ url }) => {
-//       log.info(`[adblock] Whitelisted: ${url}`);
-//     });
-//     // Cosmetic filtering and scriptlets are disabled to avoid breaking YouTube.
-//     // To re-enable, uncomment below:
-//     // if (blocker.enableCosmeticFiltering) blocker.enableCosmeticFiltering(session.defaultSession);
-//     // if (blocker.enableScriptlets) blocker.enableScriptlets(session.defaultSession);
-//     log.info("Ad-blocker enabled (prebuilt lists, cosmetic/scriptlets OFF for compatibility)");
-//   } catch (err) {
-//     console.error("Prebuilt adblock lists failed, falling back to manual lists:", err);
-//     try {
-//       const blocker = await ElectronBlocker.fromLists(
-//         crossFetch,
-//         fullLists,
-//         {
-//           enableCompression: true,
-//         },
-//         {
-//           path: "engine.bin",
-//           read: async (...args) => readFileSync(...args),
-//           write: async (...args) => writeFileSync(...args),
-//         }
-//       ); // Allow absolutely all requests to YouTube-related domains and subdomains
-//       blocker.enableBlockingInSession(session.defaultSession);
-//       console.log("Ad-blocker enabled (manual lists, cosmetic/scriptlets OFF for compatibility)");
-//     } catch (err2) {
-//       console.error("Failed to initialize ad-blocker completely:", err2);
-//     }
-//   }
-// }
-
-// // Aggressive ad-blocking: all lists, cosmetic filtering, scriptlets
-// async function enableAggressiveAdBlocking(ses: Electron.Session) {
-//   try {
-//     const blocker = await ElectronBlocker.fromLists(
-//       crossFetch,
-//       [...ALL_LISTS.values()],
-//       {
-//         enableCompression: true,
-//       },
-//       {
-//         path: "engine.bin",
-//         read: async (...args) => readFileSync(...args),
-//         write: async (...args) => writeFileSync(...args),
-//       }
-//     );
-//     blocker.enableBlockingInSession(ses);
-//     // if (blocker) blocker.enableCosmeticFiltering(session.defaultSession);
-//     // if (blocker.enableScriptlets) blocker.enableScriptlets(session.defaultSession);
-//     log.info("Aggressive ad-blocker enabled (all lists, cosmetic/scriptlets ON)");
-//   } catch (err) {
-//     log.error("Failed to enable aggressive ad-blocking:", err);
-//   }
-// }
-
-// export { enableAdBlocking, enableAggressiveAdBlocking };
-
 export class AdBlocker {
-  blocker: ElectronBlocker | null = null;
+  blocker: AdBlocker;
 
   constructor() {
-    this.initializeAdBlocker();
-  }
-
-  private async initializeAdBlocker(): Promise<void> {
-    try {
-      log.info("🔄 Initializing ad blocker...");
-      // Create blocker once with all filter lists
-      this.blocker = await ElectronBlocker.fromLists(
-        crossFetch,
-        [...ALL_LISTS.values()],
-        {
-          enableCompression: true,
-          enableOptimizations: true,
-          // Enable more aggressive blocking
-          loadCosmeticFilters: true,
-          loadNetworkFilters: true,
-        },
-        {
-          path: "engine.bin",
-          read: async (...args) => readFileSync(...args),
-          write: async (...args) => writeFileSync(...args),
-        }
-      );
-      // Enable blocking in default session
-      this.blocker.enableBlockingInSession(session.defaultSession);
-      this.setupAdvancedRequestBlocking();
-      log.info("✅ Ad blocker initialized successfully");
-      // Optional: Set up periodic updates
-    } catch (error) {
-      log.error("❌ Failed to initialize ad blocker:", error);
-    }
+    // this.initializeAdBlocker();
+    this.setupAdvancedRequestBlocking();
   }
 
   private setupAdvancedRequestBlocking() {
     const ses = session.defaultSession;
-
     // Block known YouTube ad domains and patterns
     const youtubeAdPatterns = [
       // Google ad services
@@ -291,174 +173,138 @@ export class AdBlocker {
   setupViewEventHandlers(view: WebContentsView) {
     // Log blocked requests for debugging
     view.webContents.session.webRequest.onBeforeRequest((details, callback) => {
-      // This is just for logging - actual blocking is handled by ElectronBlocker
-      console.log("✅ Request:", details.url);
-      if (
-        this.blocker?.match({
-          type: details.resourceType as any,
-          url: details.url,
-          sourceUrl: details.referrer || "",
-        } as any)
-      ) {
-        console.log("🚫 Blocked request:", details.url);
-      }
       callback({});
     });
 
     // Optional: Inject additional cosmetic filters
     view.webContents.on("dom-ready", () => {
-      this.injectCosmeticFilters(view);
+      log.info("dom-ready");
+    });
+    view.webContents.on("page-title-updated", (event) => {
+      log.info("page-title-updated");
+      const url = view.webContents.getURL();
+      if (!url.includes("youtube.com")) return;
+      this.injectYoutubeAdblockSponsor(view);
     });
   }
 
-  private async injectCosmeticFilters(view: WebContentsView) {
-    console.log("injectCosmeticFilters");
-    if (!this.blocker) return;
-    try {
-      const url = view.webContents.getURL();
-      if (!url) return;
-      // Get cosmetic filters for this domain
-      const { styles } = this.blocker.getCosmeticsFilters({
-        url,
-        hostname: new URL(url).hostname,
-        domain: new URL(url).hostname,
+  injectYoutubeAdblockSponsor(view: WebContentsView) {
+    if (!view || !view.webContents) return;
+    const script = `
+    (function() {
+      console.log("[YT Adblock] Injecting patch...");
+
+      // Patch defineProperty để ngăn YouTube chèn ads API
+      const origDefineProperty = Object.defineProperty;
+      Object.defineProperty = function(obj, prop, desc) {
+        if (prop === "ads" || prop === "ytads") {
+          console.log("[YT Adblock] Blocked property injection:", prop);
+          return obj;
+        }
+        return origDefineProperty.apply(this, arguments);
+      };
+
+      // Quan sát DOM và patch player khi có
+      const observer = new MutationObserver(() => {
+        const player = document.querySelector("ytd-player");
+        if (player && player.player_ && typeof player.player_.getAdState === "function") {
+          player.player_.getAdState = () => 0; // luôn không có ad
+          console.log("[YT Adblock] Patched mid-roll ads!");
+          observer.disconnect();
+        }
       });
-      if (styles) {
-        // Inject CSS to hide elements
-        await view.webContents.insertCSS(styles);
-        console.log("💅 Injected cosmetic filters for:", url);
-      }
-    } catch (error) {
-      console.error("❌ Error injecting cosmetic filters:", error);
-    }
+
+      observer.observe(document, { childList: true, subtree: true });
+    })();
+    (function () {
+    'use strict';
+      const removeElements = () => {
+          const popupContainer = document.querySelector('ytd-popup-container');
+          const overlayBackdrop = document.querySelector('tp-yt-iron-overlay-backdrop');
+  
+          if (popupContainer) {
+              popupContainer.remove();
+              console.log('Removed ytd-popup-container');
+          }
+  
+          if (overlayBackdrop) {
+              overlayBackdrop.remove();
+              console.log('Removed overlay backdrop');
+          }
+      };
+  
+      // Run initially
+      removeElements();
+  
+      // Observe and re-run when elements are reinserted
+      const observer = new MutationObserver(removeElements);
+  
+      observer.observe(document.body, {
+          childList: true,
+          subtree: true
+      });
+    })();
+    ${this.skipAds()}
+
+  `;
+
+    // Inject trực tiếp vào renderer
+    view.webContents
+      .executeJavaScript(script)
+      .then(() => {
+        console.error("[YT Adblock] Successfully injected patch!");
+      })
+      .catch((err) => {
+        console.error("[YT Adblock] Injection failed:", err);
+      });
   }
 
-  async ensureViewHasAdBlocking(view: WebContentsView): Promise<void> {
-    if (!this.blocker) {
-      throw new Error("Ad blocker not initialized");
+  skipAds() {
+    return `
+      function skipAds() {
+        const pipMode = document.querySelector('ytd-pip-container, ytd-miniplayer-player-container');
+        const adVideo = document.querySelector('.ad-showing video');
+        if (adVideo && adVideo.duration) {
+            adVideo.currentTime = adVideo.duration;
+            adVideo.muted = true;
+        }
+        const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern');
+        if (skipBtn) {
+            skipBtn.click();
+        }
+ 
+        if (document.querySelector('.ad-showing')) {
+            setTimeout(skipAds, 500);
+        }
     }
-
-    // Get the session for this view
-    const viewSession = view.webContents.session;
-
-    // Enable blocking in this specific session if it's not the default
-    if (viewSession !== session.defaultSession) {
-      this.blocker.enableBlockingInSession(viewSession);
+    function keepVideoPlayingEarly() {
+        const video = document.querySelector('video');
+        if (!video || video.dataset.keepPlayingEarly) return;
+ 
+        video.dataset.keepPlayingEarly = "true";
+ 
+        const onPause = () => {
+            if (video.currentTime <= 3) {
+                video.play().then(() => {
+            }).catch(err => {
+                console.warn("[Userscript] Impossible de play :", err);
+            });
+        }
+        video.removeEventListener('pause', onPause);
+    };
+ 
+    video.addEventListener('pause', onPause);
     }
+ 
+    let debounceTimeout;
+    const observer = new MutationObserver(() => {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+            skipAds();
+            keepVideoPlayingEarly();
+        }, 100);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    `;
   }
-
-  //   if (replaceHttpCache) {
-  //     // in-memory image cache
-
-  //     const imageCache = new ImageCache()
-
-  //     protocol.handle('imagecache', (request) => {
-  //       const [requestUrl, rawWebContentsId] = request.url.split('#')
-
-  //       return new Promise((resolve, reject) => {
-  //         const url = decodeURIComponent(requestUrl.substring(13))
-  //         if (imageCache.has(url)) {
-  //           const cached = imageCache.get(url)
-
-  //           resolve(new Response(cached.data, {
-  //             headers: { 'content-type': cached.mimeType }
-  //           }))
-  //           return
-  //         }
-
-  //         let headers
-
-  //         if (rawWebContentsId) {
-  //           const invidiousAuthorization = invidiousAuthorizations.get(parseInt(rawWebContentsId))
-
-  //           if (invidiousAuthorization && url.startsWith(invidiousAuthorization.url)) {
-  //             headers = {
-  //               Authorization: invidiousAuthorization.authorization
-  //             }
-  //           }
-  //         }
-
-  //         const newRequest = net.request({
-  //           method: request.method,
-  //           url,
-  //           headers
-  //         })
-
-  //         // Electron doesn't allow certain headers to be set:
-  //         // https://www.electronjs.org/docs/latest/api/client-request#requestsetheadername-value
-  //         // also blacklist Origin and Referrer as we don't want to let YouTube know about them
-  //         const blacklistedHeaders = ['content-length', 'host', 'trailer', 'te', 'upgrade', 'cookie2', 'keep-alive', 'transfer-encoding', 'origin', 'referrer']
-
-  //         for (const header of Object.keys(request.headers)) {
-  //           if (!blacklistedHeaders.includes(header.toLowerCase())) {
-  //             newRequest.setHeader(header, request.headers[header])
-  //           }
-  //         }
-
-  //         newRequest.on('response', (response) => {
-  //           const chunks = []
-  //           response.on('data', (chunk) => {
-  //             chunks.push(chunk)
-  //           })
-
-  //           response.on('end', () => {
-  //             const data = Buffer.concat(chunks)
-
-  //             const expiryTimestamp = extractExpiryTimestamp(response.headers)
-  //             const mimeType = response.headers['content-type']
-
-  //             imageCache.add(url, mimeType, data, expiryTimestamp)
-
-  //             resolve(new Response(data, {
-  //               headers: { 'content-type': mimeType }
-  //             }))
-  //           })
-
-  //           response.on('error', (error) => {
-  //             console.error('image cache error', error)
-  //             reject(error)
-  //           })
-  //         })
-
-  //         newRequest.on('error', (err) => {
-  //           console.error(err)
-  //         })
-
-  //         newRequest.end()
-  //       })
-  //     })
-
-  //     const imageRequestFilter = { urls: ['https://*/*', 'http://*/*'], types: ['image'] }
-  //     session.defaultSession.webRequest.onBeforeRequest(imageRequestFilter, (details, callback) => {
-  //       // the requests made by the imagecache:// handler to fetch the image,
-  //       // are allowed through, as their resourceType is 'other'
-
-  //       let redirectURL = `imagecache://${encodeURIComponent(details.url)}`
-
-  //       if (details.webContents) {
-  //         redirectURL += `#${details.webContents.id}`
-  //       }
-
-  //       callback({
-  //         redirectURL
-  //       })
-  //     })
-
-  //     // --- end of `if experimentsDisableDiskCache` ---
-  //   }
-
-  //   await createWindow()
-
-  //   if (process.env.NODE_ENV === 'development') {
-  //     try {
-  //       require('vue-devtools').install()
-  //     } catch (err) {
-  //       console.error(err)
-  //     }
-  //   }
-
-  //   if (isDebug) {
-  //     mainWindow.webContents.openDevTools()
-  //   }
-  // })
 }

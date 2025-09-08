@@ -29,7 +29,7 @@ const SideMenu = () => {
       >
         <IconHome />
       </Link>
-      {tabs?.map((tab) => {
+      {tabs?.filter(tab => tab)?.map((tab) => {
         return (
           <TabItem
             {...tab}
