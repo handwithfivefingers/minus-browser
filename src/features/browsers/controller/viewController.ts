@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, session, WebContentsView } from "electron";
+import { app, BrowserWindow, ipcMain, session, WebContentsView, Notification } from "electron";
 import log from "electron-log";
 import { ITab } from "../interfaces";
 import { storeManager } from "../stores";
@@ -189,7 +189,6 @@ export class ViewController implements IViewController {
 
   async handleShowViewById(props: IHandleResizeView) {
     try {
-      console.log("handleShowViewById", props);
       const { tab, screen } = props;
       const isViewExist = this.viewManager[tab.id];
       if (!isViewExist) {
@@ -204,6 +203,7 @@ export class ViewController implements IViewController {
         this.loadContentView(tab.id);
       }
       if (!this.window.contentView.getVisible()) this.window.contentView.setVisible(true);
+
       this.handleResizeView(props);
 
       if (Object.keys(this.viewManager).length) {
@@ -233,6 +233,7 @@ export class ViewController implements IViewController {
     this.adBlocker.setupAdvancedRequestBlocking(view);
     this.adBlocker.setupViewEventHandlers(view);
     this.addViewEventListeners(view, id);
+    view.webContents.setFrameRate(60); // DETERMINE FRAME RATE
     return { view, contentView };
   }
   addViewEventListeners(view: WebContentsView, id: string) {
@@ -270,6 +271,7 @@ export class ViewController implements IViewController {
   loadContentView(id: string) {
     const view = this.viewManager[id];
     this.window.contentView.addChildView(view);
+    // view.webContents.setBackgroundThrottling(false);
     view.setVisible(true);
   }
 
@@ -288,22 +290,6 @@ export class ViewController implements IViewController {
     }
   }
 
-  // async requestDisableAds(view: WebContentsView) {
-  //   const blocker = await ElectronBlocker.fromLists(
-  //     crossFetch,
-  //     fullLists,
-  //     {
-  //       enableCompression: true,
-  //     },
-  //     {
-  //       path: "engine.bin",
-  //       read: async (...args) => readFileSync(...args),
-  //       write: async (...args) => writeFileSync(...args),
-  //     }
-  //   );
-  //   blocker.enableBlockingInSession(view.webContents.session);
-  // }
-
   handleResizeView(props: IHandleResizeView) {
     const { tab, screen } = props;
     if (!tab || !screen || !this.viewManager[tab.id]) return;
@@ -311,9 +297,9 @@ export class ViewController implements IViewController {
   }
 
   handleHideView(props: { id: string }) {
-    console.log("handleHideView props", props.id);
     if (!props || !props.id) return;
     const view = this.viewManager[props.id];
+    this.window.contentView.removeChildView(view);
     view.setVisible(false);
   }
 
@@ -350,10 +336,11 @@ export class ViewController implements IViewController {
     view.webContents.toggleDevTools();
     if (isOpenedDevTools) {
       view.webContents.closeDevTools();
+      view.isOpenedDevTools = false;
     } else {
       view.webContents.openDevTools();
+      view.isOpenedDevTools = true;
     }
-    view.isOpenedDevTools = !isOpenedDevTools;
   }
 
   async handleReloadTab(props: { data: ITab }) {
@@ -395,22 +382,28 @@ export class ViewController implements IViewController {
   }
 
   async cloudSave(props: { data: ITab[]; index: number }) {
-    log.info("cloudSave tabManager data", props.data, props.index);
-    const tabs = props.data.filter((tab) => tab);
-    if (props.data.length) {
-      for (let tab of tabs) {
-        const view = this.viewManager[tab.id];
-        if (view) {
-          view.webContents.session.flushStorageData();
+    try {
+      log.info("cloudSave tabManager data", props.data, props.index);
+      const tabs = props.data.filter((tab) => tab);
+      if (props.data.length) {
+        for (let tab of tabs) {
+          const view = this.viewManager[tab.id];
+          if (view) {
+            view.webContents.session.flushStorageData();
+          }
         }
       }
-    }
+      storeManager.saveFiles({ tabs: props.data || [], index: props.index || 0 });
 
-    return storeManager.saveFiles({ tabs: props.data || [], index: props.index || 0 });
+      return this.window.webContents.send("SYNC");
+    } catch (error) {
+      const noti = new Notification("error", { body: error.message });
+      noti.show();
+    }
   }
 
   async getPIPState() {
-    const obj = {};
+    const obj: Record<string, boolean> = {};
     for (let id in this.viewManager) {
       obj[id] = this.viewManager[id].webContents.isCurrentlyAudible();
     }
@@ -439,66 +432,4 @@ export class ViewController implements IViewController {
         console.log("requestPIP error", error);
       });
   }
-
-  // timeout: NodeJS.Timeout | null = null;
-  // maxReconnectAttempts = 5;
-  // currentConnectionAttempt = 0;
-
-  // isNetworkError(errorCode: number, errorDescription: string) {
-  //   const networkErrorCodes = [
-  //     -2, // ERR_FAILED
-  //     -21, // ERR_NETWORK_CHANGED
-  //     -105, // ERR_NAME_NOT_RESOLVED
-  //     -106, // ERR_INTERNET_DISCONNECTED
-  //     -107, // ERR_SSL_PROTOCOL_ERROR
-  //     -109, // ERR_ADDRESS_UNREACHABLE
-  //     -118, // ERR_CONNECTION_TIMED_OUT
-  //     -130, // ERR_PROXY_CONNECTION_FAILED
-  //   ];
-
-  //   const networkErrorPatterns = [
-  //     "ERR_NAME_NOT_RESOLVED",
-  //     "ERR_INTERNET_DISCONNECTED",
-  //     "ERR_NETWORK_CHANGED",
-  //     "ERR_CONNECTION_TIMED_OUT",
-  //     "ERR_ADDRESS_UNREACHABLE",
-  //   ];
-
-  //   return (
-  //     networkErrorCodes.includes(errorCode) ||
-  //     networkErrorPatterns.some((pattern) => errorDescription.includes(pattern))
-  //   );
-  // }
-
-  // handleNetworkError(wc: WebContentsView["webContents"], url: string) {
-  //   if (this.currentConnectionAttempt >= this.maxReconnectAttempts) {
-  //     console.log("Max reconnection attempts reached");
-  //     new Notification({
-  //       title: "Error",
-  //       body: "Max reconnection attempts reached. Please check your internet connection.",
-  //     }).show();
-  //     return;
-  //   }
-  //   this.clearReconnectInterval();
-  //   this.timeout = setTimeout(() => {
-  //     this.currentConnectionAttempt += 1;
-  //     wc.loadURL(url);
-  //   }, 15000);
-  //   new Notification({
-  //     title: "Error",
-  //     body: `Network error detected, ${this.currentConnectionAttempt + 1} attempting to reconnect...`,
-  //   }).show();
-  // }
-
-  // clearReconnectInterval() {
-  //   if (this.timeout) {
-  //     clearTimeout(this.timeout);
-  //     this.timeout = null;
-  //   }
-  // }
-
-  // resetReconnectAttempts() {
-  //   this.maxReconnectAttempts = 0;
-  //   this.clearReconnectInterval();
-  // }
 }

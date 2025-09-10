@@ -9,7 +9,7 @@ export const Avatar = (props: IAvatar) => {
   const blockRef = useRef<HTMLDivElement>(null);
   return (
     <div
-      className="relative  rounded"
+      className="relative  rounded shrink-0"
       style={{
         width: props.size || 20,
         background: "var(--color-slate-300)",

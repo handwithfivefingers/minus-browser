@@ -16,5 +16,5 @@
 
 
 ###  IPC - Using React Tab Management
-1 Snap: 
+1 Snap: 590 Mb
 2 Snap

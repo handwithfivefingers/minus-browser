@@ -66,8 +66,9 @@ export class AdBlocker {
   }
   async initialize() {
     delete CustomAds.prototype.enableBlockingInSession;
-    const blocker = await CustomAds.fromLists(fetch, Array.from(ALL_LISTS.values()));
-    this.blocker = blocker;
+    CustomAds.fromLists(fetch, Array.from(ALL_LISTS.values())).then((blocker) => {
+      this.blocker = blocker;
+    });
   }
 
   setupAdvancedRequestBlocking(view: WebContentsView) {

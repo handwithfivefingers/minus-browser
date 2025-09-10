@@ -1,6 +1,7 @@
 import {
   IconChevronLeft,
   IconChevronRight,
+  IconCloudUp,
   IconCode,
   IconImageInPicture,
   IconLockAccess,
@@ -64,7 +65,11 @@ const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onC
   return (
     <div className="flex gap-2 border-b border-slate-200 px-2 py-1 justify-between">
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
-        <button className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1" onClick={onBackWard}>
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1"
+          onClick={onBackWard}
+          title="Go back"
+        >
           <IconChevronLeft size={16} />
         </button>
       </div>
@@ -80,6 +85,7 @@ const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onC
           className={clsx(
             "hover:text-white transition-all px-1.5 py-1 h-[calc(100%-4px)] hover:bg-red-700/50 cursor-pointer active:translate-y-0.5 text-red-700  absolute -left-10 top-0.5 rounded-full"
           )}
+          title="Close tab"
         >
           <IconX size={16} />
         </button>
@@ -122,19 +128,53 @@ const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onC
         <button
           className="hover:text-white transition-all px-1.5 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute right-0.5 top-0.5 rounded-full"
           onClick={handleSearch}
+          title="Search"
         >
           <IconSearch size={16} />
         </button>
       </div>
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
-        <button className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1" onClick={onRequestPIP}>
+        <Sync />
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1"
+          onClick={onRequestPIP}
+          title="Picture in picture"
+        >
           <IconPictureInPicture size={16} />
         </button>
-        <button className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1" onClick={onToggleDevTools}>
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1"
+          onClick={onToggleDevTools}
+          title="Dev tools"
+        >
           <IconCode size={16} />
         </button>
       </div>
     </div>
+  );
+};
+
+const Sync = () => {
+  const [isSync, setIsSync] = useState(false);
+  useEffect(() => {
+    window.api.LISTENER(`SYNC`, () => {
+      console.log('listener "SYNC"');
+      setIsSync(true);
+      setTimeout(() => {
+        setIsSync(false);
+      }, 1000);
+    });
+  }, []);
+  return (
+    <button
+      className={clsx("rounded cursor-pointer p-1 transition-colors", {
+        ["text-green-500"]: isSync,
+        [""]: !isSync,
+      })}
+      title="Sync data"
+    >
+      <IconCloudUp size={16} />
+    </button>
   );
 };
 

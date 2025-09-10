@@ -1,9 +1,10 @@
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { ITab } from "../../../browsers/interfaces";
 import { Link, useLocation } from "react-router";
 import clsx from "clsx";
 import { Avatar } from "../avatar";
 import styles from "./styles.module.css";
+// import { webFrame } from "electron";
 interface ITabItem extends Omit<ITab, "updateTitle" | "updateUrl" | "onFocus" | "onBlur"> {
   className?: string;
 }
@@ -21,6 +22,7 @@ const TabItem = memo(({ id, className, ...props }: ITabItem) => {
         },
         className
       )}
+      title={props.title}
     >
       <Avatar src={props?.favicon} />
       <span className={styles.title}>{props?.title}</span>
