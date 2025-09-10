@@ -3,7 +3,6 @@ import log from "electron-log";
 import { ITab } from "../interfaces";
 import { storeManager } from "../stores";
 import { AdBlocker } from "./adsBlockController";
-import fs from "node:fs";
 interface IShowViewProps {
   width: number;
   height: number;
@@ -19,7 +18,7 @@ enum TabEventType {
   SELECT_TAB = "SELECT_TAB",
   FOCUS_TAB = "FOCUS_TAB",
   BLUR_TAB = "BLUR_TAB",
-  BACKWARD_TAB = "BACKWARD_TAB",
+  ON_BACKWARD = "ON_BACKWARD",
   FORWARD_TAB = "FORWARD_TAB",
   GET_TABS = "GET_TABS",
   GET_TAB = "GET_TAB",
@@ -36,14 +35,6 @@ enum ViewEventType {
   UPDATE_VIEW_SIZE = "UPDATE_VIEW_SIZE",
   VIEW_CHANGE_URL = "VIEW_CHANGE_URL",
 }
-
-enum TAB_UPDATE_TYPE {
-  TAB_UPDATED_TITLE = "TAB_UPDATED_TITLE",
-  TAB_UPDATED_URL = "TAB_UPDATED_URL",
-  TAB_UPDATED_FAVICON = "TAB_UPDATED_FAVICON",
-  TAB_UPDATED = "TAB_UPDATED",
-}
-
 interface IShowViewProps {
   id: string;
   screen: {
@@ -68,21 +59,21 @@ interface IViewController {
   viewManager: Record<string, WebContentsView>;
   viewActive: string;
   getTabs: () => Promise<{ tabs: ITab[]; index: number }>;
-  handleShowViewById: (props: { data: IHandleResizeView }) => Promise<void>;
+  handleShowViewById: (props: IHandleResizeView) => Promise<void>;
 
   createContentView: (id: string) => Promise<{ view: WebContentsView; contentView: Electron.WebContents }>;
   loadContentView: (id: string) => void;
 
-  handleResizeView: (props: { data: IHandleResizeView }) => void;
-  handleHideView: (props: { data: { id: string } }) => void;
+  handleResizeView: (props: IHandleResizeView) => void;
+  handleHideView: (props: { id: string }) => void;
   onGoBack: () => void;
   onCloseTab: (props: { data: { id: string } }) => void;
-  handleToggleDevTools: (props: { data: { id: string } }) => void;
+  handleToggleDevTools: (props: { id: string }) => void;
   handleReloadTab: (props: { data: ITab }) => Promise<void>;
   handleActiveView: (id: string) => void;
   discardInactiveView: () => void;
 
-  cloudSave: (props: { data: ITab[] }) => Promise<void>;
+  cloudSave: (props: { data: ITab[]; index: number }) => Promise<void>;
   destroy: () => void;
   init: () => void;
 }
@@ -140,10 +131,11 @@ export class ViewController implements IViewController {
       [ViewEventType.VIEW_CHANGE_URL]: (data) => this.handleURLChange(data),
       [ViewEventType.VIEW_RESPONSIVE]: (data) => this.handleResizeView(data),
       [ViewEventType.HIDE_VIEW]: (data) => this.handleHideView(data),
-      [TabEventType.BACKWARD_TAB]: () => this.onGoBack(),
+      [TabEventType.ON_BACKWARD]: () => this.onGoBack(),
       [TabEventType.ON_CLOSE_TAB]: (data) => this.onCloseTab(data),
       [TabEventType.TOGGLE_DEV_TOOLS]: (data) => this.handleToggleDevTools(data),
       [TabEventType.ON_RELOAD]: (data) => this.handleReloadTab(data),
+      ["CLOSE_APP"]: () => this.onCloseApp(),
     };
   }
 
@@ -153,9 +145,18 @@ export class ViewController implements IViewController {
     this.adBlocker = await new AdBlocker();
   }
 
+  onCloseApp() {
+    if (Object.keys(this.viewManager).length) {
+      for (let key in this.viewManager) {
+        this.viewManager[key].webContents.session.flushStorageData();
+      }
+    }
+    app.quit();
+  }
+
   private onInvoke(args: IPC) {
     const { channel, data } = args;
-    // log.info(`[IPC Invoke] channel: ${channel}`, data);
+    log.info(`[IPC Invoke] channel: ${channel}`, data);
     const handler = this.invokeHandlers[channel];
     if (handler) {
       return handler(data);
@@ -165,7 +166,7 @@ export class ViewController implements IViewController {
 
   private onListener(args: IPC) {
     const { channel, data } = args;
-    // log.info(`[IPC Listen] channel: ${channel}`, data);
+    log.info(`[IPC Listen] channel: ${channel}`, data);
     const handler = this.listenerHandlers[channel];
     if (handler) {
       handler(data);
@@ -183,10 +184,10 @@ export class ViewController implements IViewController {
     this.window = null as unknown as BrowserWindow;
   }
 
-  async handleShowViewById(props: { data: IHandleResizeView }) {
+  async handleShowViewById(props: IHandleResizeView) {
     try {
-      console.log("handleShowViewById", props.data);
-      const { tab } = props.data;
+      console.log("handleShowViewById", props);
+      const { tab, screen } = props;
       const isViewExist = this.viewManager[tab.id];
       if (!isViewExist) {
         const { view } = await this.createContentView(tab.id);
@@ -210,16 +211,6 @@ export class ViewController implements IViewController {
           }
         }
       }
-      // console.log("this.viewManager", this.viewManager);
-      // const newURL = new URL(tab.url);
-      // if (!this.domainAlreadyBlockAds[newURL.origin]) {
-      //   const ses = this.viewManager[tab.id].webContents.session;
-      //   await enableAggressiveAdBlocking(ses);
-      //   this.domainAlreadyBlockAds = {
-      //     ...this.domainAlreadyBlockAds,
-      //     [newURL.origin]: true,
-      //   };
-      // }
     } catch (error) {
       log.error("handleShowViewById error", error);
     }
@@ -246,18 +237,15 @@ export class ViewController implements IViewController {
       this.window.webContents.send(`did-start-load:${id}`);
     };
     const didStopLoad = () => {
-      // log.info("didStopLoad");
       this.window.webContents.send(`did-stop-loading:${id}`);
     };
     const pageTitleUpdated = () => {
-      // log.info("page-title-updated");
       this.window.webContents.send(`page-title-updated:${id}`, {
         title: view.webContents.getTitle(),
         url: view.webContents.getURL(),
       });
     };
     const pageFaviconUpdated = (event: Electron.Event, favicons: string[]) => {
-      // log.info("page-favicon-updated");
       this.window.webContents.send(`page-favicon-updated:${id}`, { favicon: favicons[0] });
     };
 
@@ -281,9 +269,9 @@ export class ViewController implements IViewController {
     view.setVisible(true);
   }
 
-  async handleURLChange(props: { data: { id: string; url: string } }) {
+  async handleURLChange(tab: ITab) {
     try {
-      const { id, url } = props.data;
+      const { id, url } = tab;
       const view = this.viewManager[id];
       if (!view) {
         console.error(`View with id ${id} not found`);
@@ -312,15 +300,16 @@ export class ViewController implements IViewController {
   //   blocker.enableBlockingInSession(view.webContents.session);
   // }
 
-  handleResizeView(props: { data: IHandleResizeView }) {
-    const { tab, screen } = props.data;
+  handleResizeView(props: IHandleResizeView) {
+    const { tab, screen } = props;
     if (!tab || !screen || !this.viewManager[tab.id]) return;
     this.viewManager[tab.id].setBounds(screen);
   }
 
-  handleHideView(props: { data: { id: string } }) {
-    if (!props.data || !props.data.id) return;
-    const view = this.viewManager[props.data.id];
+  handleHideView(props: { id: string }) {
+    console.log("handleHideView props", props.id);
+    if (!props || !props.id) return;
+    const view = this.viewManager[props.id];
     view.setVisible(false);
   }
 
@@ -351,11 +340,16 @@ export class ViewController implements IViewController {
    * 4. when call @function handleHideView  -> close dev tools
    * 5. when call @function handleShowViewById  -> check flag -> show dev tools
    */
-  handleToggleDevTools(props: { data: { id: string } }) {
-    if (!props.data || !props.data.id) return;
-    const view = this.viewManager[props.data.id];
+  handleToggleDevTools(props: { id: string }) {
+    if (!props || !props.id) return;
+    const view = this.viewManager[props.id];
     let isOpenedDevTools = view.webContents.isDevToolsOpened();
     view.webContents.toggleDevTools();
+    if (isOpenedDevTools) {
+      view.webContents.closeDevTools();
+    } else {
+      view.webContents.openDevTools();
+    }
     view.isOpenedDevTools = !isOpenedDevTools;
   }
 
@@ -398,6 +392,16 @@ export class ViewController implements IViewController {
 
   async cloudSave(props: { data: ITab[]; index: number }) {
     log.info("cloudSave tabManager data", props.data, props.index);
+
+    if (props.data.length) {
+      for (let tab of props.data) {
+        const view = this.viewManager[tab.id];
+        if (view) {
+          view.webContents.session.flushStorageData();
+        }
+      }
+    }
+
     return storeManager.saveFiles({ tabs: props.data || [], index: props.index || 0 });
   }
 

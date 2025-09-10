@@ -1,5 +1,5 @@
 import { IconInnerShadowTopLeft } from "@tabler/icons-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ITab } from "~/features/browsers";
 import Header from "~/features/ui/components/header";
@@ -28,11 +28,11 @@ const CustomApp = () => {
   };
 
   const onBackWard = async () => {
-    // try {
-    //   return window.api.ON_BACKWARD();
-    // } catch (error) {
-    //   console.log("onBackWard error", error);
-    // }
+    try {
+      return window.api.EMIT("ON_BACKWARD");
+    } catch (error) {
+      console.log("onBackWard error", error);
+    }
   };
 
   const onToggleDevTools = async () => {
@@ -54,15 +54,6 @@ const CustomApp = () => {
     const resp = tabStore.closeTab(tab);
     console.log("resp", resp);
     navigate(`/`);
-
-    // if (resp?.nextTab?.id) {
-    //   navigate(`/${resp.nextTab.id}`, {
-    //     replace: true,
-    //     flushSync: true,
-    //   });
-    // } else {
-    //   navigate(`/`);
-    // }
   };
 
   return (
@@ -85,7 +76,7 @@ const WebViewInstance = ({ id }: { id: string }) => {
   const webviewRef = useRef<HTMLDivElement | null>(null);
   const { tabsIndex, setActiveTab, updateTab, tabs } = useTabStore();
   const { showViewByID } = useContentView();
-  const tab = tabs[tabsIndex[id]];
+  const tab = useMemo(() => tabs[tabsIndex[id]], [id]);
   useEffect(() => {
     if (!webviewRef.current) return;
     if (!tab) return;
@@ -107,7 +98,7 @@ const WebViewInstance = ({ id }: { id: string }) => {
     });
 
     return () => {
-      tab.id && window.api.EMIT("HIDE_VIEW", { id: tab.id });
+      tab.id && window.api.EMIT("HIDE_VIEW", tab);
       webviewRef.current && resizeObserver?.unobserve(webviewRef.current as Element);
     };
   }, [tab]);

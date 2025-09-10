@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, session } from "electron";
+import { app, BrowserWindow, screen, Notification, session } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
@@ -58,18 +58,17 @@ class MinusBrowser {
       height,
       show: false,
       frame: false,
-      transparent: true,
-      // alwaysOnTop: true,
+      transparent: false,
       webPreferences: {
-        // session: ses,
         nodeIntegration: true,
         contextIsolation: true,
         preload: preloadPath,
-
-        // partition: "persist:browser",
       },
     });
-
+    new Notification({
+      title: "Minus Browser",
+      body: "Welcome to Minus Browser!",
+    }).show();
     // mainWindow.webContents.setUserAgent(
     //   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/237.84.2.178 Safari/537.36"
     // );

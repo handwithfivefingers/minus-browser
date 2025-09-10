@@ -45,7 +45,7 @@ contextBridge.exposeInMainWorld("api", {
     return ipcRenderer.invoke("invoke", ipcEvent);
   },
   EMIT: <T>(channel: IChannel, data?: T) => {
-    const ipcEvent = new IPCEvent({ channel, data: { channel, data } });
+    const ipcEvent = new IPCEvent({ channel, data });
     return ipcRenderer.send("send", ipcEvent);
   },
   LISTENER: (channel: string, callback?: any) => ipcRenderer.on(channel, (_event, value) => callback(value)),

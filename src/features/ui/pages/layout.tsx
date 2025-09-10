@@ -5,6 +5,7 @@ import { ThemeProvider } from "../context/theme";
 import { Tab } from "~/features/browsers/controller/tabManager";
 import { useTabStore } from "../stores/useTabStore";
 
+const UPDATE_TIMEOUT = 10 * 1000;
 const Layout = () => {
   const { initialize, tabs, index } = useTabStore();
   useLayoutEffect(() => {
@@ -21,10 +22,11 @@ const Layout = () => {
   }, []);
 
   useEffect(() => {
-    if (tabs.length) {
+    let interval = setInterval(() => {
       window.api.INVOKE("CLOUD_SAVE", { data: tabs, index });
-    }
-  }, [tabs, index]);
+    }, UPDATE_TIMEOUT);
+    return () => clearInterval(interval);
+  }, [tabs]);
 
   return (
     <ThemeProvider>

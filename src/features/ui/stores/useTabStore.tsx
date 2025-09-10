@@ -27,7 +27,10 @@ const useTabStore = create<TabStore>((set, get) => ({
       let index = 0;
       for (index; index < tabs.length; index++) {
         const tab = tabs[index];
-        const newTab = new Tab(tab);
+        const newTab = new Tab({
+          ...tab,
+          index,
+        });
         newTabs.push(newTab);
         tabsIndex[newTab.id] = index;
       }
