@@ -72,9 +72,9 @@ class MinusBrowser {
     }
 
     mainWindow.show();
-    // if (process.env.NODE_ENV === "development") {
-    mainWindow.webContents.openDevTools();
-    // }
+    if (process.env.NODE_ENV === "development") {
+      mainWindow.webContents.openDevTools();
+    }
     log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
     viewController = new ViewController(mainWindow);
   };
