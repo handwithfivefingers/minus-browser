@@ -23,7 +23,7 @@ const SideMenu = () => {
   }, []);
   return (
     <div
-      className={clsx("flex-shrink-0 flex flex-col p-2 bg-slate-100 h-screen gap-1.5 transition-all", {
+      className={clsx("flex-shrink-0 flex flex-col p-2 bg-slate-100 h-screen gap-1.5 transition-all", styles.sidebar, {
         ["w-14"]: collapse,
         ["w-48"]: !collapse,
       })}
@@ -43,15 +43,15 @@ const SideMenu = () => {
       <Link
         to={"/"}
         className={clsx(
-          `h-10 w-10 p-1 rounded-md flex justify-center items-center cursor-pointer hover:bg-indigo-500/50 hover:text-white transition-colors relative overflow-hidden`,
+          `h-10 w-10 p-1 rounded-md flex justify-center items-center cursor-pointer hover:bg-white hover:text-slate-500 transition-colors relative overflow-hidden`,
           {
-            [`bg-indigo-500/50 text-white`]: pathname === "/",
-            [`text-indigo-500`]: pathname !== "/",
+            [`bg-white text-slate-500 shadow-md`]: pathname === "/",
+            [`text-slate-500`]: pathname !== "/",
             ["w-full flex gap-0.5"]: !collapse,
           }
         )}
       >
-        <IconHome />
+        <IconHome stroke={1.5} size={20} />
       </Link>
       {tabs
         ?.filter((tab) => tab)
@@ -60,7 +60,7 @@ const SideMenu = () => {
             <TabItem
               {...tab}
               key={tab.id}
-              className={clsx("flex flex-col  items-center", {
+              className={clsx("flex flex-col  items-center", styles.tabItem, {
                 ["w-full flex-row justify-start px-2 gap-2 [&>span]:text-sm"]: !collapse,
                 ["flex-col justify-center"]: collapse,
               })}
@@ -70,11 +70,7 @@ const SideMenu = () => {
       <div
         onClick={() => addNewTab()}
         className={clsx(
-          `h-10 px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-indigo-500/50 hover:text-white transition-colors relative overflow-hidden text-indigo-500`,
-          {
-            ["rotate-180 w-full"]: !collapse,
-            ["rotate-0 w-10"]: !collapse,
-          }
+          `h-10 px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors relative overflow-hidden text-slate-500`
         )}
       >
         <IconPlus />

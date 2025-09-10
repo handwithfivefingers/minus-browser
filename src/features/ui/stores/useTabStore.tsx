@@ -1,19 +1,7 @@
 import { create } from "zustand";
-import { ITab } from "~/features/browsers";
-import { Tab } from "~/features/browsers/controller/tabManager";
+import { Tab } from "~/features/browsers/classes/tab";
+import { ITab, TabStore } from "~/features/ui/interfaces";
 
-interface TabStore {
-  tabs: Tab[];
-  activeTab: Tab | undefined | null;
-  index: number;
-  tabsIndex: { [key: string]: number };
-  initialize: ({ tabs }: { tabs: ITab[] }) => void;
-  getTabById: (id: string) => Tab | null;
-  addNewTab: (tab?: Partial<Tab>) => void;
-  updateTab: (id: string, tab: Partial<Tab>) => void;
-  setActiveTab: (id: string) => void;
-  closeTab: (tab: Tab) => { nextIndex: number | undefined; nextTab: Tab | undefined };
-}
 const useTabStore = create<TabStore>((set, get) => ({
   tabs: [],
   activeTab: null,

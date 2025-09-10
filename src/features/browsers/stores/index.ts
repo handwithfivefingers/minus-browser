@@ -1,1 +1,1 @@
-export * from "./viewManager";
+export * from "./storeManager";

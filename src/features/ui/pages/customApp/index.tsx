@@ -8,10 +8,10 @@ import { isValidDomain } from "../../libs";
 import { useTabStore } from "../../stores/useTabStore";
 
 const CustomApp = () => {
-  const { customApp: tabId } = useParams();
+  const { customApp: tabId } = useParams<{ customApp: string }>();
   const tabStore = useTabStore();
   const { tabsIndex, tabs } = tabStore;
-  const tab = tabs[tabsIndex[tabId]];
+  const tab = tabs[tabsIndex[tabId as string]];
   const navigate = useNavigate();
   const handleSearch = async (url: string) => {
     try {
@@ -119,7 +119,7 @@ const WebViewInstance = ({ id }: { id: string }) => {
     }
   };
   return (
-    <div className="h-[calc(100vh-48px)] rounded-md relative overflow-hidden">
+    <div className="h-[calc(100vh-44px)] rounded-md relative overflow-hidden">
       <div
         className="mx-auto absolute z-0 left-0 top-0 w-full h-full flex justify-center items-center"
         ref={webviewRef}

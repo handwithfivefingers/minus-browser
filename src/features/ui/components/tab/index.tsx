@@ -1,10 +1,10 @@
-import { memo, useEffect } from "react";
-import { ITab } from "../../../browsers/interfaces";
-import { Link, useLocation } from "react-router";
 import clsx from "clsx";
+import { memo } from "react";
+import { Link, useLocation } from "react-router";
+import { ITab } from "../../../browsers/interfaces";
 import { Avatar } from "../avatar";
+/** @ts-ignore */
 import styles from "./styles.module.css";
-// import { webFrame } from "electron";
 interface ITabItem extends Omit<ITab, "updateTitle" | "updateUrl" | "onFocus" | "onBlur"> {
   className?: string;
 }
@@ -15,9 +15,9 @@ const TabItem = memo(({ id, className, ...props }: ITabItem) => {
     <Link
       to={`/${id}`}
       className={clsx(
-        `h-10 w-10 p-1 rounded-md flex justify-center items-center cursor-pointer hover:bg-indigo-500/50 hover:text-white transition-colors relative overflow-hidden`,
+        `h-10 w-10 p-1 rounded-md flex justify-center items-center cursor-pointer hover:bg-white hover:text-indigo-500 transition-colors relative overflow-hidden`,
         {
-          [`bg-indigo-500/50 text-white`]: location.pathname == `/${id}`,
+          [`bg-white text-indigo-500 shadow-md`]: location.pathname == `/${id}`,
           [`text-indigo-500`]: location.pathname !== `/${id}`,
         },
         className

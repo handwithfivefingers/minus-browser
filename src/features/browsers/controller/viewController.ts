@@ -1,15 +1,8 @@
 import { app, BrowserWindow, ipcMain, session, WebContentsView, Notification } from "electron";
 import log from "electron-log";
-import { ITab } from "../interfaces";
+import { IHandleResizeView, IPC, ITab, IViewController } from "../interfaces";
 import { storeManager } from "../stores";
 import { AdBlocker } from "./adsBlockController";
-interface IShowViewProps {
-  width: number;
-  height: number;
-  x: number;
-  y: number;
-  url: string;
-}
 
 enum TabEventType {
   CREATE_TAB = "CREATE_TAB",
@@ -35,65 +28,13 @@ enum ViewEventType {
   UPDATE_VIEW_SIZE = "UPDATE_VIEW_SIZE",
   VIEW_CHANGE_URL = "VIEW_CHANGE_URL",
 }
-interface IShowViewProps {
-  id: string;
-  screen: {
-    width: number;
-    height: number;
-    x: number;
-    y: number;
-  };
-}
-
-type IPC<T = any> = {
-  channel: string;
-  data?: T;
-};
-
-interface IHandleResizeView {
-  tab: ITab;
-  screen: IShowViewProps;
-}
-interface IViewController {
-  window: BrowserWindow;
-  viewManager: Record<string, WebContentsView>;
-  viewActive: string;
-  getTabs: () => Promise<{ tabs: ITab[]; index: number }>;
-  handleShowViewById: (props: IHandleResizeView) => Promise<void>;
-
-  createContentView: (id: string) => Promise<{ view: WebContentsView; contentView: Electron.WebContents }>;
-  loadContentView: (id: string) => void;
-
-  handleResizeView: (props: IHandleResizeView) => void;
-  handleHideView: (props: { id: string }) => void;
-  onGoBack: () => void;
-  onCloseTab: (props: { id: string }) => void;
-  handleToggleDevTools: (props: { id: string }) => void;
-  handleReloadTab: (props: { data: ITab }) => Promise<void>;
-  handleActiveView: (id: string) => void;
-  discardInactiveView: () => void;
-
-  cloudSave: (props: { data: ITab[]; index: number }) => Promise<void>;
-  destroy: () => void;
-  init: () => void;
-}
 export class ViewController implements IViewController {
   window: BrowserWindow;
   viewManager: Record<string, WebContentsView & { isOpenedDevTools?: boolean }> = {};
   viewActive: string = "";
   private invokeHandlers: Record<string, (data?: any) => any>;
   private listenerHandlers: Record<string, (data?: any) => void>;
-  domainAlreadyBlockAds = {};
   private adBlocker: AdBlocker;
-
-  get views() {
-    const lists = new Map();
-    for (let id in this.viewManager) {
-      lists.set(id, this.viewManager[id]);
-    }
-    return lists;
-  }
-
   constructor(window: BrowserWindow) {
     this.window = window;
     this.initializeHandlers();
@@ -109,7 +50,6 @@ export class ViewController implements IViewController {
       }
     });
   }
-
   async getTabs() {
     const data = await storeManager.readFiles();
     const sampleData: { tabs: ITab[]; index: number } = {
@@ -133,7 +73,7 @@ export class ViewController implements IViewController {
       [ViewEventType.VIEW_CHANGE_URL]: (data) => this.handleURLChange(data),
       [ViewEventType.VIEW_RESPONSIVE]: (data) => this.handleResizeView(data),
       [ViewEventType.HIDE_VIEW]: (data) => this.handleHideView(data),
-      [TabEventType.ON_BACKWARD]: () => this.onGoBack(),
+      [TabEventType.ON_BACKWARD]: (data) => this.onGoBack(data),
       [TabEventType.ON_CLOSE_TAB]: (data) => this.onCloseTab(data),
       [TabEventType.TOGGLE_DEV_TOOLS]: (data) => this.handleToggleDevTools(data),
       [TabEventType.ON_RELOAD]: (data) => this.handleReloadTab(data),
@@ -188,9 +128,10 @@ export class ViewController implements IViewController {
   }
 
   async handleShowViewById(props: IHandleResizeView) {
+    const { tab, screen } = props;
+    if (!tab.id) throw new Error("Tab id not found");
+    const isViewExist = this.viewManager[tab.id];
     try {
-      const { tab, screen } = props;
-      const isViewExist = this.viewManager[tab.id];
       if (!isViewExist) {
         const { view } = await this.createContentView(tab.id);
         this.viewManager[tab.id] = view;
@@ -209,13 +150,18 @@ export class ViewController implements IViewController {
       if (Object.keys(this.viewManager).length) {
         for (let viewID in this.viewManager) {
           if (viewID !== tab.id) {
-            this.viewManager[viewID].webContents?.closeDevTools();
-            this.viewManager[viewID].setVisible(false);
+            this.viewManager[viewID]?.webContents?.closeDevTools();
+            this.viewManager[viewID]?.setVisible(false);
           }
         }
       }
     } catch (error) {
       log.error("handleShowViewById error", error);
+    } finally {
+      console.log("isViewExist", isViewExist.webContents.isFocused());
+      if (isViewExist && !isViewExist.webContents.isFocused()) {
+        isViewExist.webContents.focus();
+      }
     }
   }
 
@@ -271,7 +217,6 @@ export class ViewController implements IViewController {
   loadContentView(id: string) {
     const view = this.viewManager[id];
     this.window.contentView.addChildView(view);
-    // view.webContents.setBackgroundThrottling(false);
     view.setVisible(true);
   }
 
@@ -292,30 +237,43 @@ export class ViewController implements IViewController {
 
   handleResizeView(props: IHandleResizeView) {
     const { tab, screen } = props;
+    if (!tab.id) return;
     if (!tab || !screen || !this.viewManager[tab.id]) return;
-    this.viewManager[tab.id].setBounds(screen);
+    this.viewManager[tab.id]?.setBounds(screen);
   }
 
   handleHideView(props: { id: string }) {
     if (!props || !props.id) return;
     const view = this.viewManager[props.id];
-    this.window.contentView.removeChildView(view);
-    view.setVisible(false);
+    if (view.webContents && view.webContents?.isDestroyed()) return;
+    if (view && view.webContents && view.webContents.session) {
+      if (typeof view.webContents.session.flushStorageData === "function") view.webContents.session.flushStorageData();
+      this.window.contentView.removeChildView(view);
+      view.setVisible(false);
+    }
   }
 
-  onGoBack() {
-    if (!this.viewActive) return;
-    const currentView = this.viewManager[this.viewActive];
+  onGoBack(props: { data: ITab }) {
+    if (!props?.data?.id) return;
+    const currentView = this.viewManager[props?.data?.id];
     if (!currentView) return;
     if (currentView.webContents.navigationHistory.canGoBack()) {
       currentView.webContents.navigationHistory.goBack();
     }
   }
 
-  onCloseTab(props: { id: string }) {
+  async onCloseTab(props: { id: string }) {
     if (!props.id) return;
-    this.viewManager[props.id].removeAllListeners();
-    this.viewManager[props.id].webContents.close();
+    await this.handleHideView({ id: props.id });
+    const view = this.viewManager[props.id];
+    if (view) {
+      if (typeof this.viewManager[props.id].removeAllListeners === "function") {
+        this.viewManager[props.id].removeAllListeners();
+      }
+      if (typeof this.viewManager[props.id].webContents.close === "function") {
+        this.viewManager[props.id].webContents.close();
+      }
+    }
     setTimeout(() => {
       delete this.viewManager[props.id];
     }, 500);
@@ -361,32 +319,13 @@ export class ViewController implements IViewController {
     this.viewActive = id;
   }
 
-  hideInactiveView() {
-    if (this.viewActive && this.viewManager[this.viewActive]) {
-      for (let id in Array.from(this.views.values())) {
-        if (id !== this.viewActive) {
-          this.window.contentView.setVisible(false);
-        }
-      }
-    }
-  }
-
-  discardInactiveView() {
-    if (this.viewActive && this.viewManager[this.viewActive]) {
-      for (let id in Array.from(this.views.values())) {
-        if (id !== this.viewActive) {
-          this.window.contentView.removeChildView(this.viewManager[id]);
-        }
-      }
-    }
-  }
-
   async cloudSave(props: { data: ITab[]; index: number }) {
     try {
       log.info("cloudSave tabManager data", props.data, props.index);
       const tabs = props.data.filter((tab) => tab);
       if (props.data.length) {
         for (let tab of tabs) {
+          if (!tab.id) continue;
           const view = this.viewManager[tab.id];
           if (view) {
             view.webContents.session.flushStorageData();
@@ -397,7 +336,10 @@ export class ViewController implements IViewController {
 
       return this.window.webContents.send("SYNC");
     } catch (error) {
-      const noti = new Notification("error", { body: error.message });
+      const noti = new Notification({
+        title: "Error",
+        body: error.message,
+      });
       noti.show();
     }
   }
@@ -411,25 +353,50 @@ export class ViewController implements IViewController {
   }
 
   async requestPIP({ tab }: { tab: ITab }) {
-    console.log("tab", tab);
-    if (!tab.id) return;
+    if (!tab?.id) {
+      return new Notification({
+        title: "Error",
+        body: "Tab id not found",
+      }).show();
+    }
+
     const view = this.viewManager[tab.id];
+    this.window.contentView;
+    if (!view) return;
+    if (!view.webContents.isFocused()) {
+      view.webContents.focus();
+    }
     view.webContents
       .executeJavaScript(
         `
-        function requestPIP() {
-          const vid = document.querySelector("video");
-          console.log("vid", vid);
-          vid.requestPictureInPicture();
-        }
-        requestPIP();
+      function enterPictureInPicture(videoElement) {
+          if(document.pictureInPictureEnabled && !videoElement.disablePictureInPicture) {
+              try {
+                  if (document.pictureInPictureElement) {
+                      document.exitPictureInPicture();
+                  }
+                videoElement.requestPictureInPicture().
+                  then(() => {
+                      console.log('Entered Picture-in-Picture mode.');
+                  })
+                  .catch((error) => {
+                      console.error('Failed to enter Picture-in-Picture mode:', error);
+                  });
+              } catch(err) {
+                  console.error(err);
+              }
+          }
+      }
+      setTimeout(() => {
+        enterPictureInPicture(document.querySelector("video"));
+      }, 500);
       `
       )
       .then(() => {
-        console.log("requestPIP success");
+        log.info("requestPIP success");
       })
       .catch((error) => {
-        console.log("requestPIP error", error);
+        log.info("requestPIP error", error);
       });
   }
 }

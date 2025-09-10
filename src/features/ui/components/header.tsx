@@ -1,20 +1,17 @@
 import {
   IconChevronLeft,
-  IconChevronRight,
   IconCloudUp,
   IconCode,
-  IconImageInPicture,
   IconLockAccess,
   IconLockAccessOff,
   IconPictureInPicture,
   IconReload,
   IconSearch,
-  IconThumbDown,
-  IconX,
+  IconX
 } from "@tabler/icons-react";
+import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { isValidDomain } from "../libs";
-import clsx from "clsx";
 interface IHeader {
   url?: string;
   onSearch: (v: string) => void;
@@ -34,7 +31,7 @@ const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onC
       ref.current.value = url;
       if (isValidDomain(url)) {
         const parsedURL = new URL(url);
-        const toArray = [parsedURL.host, parsedURL.pathname, parsedURL.search ? `?${parsedURL.search}` : ""];
+        const toArray = [parsedURL.host, parsedURL.pathname, parsedURL.search ? `${parsedURL.search}` : ""];
         ref.current.value = toArray.join("");
       }
     }
@@ -158,7 +155,6 @@ const Sync = () => {
   const [isSync, setIsSync] = useState(false);
   useEffect(() => {
     window.api.LISTENER(`SYNC`, () => {
-      console.log('listener "SYNC"');
       setIsSync(true);
       setTimeout(() => {
         setIsSync(false);

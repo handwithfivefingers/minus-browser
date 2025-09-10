@@ -15,6 +15,7 @@ const Home = () => {
   );
 };
 
+const DATE_OUTPUT = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const TodoHome = () => {
   const hourRef = useRef<HTMLSpanElement | null>(null);
   const minRef = useRef<HTMLSpanElement | null>(null);
@@ -73,14 +74,20 @@ const TodoHome = () => {
     });
   };
   return (
-    <div className="flex justify-center h-full items-center-safe py-40 flex-col gap-8">
+    <div className="flex justify-center h-full items-center-safe py-20 flex-col gap-8">
+      <div className="flex-1 flex-shrink-0 gap-2 flex">
+        <span className="font-medium text-3xl text-white">{DATE_OUTPUT[new Date().getDay()]}</span>
+        <span className="font-medium text-3xl text-white">
+          {new Date().getDate()}/{new Date().getMonth()}/{new Date().getFullYear()}
+        </span>
+      </div>
       <div className="flex-1 flex-shrink-0">
         <span ref={hourRef} className="font-medium text-8xl text-white" />
         <span className="font-medium text-8xl text-white">:</span>
         <span ref={minRef} className="font-medium text-8xl text-white" />
       </div>
       <div className="h-full w-full max-w-80 flex gap-2 flex-col">
-        <div className="flex gap-2 flex-col max-h-[275px] overflow-auto scrollbar">
+        <div className="flex gap-2 flex-col max-h-[275px] overflow-x-hiddenoverflow-y-auto scrollbar">
           {todos?.map((item) => {
             return <TodoItem {...item} key={item.id} onSave={onSave} onDelete={() => onDelete(item)} />;
           })}
@@ -130,7 +137,7 @@ const TodoItem = ({
           value={todo.label}
           onChange={(e) => setTodo((prev) => ({ ...prev, label: e.target.value }))}
         />
-        <input
+        <textarea
           className="text-base text-slate-500 px-2 focus:outline-indigo-500/50"
           value={todo.description}
           onChange={(e) => setTodo((prev) => ({ ...prev, description: e.target.value }))}

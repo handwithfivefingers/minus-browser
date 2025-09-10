@@ -1,27 +1,21 @@
-import { app, BrowserWindow, screen, Notification, session, Menu } from "electron";
+import { app, BrowserWindow, Menu, Notification, screen } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
-import { LogController } from "./features/browsers/controller";
-import { CustomAppController } from "./features/browsers/controller/customAppController";
-import { ViewController } from "./features/browsers/controller/viewController";
+import { LogController, ViewController } from "./features/browsers/controller";
 if (started) {
   app.quit();
 }
+
 new LogController();
 
-new CustomAppController();
 const preloadPath = path.join(__dirname, "/preload.js");
-
-let viewController: ViewController;
 
 if (process.platform !== "darwin") {
   Menu.setApplicationMenu(null);
 }
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 class MinusBrowser {
-  adblockEnabled = false;
-  aggressiveAdblockActivated = false;
   constructor() {
     app.on("ready", () => {
       log.initialize();
@@ -38,7 +32,9 @@ class MinusBrowser {
         this.createWindow();
       }
     });
-
+    app.on("render-process-gone", function (event, detailed) {
+      app.quit();
+    });
     app.whenReady().then(() => {
       this.createWindow();
     });
@@ -76,7 +72,7 @@ class MinusBrowser {
       mainWindow.webContents.openDevTools();
     }
     log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
-    viewController = new ViewController(mainWindow);
+    new ViewController(mainWindow);
   };
 }
 
