@@ -1,6 +1,7 @@
 // import { ElectronBlocker, fullLists } from "@ghostery/adblocker-electron";
-// import crossFetch from "cross-fetch";
-import { session, WebContentsView } from "electron";
+import { BlockingContext, ElectronBlocker, fullLists, Request } from "@ghostery/adblocker-electron";
+import fetch from "cross-fetch";
+import { BrowserWindow, WebContentsView } from "electron";
 import log from "electron-log";
 export const ALL_LISTS = new Set([
   "https://easylist.to/easylist/easylist.txt",
@@ -14,161 +15,98 @@ export const ALL_LISTS = new Set([
   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/yt-annoyances.txt",
   "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
   "https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/filters-2025.txt",
-  "https://easylist.to/easylist/easylist.txt",
-  "https://easylist.to/easylist/easyprivacy.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/badware.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/unbreak.txt",
+  ...fullLists,
 ]);
 
+class CustomBlockingContext {
+  session: Electron.Session;
+  blocker: CustomAds;
+  constructor(session: Electron.Session, blocker: CustomAds) {
+    this.session = session;
+    this.blocker = blocker;
+  }
+  enable() {
+    this.session.webRequest.onHeadersReceived({ urls: ["<all_urls>"] }, this.blocker.onHeadersReceived);
+    this.session.webRequest.onBeforeRequest({ urls: ["<all_urls>"] }, this.blocker.onBeforeRequest);
+  }
+  disable() {
+    this.session.webRequest.onHeadersReceived({ urls: ["<all_urls>"] }, null);
+    this.session.webRequest.onBeforeRequest({ urls: ["<all_urls>"] }, null);
+  }
+}
+
+class CustomAds extends ElectronBlocker {
+  newCtx = new WeakMap();
+  constructor(props: any) {
+    super(props);
+  }
+
+  onEnable(session: Electron.Session) {
+    let ctx = this.newCtx.get(session);
+    if (ctx !== undefined) {
+      return ctx;
+    }
+    ctx = new CustomBlockingContext(session, this);
+    this.newCtx.set(session, ctx);
+    ctx.enable();
+    return ctx;
+  }
+  onDisable(session: Electron.Session) {
+    const ctx = this.newCtx.get(session);
+    if (ctx !== undefined) {
+      ctx.disable();
+      this.newCtx.delete(session);
+    }
+  }
+}
 export class AdBlocker {
-  blocker: AdBlocker;
-
+  blocker: CustomAds;
   constructor() {
-    // this.initializeAdBlocker();
-    this.setupAdvancedRequestBlocking();
+    this.initialize();
+  }
+  async initialize() {
+    delete CustomAds.prototype.enableBlockingInSession;
+    const blocker = await CustomAds.fromLists(fetch, Array.from(ALL_LISTS.values()));
+    this.blocker = blocker;
   }
 
-  private setupAdvancedRequestBlocking() {
-    const ses = session.defaultSession;
-    // Block known YouTube ad domains and patterns
-    const youtubeAdPatterns = [
-      // Google ad services
-      "googlevideo.com/videoplayback",
-      "youtube.com/api/stats/ads",
-      "youtube.com/ptracking",
-      "youtube.com/api/stats/atr",
-      "youtube.com/youtubei/v1/player/ad_break",
-      "youtube.com/youtubei/v1/next",
-
-      // Video ad patterns
-      "/videoplayback?",
-      "mime=video%2F",
-      "oad=",
-      "usg=",
-
-      // Ad-related parameters
-      "ad_break",
-      "ad_video_pub_id",
-      "ad_cpn",
-      "ad_docid",
-
-      // Google DoubleClick
-      "doubleclick.net",
-      "googlesyndication.com",
-      "googletagservices.com",
-      "google-analytics.com/collect",
-    ];
-    const onBeforeSendHeadersRequestFilter = {
-      urls: ["https://*/*", "http://*/*"],
-      types: ["xhr", "media", "image"],
-    };
-    session.defaultSession.webRequest.onBeforeSendHeaders(
-      onBeforeSendHeadersRequestFilter as any,
-      ({ requestHeaders, url, webContents }, callback) => {
-        const urlObj = new URL(url);
-
-        if (url.startsWith("https://www.youtube.com/youtubei/")) {
-          // make InnerTube requests work with the fetch function
-          // InnerTube rejects requests if the referer isn't YouTube or empty
-          requestHeaders.Referer = "https://www.youtube.com/";
-          requestHeaders.Origin = "https://www.youtube.com";
-
-          requestHeaders["Sec-Fetch-Site"] = "same-origin";
-          requestHeaders["Sec-Fetch-Mode"] = "same-origin";
-          requestHeaders["X-Youtube-Bootstrap-Logged-In"] = "false";
-        } else if (
-          url === "https://www.youtube.com/sw.js_data" ||
-          url.startsWith("https://www.youtube.com/api/timedtext")
-        ) {
-          requestHeaders.Referer = "https://www.youtube.com/sw.js";
-          requestHeaders["Sec-Fetch-Site"] = "same-origin";
-          requestHeaders["Sec-Fetch-Mode"] = "same-origin";
-        } else if (
-          urlObj.origin.endsWith(".googleusercontent.com") ||
-          urlObj.origin.endsWith(".ggpht.com") ||
-          urlObj.origin.endsWith(".ytimg.com")
-        ) {
-          requestHeaders.Referer = "https://www.youtube.com/";
-          requestHeaders.Origin = "https://www.youtube.com";
-        } else if (urlObj.origin.endsWith(".googlevideo.com") && urlObj.pathname === "/videoplayback") {
-          requestHeaders.Referer = "https://www.youtube.com/";
-          requestHeaders.Origin = "https://www.youtube.com";
-
-          // YouTube doesn't send the Content-Type header for the media requests, so we shouldn't either
-          delete requestHeaders["Content-Type"];
-        }
-
-        callback({ requestHeaders });
-      }
-    );
-
-    // when we create a real session on the watch page, youtube returns tracking cookies, which we definitely don't want
-    const trackingCookieRequestFilter = {
-      urls: ["https://www.youtube.com/sw.js_data", "https://www.youtube.com/iframe_api"],
-    };
-
-    session.defaultSession.webRequest.onHeadersReceived(
-      trackingCookieRequestFilter,
-      ({ responseHeaders }, callback) => {
-        if (responseHeaders) {
-          delete responseHeaders["set-cookie"];
-        }
-
-        callback({ responseHeaders });
-      }
-    );
-    ses.webRequest.onBeforeRequest((details, callback) => {
-      const url = details.url.toLowerCase();
-
-      // Check for ad patterns in YouTube requests
-      if (details.url.includes("youtube.com") || details.url.includes("googlevideo.com")) {
-        // Block specific ad-related requests
-        const shouldBlock = youtubeAdPatterns.some((pattern) => url.includes(pattern.toLowerCase()));
-
-        // Additional checks for video ads
-        if (shouldBlock || this.isVideoAdRequest(details.url, details)) {
-          console.log("🚫 Blocked YouTube ad request:", details.url);
-          callback({ cancel: true });
-          return;
-        }
-      }
-
-      callback({});
+  setupAdvancedRequestBlocking(view: WebContentsView) {
+    this.blocker.onEnable(view.webContents.session);
+    this.blocker.on("request-blocked", (request: Request) => {
+      log.info("request-blocked", request.tabId, request.url);
+    });
+    this.blocker.on("request-redirected", (request: Request) => {
+      log.info("request-redirected", request.tabId, request.url);
     });
 
-    // Modify response headers to prevent ad loading
-    ses.webRequest.onHeadersReceived((details, callback) => {
-      if (this.isYouTubeAdResponse(details)) {
-        console.log("🚫 Blocked YouTube ad response:", details.url);
-        callback({
-          cancel: true,
-        });
-        return;
-      }
-
-      callback({});
+    this.blocker.on("request-whitelisted", (request: Request) => {
+      log.info("request-whitelisted", request.tabId, request.url);
     });
-  }
-  private isVideoAdRequest(url: string, details: any): boolean {
-    const lowerUrl = url.toLowerCase();
 
-    // Check for ad-specific patterns in video requests
-    const adPatterns = ["ad_break", "ad_cpn", "ad_docid", "ad_video_pub_id", "adplayhead", "adsystem", "ad_type"];
+    this.blocker.on("csp-injected", (request: Request, csps: string) => {
+      log.info("csp-injected", request.url, csps);
+    });
 
-    return adPatterns.some((pattern) => lowerUrl.includes(pattern));
-  }
-  private isYouTubeAdResponse(details: any): boolean {
-    const contentType = details.responseHeaders?.["content-type"]?.[0] || "";
-    const url = details.url.toLowerCase();
+    this.blocker.on("script-injected", (script: string, url: string) => {
+      log.info("script-injected", script.length, url);
+    });
 
-    // Block responses that look like video ads
-    return (
-      (contentType.includes("video/") || contentType.includes("application/")) &&
-      (url.includes("ad_") || url.includes("doubleclick") || url.includes("googlesyndication"))
-    );
+    this.blocker.on("style-injected", (style: string, url: string) => {
+      log.info("style-injected", style.length, url);
+    });
+
+    this.blocker.on("filter-matched", console.log.bind(console, "filter-matched"));
   }
+
+  // enable() {
+  //   // Create new blocking context for `session`
+  //   const BlockingContext = new BlockingContext(session, this);
+  //   BlockingContext.enable = () => {};
+  //   context = new BlockingContext(session, this);
+  //   this.contexts.set(session, context);
+  //   context.enable();
+  //   return context;
+  // }
 
   setupViewEventHandlers(view: WebContentsView) {
     // Log blocked requests for debugging

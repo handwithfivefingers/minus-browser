@@ -55,6 +55,9 @@ const CustomApp = () => {
     console.log("resp", resp);
     navigate(`/`);
   };
+  const onRequestPIP = async () => {
+    window.api.EMIT("REQUEST_PIP", { tab });
+  };
 
   return (
     <div className="h-screen rounded-md relative overflow-hidden">
@@ -66,6 +69,7 @@ const CustomApp = () => {
         onToggleDevTools={onToggleDevTools}
         onReload={onReload}
         onCloseTab={onCloseTab}
+        onRequestPIP={onRequestPIP}
       />
       <WebViewInstance id={tabId} />
     </div>

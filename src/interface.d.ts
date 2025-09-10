@@ -1,10 +1,11 @@
+export interface IElectronAPI {
+  INVOKE: <T>(channel: string, data?: any) => Promise<T> | T;
+  EMIT: <T>(channel: string, data?: any) => Promise<T> | T;
+  LISTENER: (channel: string, func: (...args: any[]) => void) => Promise<T> | T;
+}
 declare global {
   interface Window {
-    api: {
-      INVOKE: <T>(channel: string, data?: any) => Promise<T> | T;
-      EMIT: <T>(channel: string, data?: any) => Promise<T> | T;
-      LISTENER: (channel: string, func: (...args: any[]) => void) => void;
-    };
+    api: IElectronAPI;
   }
 }
 

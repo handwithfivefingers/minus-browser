@@ -10,7 +10,6 @@ interface ITabItem extends Omit<ITab, "updateTitle" | "updateUrl" | "onFocus" | 
 
 const TabItem = memo(({ id, className, ...props }: ITabItem) => {
   const location = useLocation();
-  console.log("location", location);
   return (
     <Link
       to={`/${id}`}

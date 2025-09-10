@@ -2,10 +2,13 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconCode,
+  IconImageInPicture,
   IconLockAccess,
   IconLockAccessOff,
+  IconPictureInPicture,
   IconReload,
   IconSearch,
+  IconThumbDown,
   IconX,
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
@@ -18,9 +21,10 @@ interface IHeader {
   onToggleDevTools: () => void;
   onReload: () => void;
   onCloseTab: () => void;
+  onRequestPIP: () => void;
   id: string;
 }
-const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onCloseTab }: IHeader) => {
+const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onCloseTab, onRequestPIP }: IHeader) => {
   const ref = useRef<HTMLInputElement>(null);
   const [focus, setFocus] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,6 +57,7 @@ const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onC
     else if (v.startsWith("https://")) v = v.slice(8);
     onSearch(v);
   };
+
   const isValidHttps = url && isValidDomain(url) && new URL(url).protocol === "https:";
   const isValidHttp = url && isValidDomain(url) && new URL(url).protocol === "http:";
 
@@ -122,6 +127,9 @@ const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onC
         </button>
       </div>
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
+        <button className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1" onClick={onRequestPIP}>
+          <IconPictureInPicture size={16} />
+        </button>
         <button className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1" onClick={onToggleDevTools}>
           <IconCode size={16} />
         </button>

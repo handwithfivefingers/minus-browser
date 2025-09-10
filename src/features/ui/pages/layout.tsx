@@ -5,14 +5,13 @@ import { ThemeProvider } from "../context/theme";
 import { Tab } from "~/features/browsers/controller/tabManager";
 import { useTabStore } from "../stores/useTabStore";
 
-const UPDATE_TIMEOUT = 10 * 1000;
+const UPDATE_TIMEOUT = 60 * 1000;
 const Layout = () => {
   const { initialize, tabs, index } = useTabStore();
   useLayoutEffect(() => {
     const getScreenData = async () => {
       try {
         const data = await window.api.INVOKE<{ tabs: Tab[]; index: number }>("GET_TABS");
-        console.log("getScreenData", data);
         initialize(data);
       } catch (error) {
         console.error("Error getting tabs:", error);
@@ -23,7 +22,7 @@ const Layout = () => {
 
   useEffect(() => {
     let interval = setInterval(() => {
-      window.api.INVOKE("CLOUD_SAVE", { data: tabs, index });
+      window.api.INVOKE("CLOUD_SAVE", { data: tabs?.filter((item) => item.id), index });
     }, UPDATE_TIMEOUT);
     return () => clearInterval(interval);
   }, [tabs]);

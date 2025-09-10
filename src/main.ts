@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, Notification, session } from "electron";
+import { app, BrowserWindow, screen, Notification, session, Menu } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
@@ -15,8 +15,10 @@ const preloadPath = path.join(__dirname, "/preload.js");
 
 let viewController: ViewController;
 
-// Menu.setApplicationMenu(null);
-
+if (process.platform !== "darwin") {
+  Menu.setApplicationMenu(null);
+}
+process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 class MinusBrowser {
   adblockEnabled = false;
   aggressiveAdblockActivated = false;
@@ -25,11 +27,6 @@ class MinusBrowser {
       log.initialize();
     });
 
-    // app.on("before-quit", async () => {
-    //   // await viewController.cloudSave();
-    //   viewController.destroy();
-    //   viewController = null as unknown as ViewController;
-    // });
     app.on("quit", async () => {
       if (process.platform !== "darwin") {
         app.quit();
@@ -37,8 +34,6 @@ class MinusBrowser {
     });
 
     app.on("activate", () => {
-      // On OS X it's common to re-create a window in the app when the
-      // dock icon is clicked and there are no other windows open.
       if (BrowserWindow.getAllWindows().length === 0) {
         this.createWindow();
       }
@@ -51,8 +46,6 @@ class MinusBrowser {
   createWindow = async () => {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.workAreaSize;
-    // const ses = session.fromPartition("persist:browser");
-
     const mainWindow = new BrowserWindow({
       width,
       height,
@@ -69,11 +62,6 @@ class MinusBrowser {
       title: "Minus Browser",
       body: "Welcome to Minus Browser!",
     }).show();
-    // mainWindow.webContents.setUserAgent(
-    //   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/237.84.2.178 Safari/537.36"
-    // );
-    // and load the index.html of the app.
-
     /**@ts-ignore */
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       /**@ts-ignore */

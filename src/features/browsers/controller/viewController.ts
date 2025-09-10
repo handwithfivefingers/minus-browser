@@ -67,7 +67,7 @@ interface IViewController {
   handleResizeView: (props: IHandleResizeView) => void;
   handleHideView: (props: { id: string }) => void;
   onGoBack: () => void;
-  onCloseTab: (props: { data: { id: string } }) => void;
+  onCloseTab: (props: { id: string }) => void;
   handleToggleDevTools: (props: { id: string }) => void;
   handleReloadTab: (props: { data: ITab }) => Promise<void>;
   handleActiveView: (id: string) => void;
@@ -98,6 +98,7 @@ export class ViewController implements IViewController {
     this.window = window;
     this.initializeHandlers();
     this.init();
+    this.adBlocker = new AdBlocker();
     window.webContents.on("render-process-gone", function (event, detailed) {
       log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
       if (detailed.reason == "crashed") {
@@ -124,6 +125,7 @@ export class ViewController implements IViewController {
     this.invokeHandlers = {
       [TabEventType.GET_TABS]: () => this.getTabs(),
       CLOUD_SAVE: (data) => this.cloudSave(data),
+      GET_PIP: () => this.getPIPState(),
     };
 
     this.listenerHandlers = {
@@ -136,6 +138,7 @@ export class ViewController implements IViewController {
       [TabEventType.TOGGLE_DEV_TOOLS]: (data) => this.handleToggleDevTools(data),
       [TabEventType.ON_RELOAD]: (data) => this.handleReloadTab(data),
       ["CLOSE_APP"]: () => this.onCloseApp(),
+      REQUEST_PIP: (data) => this.requestPIP(data),
     };
   }
 
@@ -227,6 +230,7 @@ export class ViewController implements IViewController {
       },
     });
     const contentView = view.webContents;
+    this.adBlocker.setupAdvancedRequestBlocking(view);
     this.adBlocker.setupViewEventHandlers(view);
     this.addViewEventListeners(view, id);
     return { view, contentView };
@@ -322,14 +326,13 @@ export class ViewController implements IViewController {
     }
   }
 
-  onCloseTab(props: { data: { id: string } }) {
-    if (!props.data.id) return;
-    this.viewManager[props.data.id].removeAllListeners();
-    this.viewManager[props.data.id].webContents.close();
+  onCloseTab(props: { id: string }) {
+    if (!props.id) return;
+    this.viewManager[props.id].removeAllListeners();
+    this.viewManager[props.id].webContents.close();
     setTimeout(() => {
-      delete this.viewManager[props.data.id];
+      delete this.viewManager[props.id];
     }, 500);
-    // this.window.contentView.removeChildView(this.viewManager[props.data.id]);
   }
 
   /**
@@ -354,6 +357,7 @@ export class ViewController implements IViewController {
   }
 
   async handleReloadTab(props: { data: ITab }) {
+    if (!props.data.id) throw new Error("Tab id not found");
     const view = this.viewManager[props.data.id];
     if (view) {
       view.webContents.reload();
@@ -392,9 +396,9 @@ export class ViewController implements IViewController {
 
   async cloudSave(props: { data: ITab[]; index: number }) {
     log.info("cloudSave tabManager data", props.data, props.index);
-
+    const tabs = props.data.filter((tab) => tab);
     if (props.data.length) {
-      for (let tab of props.data) {
+      for (let tab of tabs) {
         const view = this.viewManager[tab.id];
         if (view) {
           view.webContents.session.flushStorageData();
@@ -403,6 +407,37 @@ export class ViewController implements IViewController {
     }
 
     return storeManager.saveFiles({ tabs: props.data || [], index: props.index || 0 });
+  }
+
+  async getPIPState() {
+    const obj = {};
+    for (let id in this.viewManager) {
+      obj[id] = this.viewManager[id].webContents.isCurrentlyAudible();
+    }
+    return obj;
+  }
+
+  async requestPIP({ tab }: { tab: ITab }) {
+    console.log("tab", tab);
+    if (!tab.id) return;
+    const view = this.viewManager[tab.id];
+    view.webContents
+      .executeJavaScript(
+        `
+        function requestPIP() {
+          const vid = document.querySelector("video");
+          console.log("vid", vid);
+          vid.requestPictureInPicture();
+        }
+        requestPIP();
+      `
+      )
+      .then(() => {
+        console.log("requestPIP success");
+      })
+      .catch((error) => {
+        console.log("requestPIP error", error);
+      });
   }
 
   // timeout: NodeJS.Timeout | null = null;
