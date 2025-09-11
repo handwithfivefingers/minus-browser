@@ -16,6 +16,7 @@ if (process.platform !== "darwin") {
 }
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 class MinusBrowser {
+  browser: BrowserWindow | null = null;
   constructor() {
     app.on("ready", () => {
       log.initialize();
@@ -32,6 +33,9 @@ class MinusBrowser {
         this.createWindow();
       }
     });
+    app.on("before-quit", () => {
+      this.browser.webContents.session.flushStorageData();
+    });
     app.on("render-process-gone", function (event, detailed) {
       app.quit();
     });
@@ -42,7 +46,7 @@ class MinusBrowser {
   createWindow = async () => {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.workAreaSize;
-    const mainWindow = new BrowserWindow({
+    const browser = new BrowserWindow({
       width,
       height,
       show: false,
@@ -52,8 +56,10 @@ class MinusBrowser {
         nodeIntegration: true,
         contextIsolation: true,
         preload: preloadPath,
+        partition: "persist:minus-browser",
       },
     });
+    this.browser = browser;
     new Notification({
       title: "Minus Browser",
       body: "Welcome to Minus Browser!",
@@ -61,29 +67,29 @@ class MinusBrowser {
     /**@ts-ignore */
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       /**@ts-ignore */
-      mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+      browser.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     } else {
       /**@ts-ignore */
-      mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+      browser.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
     }
 
-    mainWindow.show();
+    browser.show();
     if (process.env.NODE_ENV === "development") {
-      mainWindow.webContents.openDevTools();
+      browser.webContents.openDevTools();
     }
     log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
-    new ViewController(mainWindow);
+    new ViewController(browser);
     let gS: CommandController;
-    mainWindow.on("focus", () => {
-      gS = new CommandController(mainWindow);
+    browser.on("focus", () => {
+      gS = new CommandController();
     });
-    mainWindow.on("hide", () => {
+    browser.on("hide", () => {
       gS?.destroy();
     });
-    mainWindow.on("blur", () => {
+    browser.on("blur", () => {
       gS?.destroy();
     });
-    mainWindow.on("closed", () => {
+    browser.on("closed", () => {
       gS?.destroy();
     });
   };
