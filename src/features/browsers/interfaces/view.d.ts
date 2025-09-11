@@ -39,7 +39,7 @@ export interface IViewController {
   onGoBack: (props: { data: ITab }) => void;
   onCloseTab: (props: { id: string }) => void;
   handleToggleDevTools: (props: { id: string }) => void;
-  handleReloadTab: (props: { data: ITab }) => Promise<void>;
+  handleReloadTab: (props: ITab) => Promise<void>;
   cloudSave: (props: { data: ITab[]; index: number }) => Promise<void>;
   destroy: () => void;
   init: () => void;

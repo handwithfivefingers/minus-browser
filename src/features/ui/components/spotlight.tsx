@@ -1,7 +1,8 @@
-import { IconSearch } from "@tabler/icons-react";
+import { IconChevronRight, IconSearch } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
+import { isValidDomain } from "../libs";
 
 const Spotlight = () => {
   return createPortal(SpotlightWrapper(), document.body);
@@ -31,16 +32,16 @@ const SpotlightWrapper = () => {
 const SportlightContent = () => {
   const ref = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const handleNavigate = () => {
+    const v = ref.current.value;
+    const isValidURL = isValidDomain(v);
+    if (isValidURL) {
+      navigate(`/${v}`);
+    }
+  };
   const handleSearch = () => {
     const v = ref.current.value;
-    navigate(`/web?url=${v}`);
-    const event = new KeyboardEvent("keydown", {
-      key: "k",
-      ctrlKey: true,
-      bubbles: true,
-      cancelable: false,
-    });
-    document.dispatchEvent(event);
+    window.api.INVOKE("SEARCH_PAGE", { data: v });
   };
   const [focus, setFocus] = useState(false);
 
@@ -80,6 +81,12 @@ const SportlightContent = () => {
             }
           }}
         />
+        <button
+          className="hover:text-white transition-all px-2 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute right-10 top-0.5 rounded-full"
+          onClick={handleNavigate}
+        >
+          <IconChevronRight size={16} />
+        </button>
         <button
           className="hover:text-white transition-all px-2 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute right-0.5 top-0.5 rounded-full"
           onClick={handleSearch}

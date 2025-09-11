@@ -2,11 +2,13 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import { Outlet } from "react-router";
 import { SideMenu, Spotlight } from "../components";
 import { ThemeProvider } from "../context/theme";
-import { Tab } from "~/features/browsers/controller/tabManager";
 import { useTabStore } from "../stores/useTabStore";
+import { Tab } from "~/features/browsers/classes/tab";
+import { useKeyboardBinding } from "../hooks/useKeyboardBinding";
 
 const UPDATE_TIMEOUT = 15 * 1000;
 const Layout = () => {
+  useKeyboardBinding();
   const { initialize, tabs, index } = useTabStore();
   useLayoutEffect(() => {
     const getScreenData = async () => {
@@ -37,21 +39,30 @@ const Layout = () => {
           </div>
         </div>
       </div>
+      <SpotlightProvider />
     </ThemeProvider>
   );
 };
 
 const SpotlightProvider = () => {
   const [show, setShow] = useState(false);
+
   useEffect(() => {
-    const toggleSpotlight = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey)) {
-        setShow((p) => !p);
-      }
-    };
-    document.addEventListener("keydown", toggleSpotlight);
-    return () => document.removeEventListener("keydown", toggleSpotlight);
+    window.api.LISTENER("SEARCH", (data) => {
+      console.log("SpotlightProvider SEARCH data", data);
+      setShow(data.open);
+    });
   }, []);
+
+  // useEffect(() => {
+  //   const toggleSpotlight = (e: KeyboardEvent) => {
+  //     if (e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey)) {
+  //       setShow((p) => !p);
+  //     }
+  //   };
+  //   document.addEventListener("keydown", toggleSpotlight);
+  //   return () => document.removeEventListener("keydown", toggleSpotlight);
+  // }, []);
   return show ? <Spotlight /> : null;
 };
 

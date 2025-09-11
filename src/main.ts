@@ -2,7 +2,7 @@ import { app, BrowserWindow, Menu, Notification, screen } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
-import { LogController, ViewController } from "./features/browsers/controller";
+import { CommandController, LogController, ViewController } from "./features/browsers/controller";
 if (started) {
   app.quit();
 }
@@ -73,6 +73,19 @@ class MinusBrowser {
     }
     log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
     new ViewController(mainWindow);
+    let gS: CommandController;
+    mainWindow.on("focus", () => {
+      gS = new CommandController(mainWindow);
+    });
+    mainWindow.on("hide", () => {
+      gS?.destroy();
+    });
+    mainWindow.on("blur", () => {
+      gS?.destroy();
+    });
+    mainWindow.on("closed", () => {
+      gS?.destroy();
+    });
   };
 }
 

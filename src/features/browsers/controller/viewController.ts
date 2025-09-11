@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, session, WebContentsView, Notification } from "electron";
+import { app, BrowserWindow, ipcMain, session, WebContentsView, Notification, systemPreferences } from "electron";
 import log from "electron-log";
 import { IHandleResizeView, IPC, ITab, IViewController } from "../interfaces";
 import { storeManager } from "../stores";
@@ -57,7 +57,6 @@ export class ViewController implements IViewController {
       tabs: [],
     };
     const res = Object.assign(sampleData, data);
-    log.info("getTabs", res);
     return res;
   }
 
@@ -66,6 +65,7 @@ export class ViewController implements IViewController {
       [TabEventType.GET_TABS]: () => this.getTabs(),
       CLOUD_SAVE: (data) => this.cloudSave(data),
       GET_PIP: () => this.getPIPState(),
+      SEARCH_PAGE: (data) => this.handleSearchPage(data),
     };
 
     this.listenerHandlers = {
@@ -99,7 +99,7 @@ export class ViewController implements IViewController {
 
   private onInvoke(args: IPC) {
     const { channel, data } = args;
-    log.info(`[IPC Invoke] channel: ${channel}`, data);
+    log.info(`[IPC Invoke] channel: ${channel}`);
     const handler = this.invokeHandlers[channel];
     if (handler) {
       return handler(data);
@@ -109,7 +109,7 @@ export class ViewController implements IViewController {
 
   private onListener(args: IPC) {
     const { channel, data } = args;
-    log.info(`[IPC Listen] channel: ${channel}`, data);
+    log.info(`[IPC Listen] channel: ${channel}`);
     const handler = this.listenerHandlers[channel];
     if (handler) {
       handler(data);
@@ -158,8 +158,7 @@ export class ViewController implements IViewController {
     } catch (error) {
       log.error("handleShowViewById error", error);
     } finally {
-      console.log("isViewExist", isViewExist.webContents.isFocused());
-      if (isViewExist && !isViewExist.webContents.isFocused()) {
+      if (isViewExist && isViewExist.webContents && !isViewExist.webContents.isFocused()) {
         isViewExist.webContents.focus();
       }
     }
@@ -205,18 +204,29 @@ export class ViewController implements IViewController {
     view.webContents.on("page-title-updated", pageTitleUpdated);
     view.webContents.on("page-favicon-updated", pageFaviconUpdated);
 
+    view.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
+      callback({ video: request.frame });
+    });
+    view.webContents.session.setPermissionCheckHandler((webContents, permission, request) => {
+      return true;
+    });
+    view.webContents.session.setPermissionRequestHandler((webContents, permission, request) => {
+      return true;
+    });
     view.webContents.on("destroyed", () => {
-      log.info("destroyed");
-      view.webContents.off("did-start-loading", didStartLoad);
-      view.webContents.off("did-stop-loading", didStopLoad);
-      view.webContents.off("page-title-updated", pageTitleUpdated);
-      view.webContents.off("page-favicon-updated", pageFaviconUpdated);
+      // log.info("destroyed");
+      // view.webContents.off("did-start-loading", didStartLoad);
+      // view.webContents.off("did-stop-loading", didStopLoad);
+      // view.webContents.off("page-title-updated", pageTitleUpdated);
+      // view.webContents.off("page-favicon-updated", pageFaviconUpdated);
+      view.webContents.removeAllListeners();
     });
   }
 
   loadContentView(id: string) {
     const view = this.viewManager[id];
     this.window.contentView.addChildView(view);
+    this.viewActive = id;
     view.setVisible(true);
   }
 
@@ -245,6 +255,7 @@ export class ViewController implements IViewController {
   handleHideView(props: { id: string }) {
     if (!props || !props.id) return;
     const view = this.viewManager[props.id];
+    if (!view) return;
     if (view.webContents && view.webContents?.isDestroyed()) return;
     if (view && view.webContents && view.webContents.session) {
       if (typeof view.webContents.session.flushStorageData === "function") view.webContents.session.flushStorageData();
@@ -301,16 +312,17 @@ export class ViewController implements IViewController {
     }
   }
 
-  async handleReloadTab(props: { data: ITab }) {
-    if (!props.data.id) throw new Error("Tab id not found");
-    const view = this.viewManager[props.data.id];
+  async handleReloadTab(props: ITab) {
+    console.log("props.data", props);
+    if (!props.id) throw new Error("Tab id not found");
+    const view = this.viewManager[props.id];
     if (view) {
       view.webContents.reload();
     } else {
-      const { view } = await this.createContentView(props.data.id);
-      this.viewManager[props.data.id] = view;
-      this.handleActiveView(props.data.id);
-      this.loadContentView(props.data.id);
+      const { view } = await this.createContentView(props.id);
+      this.viewManager[props.id] = view;
+      this.handleActiveView(props.id);
+      this.loadContentView(props.id);
     }
   }
 
@@ -321,7 +333,7 @@ export class ViewController implements IViewController {
 
   async cloudSave(props: { data: ITab[]; index: number }) {
     try {
-      log.info("cloudSave tabManager data", props.data, props.index);
+      log.info("cloudSave tabManager data");
       const tabs = props.data.filter((tab) => tab);
       if (props.data.length) {
         for (let tab of tabs) {
@@ -398,5 +410,23 @@ export class ViewController implements IViewController {
       .catch((error) => {
         log.info("requestPIP error", error);
       });
+  }
+
+  handleSearchPage(v: any) {
+    const view = this.viewManager[this.viewActive];
+    log.info("handleSearchPage", view);
+    if (!view) return;
+    log.info("handleSearchPage clearSelection");
+
+    view.webContents.on("found-in-page", (event, result) => {
+      console.log("found-in-page");
+      if (result.finalUpdate) view.webContents.stopFindInPage("clearSelection");
+    });
+
+    view.webContents.findInPage(v.data, {
+      forward: false,
+      findNext: true,
+      matchCase: true,
+    });
   }
 }
