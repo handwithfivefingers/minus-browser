@@ -4,10 +4,10 @@ import { ThemeProvider } from "../context/theme";
 import { useTabStore } from "../stores/useTabStore";
 import { Tab } from "~/features/browsers/classes/tab";
 import { useKeyboardBinding } from "../hooks/useKeyboardBinding";
-const SideMenu = lazy(() => import("../components").then((module) => ({ default: module.SideMenu })));
+const SideMenuV2 = lazy(() => import("../components").then((module) => ({ default: module.SideMenuV2 })));
 const Spotlight = lazy(() => import("../components").then((module) => ({ default: module.Spotlight })));
 const UPDATE_TIMEOUT = 15 * 1000;
-const Layout = () => {
+const LayoutV2 = () => {
   useKeyboardBinding();
   const { initialize, tabs, index } = useTabStore();
   useLayoutEffect(() => {
@@ -28,21 +28,17 @@ const Layout = () => {
     return () => clearInterval(interval);
   }, [tabs]);
   return (
-    <ThemeProvider>
-      <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-slate-100 w-full">
+      <ThemeProvider>
         <Suspense fallback={"Loading..."}>
-          <SideMenu />
+          <SideMenuV2 />
         </Suspense>
-        <div className="flex flex-col flex-1 bg-slate-100">
-          <div className="h-full overflow-auto">
-            <Outlet />
-          </div>
-        </div>
-      </div>
-      <Suspense fallback={"Loading..."}>
-        <SpotlightProvider />
-      </Suspense>
-    </ThemeProvider>
+        <Outlet />
+        <Suspense fallback={"Loading..."}>
+          <SpotlightProvider />
+        </Suspense>
+      </ThemeProvider>
+    </div>
   );
 };
 
@@ -56,4 +52,4 @@ const SpotlightProvider = () => {
   return show ? <Spotlight /> : null;
 };
 
-export default Layout;
+export default LayoutV2;

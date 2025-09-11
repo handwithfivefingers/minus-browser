@@ -7,7 +7,7 @@ import {
   IconPictureInPicture,
   IconReload,
   IconSearch,
-  IconX
+  IconX,
 } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
@@ -20,12 +20,22 @@ interface IHeader {
   onReload: () => void;
   onCloseTab: () => void;
   onRequestPIP: () => void;
-  id: string;
+  title?: string;
+  isLoading: boolean;
 }
-const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onCloseTab, onRequestPIP }: IHeader) => {
+const Header = ({
+  title,
+  isLoading,
+  url,
+  onSearch,
+  onBackWard,
+  onToggleDevTools,
+  onReload,
+  onCloseTab,
+  onRequestPIP,
+}: IHeader) => {
   const ref = useRef<HTMLInputElement>(null);
   const [focus, setFocus] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   useEffect(() => {
     if (url && ref.current && url !== ref.current.value) {
       ref.current.value = url;
@@ -37,27 +47,16 @@ const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onC
     }
   }, [url]);
 
-  useEffect(() => {
-    if (!id) return;
-    const onDidStartLoad = () => {
-      setIsLoading(true);
-    };
-    const onDidFinishLoad = () => {
-      setIsLoading(false);
-    };
-    window.api.LISTENER(`did-start-load:${id}`, onDidStartLoad);
-    window.api.LISTENER(`did-stop-loading:${id}`, onDidFinishLoad);
-  }, [id]);
   const handleSearch = () => {
     if (!ref.current) return;
     let v = ref.current.value;
-    if (v.startsWith("http://")) v = v.slice(7);
-    else if (v.startsWith("https://")) v = v.slice(8);
+    // if (v.startsWith("http://")) v = v.slice(7);
+    // else if (v.startsWith("https://")) v = v.slice(8);
     onSearch(v);
   };
 
-  const isValidHttps = url && isValidDomain(url) && new URL(url).protocol === "https:";
-  const isValidHttp = url && isValidDomain(url) && new URL(url).protocol === "http:";
+  // const isValidHttps = url && isValidDomain(url) && new URL(url).protocol === "https:";
+  // const isValidHttp = url && isValidDomain(url) && new URL(url).protocol === "http:";
 
   return (
     <div className="flex gap-2 border-b border-slate-200 px-2 py-1 justify-between">
@@ -89,16 +88,16 @@ const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onC
         <button
           onClick={onReload}
           className={clsx(
-            "hover:text-white transition-all px-1.5 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute left-0.5 top-0.5 rounded-full",
+            "hover:text-white transition-all px-1 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute left-0.5 top-0.5 rounded-full",
             {
               "animate-spin": isLoading,
             }
           )}
         >
-          <IconReload size={16} />
+          <IconReload size={12} />
         </button>
-        <div className="flex pl-8 pr-10 items-center rounded-full gap-0.5 w-full">
-          {isValidHttps && (
+        <div className="flex px-6 items-center rounded-full gap-0.5 w-full">
+          {/* {isValidHttps && (
             <span className="text-sm p-1 rounded-full text-green-500">
               <IconLockAccess size={16} />
             </span>
@@ -107,11 +106,12 @@ const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onC
             <span className="text-sm p-1 rounded-full text-slate-500">
               <IconLockAccessOff size={16} />
             </span>
-          )}
+          )} */}
           <input
-            className="py-1.5 w-full transition-all outline-transparent outline bg-white text-sm"
+            className={clsx("py-1 w-full transition-all outline-transparent outline bg-white text-xs", {
+              ["hidden"]: !focus,
+            })}
             ref={ref}
-            onFocus={() => setFocus(true)}
             onBlur={() => setFocus(false)}
             placeholder="Ctrl + K"
             onKeyDown={(e) => {
@@ -120,14 +120,27 @@ const Header = ({ id, url, onSearch, onBackWard, onToggleDevTools, onReload, onC
                 handleSearch();
               }
             }}
+            title={ref.current?.value}
+          />
+          <input
+            className={clsx("py-1 w-full transition-all outline-transparent outline bg-white text-xs", {
+              ["hidden"]: focus,
+            })}
+            value={title}
+            onFocus={() => {
+              setFocus(true);
+              ref.current.focus();
+            }}
+            placeholder="Ctrl + K"
+            title={title}
           />
         </div>
         <button
-          className="hover:text-white transition-all px-1.5 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute right-0.5 top-0.5 rounded-full"
+          className="hover:text-white transition-all  px-1 py-1  h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute right-0.5 top-0.5 rounded-full"
           onClick={handleSearch}
           title="Search"
         >
-          <IconSearch size={16} />
+          <IconSearch size={12} />
         </button>
       </div>
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
@@ -163,12 +176,13 @@ const Sync = () => {
   }, []);
   return (
     <button
-      className={clsx("rounded cursor-pointer p-1 transition-colors", {
+      className={clsx("rounded cursor-pointer p-1 transition-colors flex gap-0.5 relative", {
         ["text-green-500"]: isSync,
         [""]: !isSync,
       })}
       title="Sync data"
     >
+      {isSync && <span className="text-[8px] absolute right-6 top-2">Synced</span>}
       <IconCloudUp size={16} />
     </button>
   );

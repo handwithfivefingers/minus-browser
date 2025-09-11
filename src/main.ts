@@ -1,16 +1,14 @@
-import { app, BrowserWindow, Menu, Notification, screen } from "electron";
+import { app, BrowserWindow, Menu, Notification, screen, session } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
-import { CommandController, LogController, ViewController } from "./features/browsers/controller";
+import { CommandController, ViewController } from "./features/browsers/controller";
 if (started) {
   app.quit();
 }
 
-new LogController();
-
 const preloadPath = path.join(__dirname, "/preload.js");
-
+console.log("preloadPath", preloadPath);
 if (process.platform !== "darwin") {
   Menu.setApplicationMenu(null);
 }
@@ -34,6 +32,7 @@ class MinusBrowser {
       }
     });
     app.on("before-quit", () => {
+      console.log("sync data before quit");
       this.browser.webContents.session.flushStorageData();
     });
     app.on("render-process-gone", function (event, detailed) {
@@ -56,14 +55,12 @@ class MinusBrowser {
         nodeIntegration: true,
         contextIsolation: true,
         preload: preloadPath,
-        partition: "persist:minus-browser",
+        session: session.defaultSession,
       },
     });
+
     this.browser = browser;
-    new Notification({
-      title: "Minus Browser",
-      body: "Welcome to Minus Browser!",
-    }).show();
+
     /**@ts-ignore */
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       /**@ts-ignore */
@@ -77,12 +74,14 @@ class MinusBrowser {
     if (process.env.NODE_ENV === "development") {
       browser.webContents.openDevTools();
     }
+    log.transports.console.format = "[LOGGER] - {h}:{i}:{s} > {text}";
     log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
     new ViewController(browser);
     let gS: CommandController;
-    browser.on("focus", () => {
+    browser.webContents.on("focus", () => {
       gS = new CommandController();
     });
+
     browser.on("hide", () => {
       gS?.destroy();
     });
@@ -93,6 +92,14 @@ class MinusBrowser {
       gS?.destroy();
     });
   };
+  showNotification() {
+    new Notification({
+      title: "Minus Browser",
+      body: "Welcome to Minus Browser!",
+    }).show();
+  }
+
+  cookieHandler() {}
 }
 
 new MinusBrowser();

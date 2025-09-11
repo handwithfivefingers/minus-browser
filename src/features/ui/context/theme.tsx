@@ -67,7 +67,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
   return (
     <ThemeApisContext.Provider value={apis}>
-      <ThemeContext.Provider value={state}>{children}</ThemeContext.Provider>;
+      <ThemeContext.Provider value={state}>{children}</ThemeContext.Provider>
     </ThemeApisContext.Provider>
   );
 };

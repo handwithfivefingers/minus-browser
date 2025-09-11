@@ -1,18 +1,32 @@
-import CustomApp from "~/features/ui/pages/customApp";
-import Home from "~/features/ui/pages/home";
-import Layout from "~/features/ui/pages/layout";
+import { lazy, Suspense } from "react";
+// const LayoutV2 = lazy(() => import("~/features/ui/pages/layout.v2"));
+const Layout = lazy(() => import("~/features/ui/pages/layout"));
+const CustomApp = lazy(() => import("~/features/ui/pages/customApp"));
+const Home = lazy(() => import("~/features/ui/pages/home"));
 const APP_ROUTES = [
   {
     path: "/",
-    element: <Layout />,
+    element: (
+      <Suspense fallback={"Loading..."}>
+        <Layout />
+      </Suspense>
+    ),
     children: [
       {
         index: true,
-        element: <Home />,
+        element: (
+          <Suspense fallback={"Loading..."}>
+            <Home />
+          </Suspense>
+        ),
       },
       {
         path: ":customApp",
-        element: <CustomApp />,
+        element: (
+          <Suspense fallback={"Loading..."}>
+            <CustomApp />
+          </Suspense>
+        ),
       },
     ],
   },

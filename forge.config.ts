@@ -42,6 +42,11 @@ const config: ForgeConfig = {
           config: "vite.preload.config.ts",
           target: "preload",
         },
+        {
+          entry: "src/adb-preload.ts",
+          config: "vite.adb-preload.config.ts",
+          target: "preload",
+        },
       ],
       renderer: [
         {

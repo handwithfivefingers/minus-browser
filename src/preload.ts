@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { contextBridge, ipcRenderer } from "electron";
 enum TabEventType {
   CREATE_TAB = "CREATE_TAB",

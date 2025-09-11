@@ -9,7 +9,7 @@ interface ITodoItem {
 }
 const Home = () => {
   return (
-    <div className="relative px-2 bg-slate-800 h-full">
+    <div className="relative px-2 bg-slate-800 h-full w-full">
       <TodoHome />
     </div>
   );
@@ -74,7 +74,7 @@ const TodoHome = () => {
     });
   };
   return (
-    <div className="flex justify-center h-full items-center-safe py-20 flex-col gap-8">
+    <div className="flex justify-center h-full items-center-safe py-20 flex-col gap-8 w-full">
       <div className="flex-1 flex-shrink-0 gap-2 flex">
         <span className="font-medium text-3xl text-white">{DATE_OUTPUT[new Date().getDay()]}</span>
         <span className="font-medium text-3xl text-white">

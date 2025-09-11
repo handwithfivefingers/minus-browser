@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, session, WebContentsView, Notification, systemPreferences } from "electron";
 import log from "electron-log";
 import { IHandleResizeView, IPC, ITab, IViewController } from "../interfaces";
-import { storeManager } from "../stores";
+import { StoreManager } from "../stores";
 import { AdBlocker } from "./adsBlockController";
 
 enum TabEventType {
@@ -32,6 +32,7 @@ export class ViewController implements IViewController {
   window: BrowserWindow;
   viewManager: Record<string, WebContentsView & { isOpenedDevTools?: boolean }> = {};
   viewActive: string = "";
+  userStore: StoreManager = new StoreManager("userData");
   private invokeHandlers: Record<string, (data?: any) => any>;
   private listenerHandlers: Record<string, (data?: any) => void>;
   private adBlocker: AdBlocker;
@@ -51,7 +52,7 @@ export class ViewController implements IViewController {
     });
   }
   async getTabs() {
-    const data = await storeManager.readFiles();
+    const data = await this.userStore.readFiles();
     const sampleData: { tabs: ITab[]; index: number } = {
       index: 0,
       tabs: [],
@@ -165,18 +166,15 @@ export class ViewController implements IViewController {
   }
 
   async createContentView(id: string) {
-    const ses = session.fromPartition(`persist:${id}`);
     const view = new WebContentsView({
       webPreferences: {
-        session: ses,
-        partition: `persist:${id}`,
         nodeIntegration: false,
         contextIsolation: true,
       },
     });
+    view.setBorderRadius(4);
     const contentView = view.webContents;
     this.adBlocker.setupAdvancedRequestBlocking(view);
-    this.adBlocker.setupViewEventHandlers(view);
     this.addViewEventListeners(view, id);
     view.webContents.setFrameRate(60); // DETERMINE FRAME RATE
     return { view, contentView };
@@ -238,7 +236,26 @@ export class ViewController implements IViewController {
         console.error(`View with id ${id} not found`);
         return;
       }
+      view.webContents.removeAllListeners();
+      this.addViewEventListeners(view, id);
       await view.webContents.loadURL(url);
+      const viewCookie = await session.defaultSession.cookies.get({ url: new URL(url).origin });
+
+      if (viewCookie.length) {
+        viewCookie?.forEach((item) => {
+          view.webContents.session.cookies.set({
+            url: new URL(url).origin,
+            name: item.name,
+            domain: item.domain,
+            value: item.value,
+            path: item.path,
+            httpOnly: item.httpOnly,
+            secure: item.secure,
+            expirationDate: item.expirationDate,
+            sameSite: item.sameSite,
+          });
+        });
+      }
       console.log(`✅ Loaded URL with ad blocking: ${url}`);
     } catch (error) {
       console.error("❌ Error loading URL:", error);
@@ -258,7 +275,9 @@ export class ViewController implements IViewController {
     if (!view) return;
     if (view.webContents && view.webContents?.isDestroyed()) return;
     if (view && view.webContents && view.webContents.session) {
-      if (typeof view.webContents.session.flushStorageData === "function") view.webContents.session.flushStorageData();
+      if (typeof this.window.webContents.session.flushStorageData === "function") {
+        this.window.webContents.session.flushStorageData();
+      }
       this.window.contentView.removeChildView(view);
       view.setVisible(false);
     }
@@ -335,17 +354,8 @@ export class ViewController implements IViewController {
     try {
       log.info("cloudSave tabManager data");
       const tabs = props.data.filter((tab) => tab);
-      if (props.data.length) {
-        for (let tab of tabs) {
-          if (!tab.id) continue;
-          const view = this.viewManager[tab.id];
-          if (view) {
-            view.webContents.session.flushStorageData();
-          }
-        }
-      }
-      storeManager.saveFiles({ tabs: props.data || [], index: props.index || 0 });
-
+      const cookies = session.defaultSession.cookies;
+      await Promise.all([this.userStore.saveFiles({ tabs: tabs || [], index: props.index || 0 })]);
       return this.window.webContents.send("SYNC");
     } catch (error) {
       const noti = new Notification({
