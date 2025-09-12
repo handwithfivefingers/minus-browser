@@ -9,6 +9,7 @@ import {
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { isValidDomainOrIP } from "../libs";
+import { useMinusThemeStore } from "../stores/useMinusTheme";
 interface IHeader {
   url?: string;
   onSearch: (v: string) => void;
@@ -19,9 +20,17 @@ interface IHeader {
   title?: string;
   isLoading: boolean;
 }
+
+const LAYOUT_HEADER_CLASS = {
+  BASIC: "flex gap-2 border-b border-slate-200 px-2 py-1 justify-between bg-slate-100 w-full",
+  FLOATING: "flex gap-2 border-b border-slate-200 px-2 py-1 justify-between bg-slate-100 w-full rounded-lg",
+};
+
 const Header = ({ title, isLoading, url, onSearch, onBackWard, onToggleDevTools, onReload, onRequestPIP }: IHeader) => {
   const ref = useRef<HTMLInputElement>(null);
   const [focus, setFocus] = useState(false);
+  const { layout } = useMinusThemeStore();
+
   useEffect(() => {
     if (url && ref.current && url !== ref.current.value) {
       ref.current.value = url;
@@ -38,7 +47,7 @@ const Header = ({ title, isLoading, url, onSearch, onBackWard, onToggleDevTools,
     onSearch(v);
   };
   return (
-    <div className="flex gap-2 border-b border-slate-200 px-2 py-1 justify-between bg-slate-100 w-full rounded-lg">
+    <div className={LAYOUT_HEADER_CLASS[layout]}>
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
         <button
           className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1"

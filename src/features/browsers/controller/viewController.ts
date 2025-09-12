@@ -35,6 +35,7 @@ export class ViewController {
   viewManager: Record<string, WebContentsView & { isOpenedDevTools?: boolean }> = {};
   viewActive: string = "";
   userStore: StoreManager = new StoreManager("userData");
+  interfaceStore: StoreManager = new StoreManager("interface");
   private invokeHandlers: Record<string, (data?: any) => any>;
   private listenerHandlers: Record<string, (data?: any) => void>;
   private adBlocker: AdBlocker;
@@ -68,9 +69,11 @@ export class ViewController {
   private initializeHandlers() {
     this.invokeHandlers = {
       [TabEventType.GET_TABS]: () => this.getTabs(),
+      GET_USER_INTERFACE: () => this.loadUserInterface(),
       CLOUD_SAVE: (data) => this.cloudSave(data),
       GET_PIP: () => this.getPIPState(),
       SEARCH_PAGE: (data) => this.handleSearchPage(data),
+      INTERFACE_SAVE: (data) => this.interfaceSave(data),
     };
 
     this.listenerHandlers = {
@@ -84,6 +87,7 @@ export class ViewController {
       [TabEventType.ON_RELOAD]: (data) => this.handleReloadTab(data),
       ["CLOSE_APP"]: () => this.onCloseApp(),
       REQUEST_PIP: (data) => this.requestPIP(data),
+      // REQUEST_PIP: (data) => this.requestPIP(data),
     };
   }
 
@@ -383,4 +387,30 @@ export class ViewController {
       matchCase: true,
     });
   }
+
+  async loadUserInterface() {
+    const userInterface = await this.interfaceStore.readFiles();
+
+    const defaultData: IUserInterface = {
+      layout: "default",
+      mode: "default",
+      dataSync: {
+        intervalTime: "15",
+      },
+    };
+    Object.assign(defaultData, userInterface);
+    return userInterface;
+  }
+
+  interfaceSave(data: IUserInterface) {
+    this.interfaceStore.saveFiles(data);
+  }
+}
+
+interface IUserInterface {
+  layout: string;
+  mode: string;
+  dataSync: {
+    intervalTime: string;
+  };
 }

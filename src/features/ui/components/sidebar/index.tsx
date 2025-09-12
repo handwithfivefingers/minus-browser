@@ -15,7 +15,14 @@ import { useTabStore } from "../../stores/useTabStore";
 import { TabItem } from "../tab";
 /** @ts-ignore */
 import styles from "./styles.module.css";
-
+import { useMinusThemeStore } from "../../stores/useMinusTheme";
+interface IResizeProps {
+  children: React.ReactNode;
+  initialWidth?: number;
+  minWidth?: number;
+  maxWidth?: number;
+  className?: string;
+}
 const SideMenu = () => {
   const { tabs, addNewTab } = useTabStore();
   const pathname = useLocation().pathname;
@@ -23,15 +30,7 @@ const SideMenu = () => {
     window.api.EMIT("CLOSE_APP");
   }, []);
   return (
-    <ResizableSidebar
-      initialWidth={56}
-      minWidth={30}
-      maxWidth={350}
-      className={clsx(
-        "flex-shrink-0 flex flex-col px-1 py-2 bg-slate-100 gap-1.5 transition-all rounded-lg h-full",
-        styles.sidebar
-      )}
-    >
+    <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={clsx(styles.sidebar)}>
       <div className="flex gap-1 flex-col flex-1 overflow-y-auto overflow-x-hidden h-full scrollbar ">
         <div className={clsx("w-full flex gap-0.5 items-center h-8 sticky z-[1] top-0 bg-slate-100 pb-2")}>
           <button className={clsx("w-4 h-4 text-black", styles.appbar)}>
@@ -95,15 +94,11 @@ const SideMenu = () => {
   );
 };
 
-export { SideMenu };
+const LAYOUT_SIDEBAR_CLASS = {
+  BASIC: "flex-shrink-0 flex flex-col px-1 py-2 bg-slate-100 gap-1.5 transition-all h-full border-r border-slate-300",
+  FLOATING: "flex-shrink-0 flex flex-col px-1 py-2 bg-slate-100 gap-1.5 transition-all rounded-lg h-full",
+};
 
-interface IResizeProps {
-  children: React.ReactNode;
-  initialWidth?: number;
-  minWidth?: number;
-  maxWidth?: number;
-  className?: string;
-}
 const ResizableSidebar = ({
   className,
   children,
@@ -114,6 +109,7 @@ const ResizableSidebar = ({
   const [width, setWidth] = useState(initialWidth);
   const [isDragging, setIsDragging] = useState(false);
   const sidebarRef = useRef(null);
+  const { layout } = useMinusThemeStore();
 
   // Start resize when mousedown on the drag handle
   const startResize = (e: React.MouseEvent) => {
@@ -153,7 +149,7 @@ const ResizableSidebar = ({
   return (
     <div
       ref={sidebarRef}
-      className={clsx("sidebar-container", className)}
+      className={clsx("sidebar-container ", LAYOUT_SIDEBAR_CLASS[layout], className)}
       style={{
         width: `${width}px`,
         position: "relative",
@@ -183,3 +179,4 @@ const ResizableSidebar = ({
     </div>
   );
 };
+export { SideMenu };

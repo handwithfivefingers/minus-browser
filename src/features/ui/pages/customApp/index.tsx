@@ -5,8 +5,13 @@ import { ITab } from "~/features/browsers";
 import { useContentView } from "../../hooks/useContentView";
 import { isValidDomainOrIP } from "../../libs";
 import { useTabStore } from "../../stores/useTabStore";
+import { useMinusThemeStore } from "../../stores/useMinusTheme";
 
 const Header = lazy(() => import("~/features/ui/components/header"));
+const LAYOUT_HEADER_CLASS = {
+  BASIC: "h-screen relative overflow-hidden w-full flex flex-col",
+  FLOATING: "h-[calc(100svh-8px)] rounded-md relative overflow-hidden w-full flex flex-col gap-1",
+};
 
 const PreHeader = ({ tabId }: { tabId: string }) => {
   const tabStore = useTabStore();
@@ -87,12 +92,19 @@ const PreHeader = ({ tabId }: { tabId: string }) => {
 };
 const CustomApp = () => {
   const { customApp: tabId } = useParams<{ customApp: string }>();
+  const { layout } = useMinusThemeStore();
+
   return (
-    <div className="h-[calc(100svh-8px)] rounded-md relative overflow-hidden w-full flex flex-col gap-1">
+    <div className={LAYOUT_HEADER_CLASS[layout]}>
       <PreHeader tabId={tabId} />
       <WebViewInstance id={tabId} />
     </div>
   );
+};
+
+const WEBVIEW_CLASSES = {
+  BASIC: "h-[calc(100vh-34px)] rounded-md relative overflow-hidden",
+  FLOATING: "h-[calc(100vh-46px)] rounded-md relative overflow-hidden",
 };
 
 const WebViewInstance = ({ id }: { id: string }) => {
@@ -100,6 +112,9 @@ const WebViewInstance = ({ id }: { id: string }) => {
   const { tabsIndex, setActiveTab, updateTab, tabs } = useTabStore();
   const { showViewByID } = useContentView();
   const tab = useMemo(() => tabs[tabsIndex[id]], [id]);
+
+  const { layout } = useMinusThemeStore();
+
   useEffect(() => {
     if (!webviewRef.current) return;
     if (!tab) return;
@@ -147,7 +162,7 @@ const WebViewInstance = ({ id }: { id: string }) => {
   }, []);
 
   return (
-    <div className="h-[calc(100vh-46px)] rounded-md relative overflow-hidden">
+    <div className={WEBVIEW_CLASSES[layout]}>
       <div
         className="mx-auto absolute z-0 left-0 top-0 w-full h-full flex justify-center items-center mt-auto"
         ref={webviewRef}

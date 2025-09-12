@@ -1,44 +1,52 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
-import { Outlet, useNavigate } from "react-router";
-import { ThemeProvider } from "../context/theme";
-import { useTabStore } from "../stores/useTabStore";
-import { Tab } from "~/features/browsers/classes/tab";
 import { ErrorBoundary } from "react-error-boundary";
+import { Outlet, useNavigate } from "react-router";
+import { Tab } from "~/features/browsers/classes/tab";
+import { useTabStore } from "../stores/useTabStore";
+import { useMinusThemeStore } from "../stores/useMinusTheme";
 
 const SideMenu = lazy(() => import("../components").then((module) => ({ default: module.SideMenu })));
 const Spotlight = lazy(() => import("../components").then((module) => ({ default: module.Spotlight })));
 const UPDATE_TIMEOUT = 15 * 1000;
+
+const LAYOUT_CLASS = {
+  BASIC: "flex h-screen overflow-hidden bg-slate-800",
+  FLOATING: "flex h-screen overflow-hidden bg-slate-800 p-1 gap-1",
+};
+
 const Layout = () => {
-  console.log("render overtime");
+  const layout = useMinusThemeStore().layout;
   return (
     <LayoutSideEffect>
-      <ThemeProvider>
-        <div className="flex h-screen overflow-hidden bg-slate-800 p-1 gap-1">
-          <Suspense fallback={"Loading..."}>
-            <SideMenu />
-          </Suspense>
-          <div className="h-full overflow-auto w-full">
-            <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
-              <Outlet />
-            </ErrorBoundary>
-          </div>
-        </div>
+      <div className={LAYOUT_CLASS[layout]}>
         <Suspense fallback={"Loading..."}>
-          <SpotlightProvider />
+          <SideMenu />
         </Suspense>
-      </ThemeProvider>
+        <div className="h-full overflow-auto w-full">
+          <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
+            <Outlet />
+          </ErrorBoundary>
+        </div>
+      </div>
+      <Suspense fallback={"Loading..."}>
+        <SpotlightProvider />
+      </Suspense>
     </LayoutSideEffect>
   );
 };
 
 const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
   const { initialize, tabs, index, addNewTab } = useTabStore();
+  const minus = useMinusThemeStore();
   const navigate = useNavigate();
   useLayoutEffect(() => {
     const getScreenData = async () => {
       try {
         const data = await window.api.INVOKE<{ tabs: Tab[]; index: number }>("GET_TABS");
+        const userI = await window.api.INVOKE("GET_USER_INTERFACE");
+        console.log("userI", userI);
         initialize(data);
+        minus.initialize(userI);
       } catch (error) {
         console.error("Error getting tabs:", error);
       }
@@ -60,7 +68,7 @@ const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
       }
     });
   }, []);
-
+console.log('load')
   return children;
 };
 
