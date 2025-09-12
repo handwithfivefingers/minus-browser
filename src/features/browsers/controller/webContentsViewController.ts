@@ -32,11 +32,22 @@ class WebContentsViewController {
     view.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
       callback({ video: request.frame });
     });
-    view.webContents.session.setPermissionCheckHandler((webContents, permission, request) => {
-      return true;
-    });
+    // view.webContents.session.setPermissionCheckHandler((webContents, permission, request) => {
+    //   console.log("view.webContents.session.setPermissionCheckHandler", permission);
+    //   return true;
+    // });
     view.webContents.session.setPermissionRequestHandler((webContents, permission, request) => {
-      return true;
+      // 'clipboard-read' | 'clipboard-sanitized-write' | 'display-capture' | 'fullscreen' | 'geolocation' | 'idle-detection' | 'media' | 'mediaKeySystem' | 'midi' | 'midiSysex' | 'notifications' | 'pointerLock' | 'keyboardLock' | 'openExternal' | 'speaker-selection' | 'storage-access' | 'top-level-storage-access' | 'window-management' | 'unknown' | 'fileSystem',
+      console.log("view.webContents.session.setPermissionRequestHandler", permission, webContents, request);
+      if (
+        permission === "unknown" ||
+        permission === "fileSystem" ||
+        permission === "storage-access" ||
+        permission === "top-level-storage-access" ||
+        permission === "mediaKeySystem"
+      )
+        return request(false);
+      return request(true);
     });
 
     view.webContents.setWindowOpenHandler(({ url }) => {

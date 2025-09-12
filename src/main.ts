@@ -111,18 +111,33 @@ class MinusBrowser {
   }
 
   requestPermission() {
-    session.defaultSession.setDisplayMediaRequestHandler(
-      (request, callback) => {
-        console.log("request", request);
-        return desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
-          callback({ video: sources[0], audio: "loopback" });
-        });
-      },
-      {
-        useSystemPicker: true,
-      }
-    );
+    // session.defaultSession.setDisplayMediaRequestHandler(
+    //   (request, callback) => {
+    //     console.log("request", request);
+    //     return desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+    //       callback({ video: sources[0], audio: "loopback" });
+    //     });
+    //   },
+    //   {
+    //     useSystemPicker: true,
+    //   }
+    // );
+    // this.browser.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
+    //   callback({ video: request.frame });
+    // });
+    // this.browser.webContents.session.setPermissionCheckHandler((webContents, permission, request) => {
+    //   console.log("permission", webContents, permission, request);
+    //   return true;
+    // });
+    // this.browser.webContents.session.setPermissionRequestHandler((webContents, permission, request) => {
+    //   console.log("permission", webContents, permission, request);
+    //   return true;
+    // });
   }
 }
-
+// Notification.requestPermission().then(r => {
+//     console.log(r)
+// }).catch(e =>{
+//     console.log("e",e)
+// })
 new MinusBrowser();

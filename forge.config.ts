@@ -74,7 +74,7 @@ export default config;
 /**
  * CUSTOM APP SIGN
  * WAY 1: sudo codesign --force --deep --sign - /Applications/TruyenApp.app
- * WAY 2: sudo codesign --force --deep --sign "Developer ID Application" /Applications/YourApp.app
+ * WAY 2: sudo codesign --force --deep --sign "Developer ID Application" /Applications/TruyenApp.app --deep
  *
  * Resign:
  * sudo codesign -fs - /Applications/TruyenApp.app --deep
