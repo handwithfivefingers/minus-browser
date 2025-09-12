@@ -27,7 +27,7 @@ const TabItem = memo(({ id, className, ...props }: ITabItem) => {
         to={`/${id}`}
         viewTransition
         className={clsx(
-          `z-0 h-10 w-10 p-1 rounded-md flex justify-center items-center cursor-pointer hover:bg-white hover:text-indigo-500 transition-colors relative overflow-hidden`,
+          `z-0 h-10 w-full p-1 rounded-md flex flex-row gap-1 justify-start items-center cursor-pointer hover:bg-white hover:text-indigo-500 transition-colors relative overflow-hidden`,
           {
             [`bg-white text-indigo-500 shadow-md`]: location.pathname == `/${id}`,
             [`text-indigo-500`]: location.pathname !== `/${id}`,
@@ -41,11 +41,11 @@ const TabItem = memo(({ id, className, ...props }: ITabItem) => {
       </Link>
       <IconX
         className={clsx(
-          "absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 hover:text-red-700 cursor-pointer z-[1] transition-colors",
+          "absolute right-0 top-0 rounded  hover:text-red-600 cursor-pointer z-[1] transition-colors",
           styles.closeIcon
         )}
         onClick={onCloseTab}
-        size={20}
+        size={16}
       />
     </div>
   );

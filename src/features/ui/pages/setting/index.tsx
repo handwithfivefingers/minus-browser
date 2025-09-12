@@ -1,36 +1,35 @@
-import { IconPlus, IconSquare, IconSquareCheck, IconTrash } from "@tabler/icons-react";
-import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
-import { v4 as uuidV4 } from "uuid";
-interface ITodoItem {
-  label: string;
-  description: string;
-  checked: boolean;
-  id: string;
-}
-const Home = () => {
+const Setting = () => {
   return (
-    <div className="relative px-2 bg-slate-800 h-full">
-      <TodoHome />
-    </div>
-  );
-};
+    <div className="relative bg-slate-800 h-full w-full">
+      <div className="bg-slate-100 w-full h-full rounded-lg p-8">
+        <h1 className="font-bold text-xl py-4">Setting</h1>
+        <div className="flex gap-2">
+          <div className="bg-slate-200 p-4 rounded-lg flex gap-2 flex-col">
+            <div className="flex gap-2 w-full justify-between">
+              <span>Sync data:</span>
+              <select className="bg-slate-300 rounded px-2 w-24">
+                <option>15 Sec</option>
+                <option>30 Sec</option>
+                <option>45 Sec</option>
+                <option>1 Min</option>
+                <option>Off</option>
+              </select>
+            </div>
 
-const TodoHome = () => {
-  return (
-    <div className="flex justify-center h-full items-center-safe py-40 flex-col gap-8">
-      <div className="flex gap-1 px-2 py-1">
-        <div>Sync:</div>
-        <select>
-          <option>15 Sec</option>
-          <option>30 Sec</option>
-          <option>45 Sec</option>
-          <option>1 Min</option>
-          <option>When Close Tab</option>
-          <option>When Close App</option>
-        </select>
+            <div className="flex gap-2 w-full justify-between" >
+              <span>Font size:</span>
+              <select className="bg-slate-300 rounded px-2 w-24">
+                <option>8</option>
+                <option>12</option>
+                <option>16</option>
+                <option>20</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-export default Home;
+export default Setting;

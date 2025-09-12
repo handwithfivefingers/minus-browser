@@ -1,10 +1,10 @@
 import { IconInnerShadowTopLeft } from "@tabler/icons-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { ITab } from "~/features/browsers";
 import Header from "~/features/ui/components/header";
 import { useContentView } from "../../hooks/useContentView";
-import { isValidDomain } from "../../libs";
+import { isValidDomainOrIP } from "../../libs";
 import { useTabStore } from "../../stores/useTabStore";
 
 const CustomApp = () => {
@@ -13,10 +13,12 @@ const CustomApp = () => {
   const { tabsIndex, tabs } = tabStore;
   const tab = tabs[tabsIndex[tabId as string]];
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleSearch = async (url: string) => {
     try {
       console.log("handleSearch", url);
-      const isValid = isValidDomain(url);
+      const isValid = isValidDomainOrIP(url);
       if (!isValid) {
         return window.api.EMIT("VIEW_CHANGE_URL", { id: tabId, url: "https://www.google.com/search?q=" + url });
       } else {
@@ -49,12 +51,6 @@ const CustomApp = () => {
       console.log("onToggleDevTools error", error);
     }
   };
-  const onCloseTab = async () => {
-    window.api.EMIT("ON_CLOSE_TAB", tab);
-    const resp = tabStore.closeTab(tab);
-    console.log("resp", resp);
-    navigate(`/`);
-  };
   const onRequestPIP = async () => {
     window.api.EMIT("REQUEST_PIP", { tab });
   };
@@ -62,13 +58,13 @@ const CustomApp = () => {
   return (
     <div className="h-screen rounded-md relative overflow-hidden w-full">
       <Header
-        id={tab?.id}
+        key={tab?.id}
         url={tab?.url}
         onSearch={handleSearch}
         onBackWard={onBackWard}
         onToggleDevTools={onToggleDevTools}
         onReload={onReload}
-        onCloseTab={onCloseTab}
+        isLoading={isLoading}
         onRequestPIP={onRequestPIP}
       />
       <WebViewInstance id={tabId} />

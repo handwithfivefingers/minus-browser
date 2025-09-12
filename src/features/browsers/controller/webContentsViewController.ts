@@ -103,7 +103,7 @@ class WebContentsViewController {
   }
 
   private applyStyles() {
-    this.view.setBorderRadius(4);
+    this.view.setBorderRadius(8);
   }
 
   private didStartLoad = () => {

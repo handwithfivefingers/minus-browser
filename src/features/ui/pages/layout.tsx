@@ -3,7 +3,6 @@ import { Outlet, useNavigate } from "react-router";
 import { ThemeProvider } from "../context/theme";
 import { useTabStore } from "../stores/useTabStore";
 import { Tab } from "~/features/browsers/classes/tab";
-// import { useKeyboardBinding } from "../hooks/useKeyboardBinding";
 import { ErrorBoundary } from "react-error-boundary";
 
 const SideMenu = lazy(() => import("../components").then((module) => ({ default: module.SideMenu })));
@@ -14,16 +13,14 @@ const Layout = () => {
   return (
     <LayoutSideEffect>
       <ThemeProvider>
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen overflow-hidden bg-slate-800 p-1 gap-1">
           <Suspense fallback={"Loading..."}>
             <SideMenu />
           </Suspense>
-          <div className="flex flex-col flex-1 bg-slate-100">
-            <div className="h-full overflow-auto">
-              <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
-                <Outlet />
-              </ErrorBoundary>
-            </div>
+          <div className="h-full overflow-auto w-full">
+            <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </div>
         <Suspense fallback={"Loading..."}>
@@ -35,7 +32,6 @@ const Layout = () => {
 };
 
 const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
-  // useKeyboardBinding();
   const { initialize, tabs, index, addNewTab } = useTabStore();
   const navigate = useNavigate();
   useLayoutEffect(() => {

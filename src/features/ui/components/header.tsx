@@ -4,11 +4,11 @@ import {
   IconCode,
   IconPictureInPicture,
   IconReload,
-  IconSearch
+  IconSearch,
 } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
-import { isValidDomain } from "../libs";
+import { isValidDomainOrIP } from "../libs";
 interface IHeader {
   url?: string;
   onSearch: (v: string) => void;
@@ -25,10 +25,8 @@ const Header = ({ title, isLoading, url, onSearch, onBackWard, onToggleDevTools,
   useEffect(() => {
     if (url && ref.current && url !== ref.current.value) {
       ref.current.value = url;
-      if (isValidDomain(url)) {
-        const parsedURL = new URL(url);
-        const toArray = [parsedURL.host, parsedURL.pathname, parsedURL.search ? `${parsedURL.search}` : ""];
-        ref.current.value = toArray.join("");
+      if (isValidDomainOrIP(url)) {
+        ref.current.value = url;
       }
     }
   }, [url]);
@@ -36,17 +34,11 @@ const Header = ({ title, isLoading, url, onSearch, onBackWard, onToggleDevTools,
   const handleSearch = () => {
     if (!ref.current) return;
     let v = ref.current.value;
-    console.log('v', v)
-    // if (v.startsWith("http://")) v = v.slice(7);
-    // else if (v.startsWith("https://")) v = v.slice(8);
+    console.log("v", v);
     onSearch(v);
   };
-
-  // const isValidHttps = url && isValidDomain(url) && new URL(url).protocol === "https:";
-  // const isValidHttp = url && isValidDomain(url) && new URL(url).protocol === "http:";
-
   return (
-    <div className="flex gap-2 border-b border-slate-200 px-2 py-1 justify-between">
+    <div className="flex gap-2 border-b border-slate-200 px-2 py-1 justify-between bg-slate-100 w-full rounded-lg">
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
         <button
           className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1"

@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { ITab } from "~/features/browsers";
 import { useContentView } from "../../hooks/useContentView";
-import { isValidDomain } from "../../libs";
+import { isValidDomainOrIP } from "../../libs";
 import { useTabStore } from "../../stores/useTabStore";
 
 const Header = lazy(() => import("~/features/ui/components/header"));
@@ -16,7 +16,7 @@ const PreHeader = ({ tabId }: { tabId: string }) => {
   const handleSearch = async (url: string) => {
     try {
       console.log("handleSearch", url);
-      const isValid = isValidDomain(url);
+      const isValid = isValidDomainOrIP(url);
       console.log("isValid", isValid);
       if (!isValid) {
         return window.api.EMIT("VIEW_CHANGE_URL", { id: tabId, url: "https://www.google.com/search?q=" + url });
@@ -88,7 +88,7 @@ const PreHeader = ({ tabId }: { tabId: string }) => {
 const CustomApp = () => {
   const { customApp: tabId } = useParams<{ customApp: string }>();
   return (
-    <div className="h-screen rounded-md relative overflow-hidden w-full">
+    <div className="h-[calc(100svh-8px)] rounded-md relative overflow-hidden w-full flex flex-col gap-1">
       <PreHeader tabId={tabId} />
       <WebViewInstance id={tabId} />
     </div>
@@ -147,7 +147,7 @@ const WebViewInstance = ({ id }: { id: string }) => {
   }, []);
 
   return (
-    <div className="h-[calc(100vh-36px)] rounded-md relative overflow-hidden">
+    <div className="h-[calc(100vh-46px)] rounded-md relative overflow-hidden">
       <div
         className="mx-auto absolute z-0 left-0 top-0 w-full h-full flex justify-center items-center mt-auto"
         ref={webviewRef}

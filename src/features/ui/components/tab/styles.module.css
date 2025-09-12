@@ -18,12 +18,32 @@
 .tabItem {
   display: flex;
   position: relative;
+  width: 100%;
+  & a:hover ~ .closeIcon {
+    display: block;
+  }
+  & .closeIcon {
+    display: block;
+  }
 }
+.tabItem .closeIcon {
+  display: none;
+}
+.tabItem:hover .closeIcon {
+  display: block;
+}
+
 @container sidebar (width <= 56px) {
   .title {
     display: none;
   }
-  .closeIcon {
-    display: none;
+  a {
+    justify-content: center;
+  }
+}
+@container sidebar (width > 80px) {
+  a {
+    padding-left: 8px;
+    padding-right: 8px;
   }
 }

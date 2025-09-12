@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react";
 const Layout = lazy(() => import("~/features/ui/pages/layout"));
 const CustomApp = lazy(() => import("~/features/ui/pages/customApp"));
 const Home = lazy(() => import("~/features/ui/pages/home"));
+const Setting = lazy(() => import("~/features/ui/pages/setting"));
 const APP_ROUTES = [
   {
     path: "/",
@@ -17,6 +18,14 @@ const APP_ROUTES = [
         element: (
           <Suspense fallback={"Loading..."}>
             <Home />
+          </Suspense>
+        ),
+      },
+      {
+        path: "setting",
+        element: (
+          <Suspense fallback={"Loading..."}>
+            <Setting />
           </Suspense>
         ),
       },

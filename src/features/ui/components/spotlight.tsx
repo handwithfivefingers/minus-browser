@@ -2,7 +2,7 @@ import { IconChevronRight, IconSearch } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
-import { isValidDomain } from "../libs";
+import { isValidDomainOrIP } from "../libs";
 
 const Spotlight = () => {
   return createPortal(SpotlightWrapper(), document.body);
@@ -34,7 +34,7 @@ const SportlightContent = () => {
   const navigate = useNavigate();
   const handleNavigate = () => {
     const v = ref.current.value;
-    const isValidURL = isValidDomain(v);
+    const isValidURL = isValidDomainOrIP(v);
     if (isValidURL) {
       navigate(`/${v}`);
     }
