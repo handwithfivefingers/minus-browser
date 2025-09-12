@@ -12,6 +12,7 @@ import { useCallback, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { useTabStore } from "../../stores/useTabStore";
 import { TabItem } from "../tab";
+/** @ts-ignore */
 import styles from "./styles.module.css";
 
 const SideMenu = () => {
@@ -42,6 +43,7 @@ const SideMenu = () => {
 
       <Link
         to={"/"}
+        viewTransition
         className={clsx(
           `h-10 w-10 p-1 rounded-md flex justify-center items-center cursor-pointer hover:bg-white hover:text-slate-500 transition-colors relative overflow-hidden`,
           {

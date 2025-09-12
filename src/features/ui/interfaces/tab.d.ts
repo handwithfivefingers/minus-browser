@@ -29,7 +29,7 @@ export interface TabStore {
   tabsIndex: { [key: string]: number };
   initialize: ({ tabs }: { tabs: ITab[] }) => void;
   getTabById: (id: string) => Tab | null;
-  addNewTab: (tab?: Partial<Tab>) => void;
+  addNewTab: (tab?: Partial<Tab>) => Tab;
   updateTab: (id: string, tab: Partial<Tab>) => void;
   setActiveTab: (id: string) => void;
   closeTab: (tab: Tab) => { nextIndex: number | undefined; nextTab: Tab | undefined };

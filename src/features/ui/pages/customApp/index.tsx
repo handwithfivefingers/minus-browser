@@ -1,18 +1,18 @@
 import { IconInnerShadowTopLeft } from "@tabler/icons-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "react-router";
 import { ITab } from "~/features/browsers";
-import Header from "~/features/ui/components/header";
 import { useContentView } from "../../hooks/useContentView";
 import { isValidDomain } from "../../libs";
 import { useTabStore } from "../../stores/useTabStore";
+
+const Header = lazy(() => import("~/features/ui/components/header"));
 
 const PreHeader = ({ tabId }: { tabId: string }) => {
   const tabStore = useTabStore();
   const { tabsIndex, tabs } = tabStore;
   const tab = tabs[tabsIndex[tabId as string]];
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
   const handleSearch = async (url: string) => {
     try {
       console.log("handleSearch", url);
@@ -33,7 +33,7 @@ const PreHeader = ({ tabId }: { tabId: string }) => {
 
   const onBackWard = async () => {
     try {
-      return window.api.EMIT("ON_BACKWARD");
+      return window.api.EMIT("ON_BACKWARD", { data: tab });
     } catch (error) {
       console.log("onBackWard error", error);
     }
@@ -53,12 +53,6 @@ const PreHeader = ({ tabId }: { tabId: string }) => {
       console.log("onToggleDevTools error", error);
     }
   };
-  const onCloseTab = async () => {
-    window.api.EMIT("ON_CLOSE_TAB", tab);
-    const resp = tabStore.closeTab(tab);
-    console.log("resp", resp);
-    navigate(`/`);
-  };
   const onRequestPIP = async () => {
     window.api.EMIT("REQUEST_PIP", { tab });
   };
@@ -74,20 +68,21 @@ const PreHeader = ({ tabId }: { tabId: string }) => {
     window.api.LISTENER(`did-start-load:${tabId}`, onDidStartLoad);
     window.api.LISTENER(`did-stop-loading:${tabId}`, onDidFinishLoad);
   }, [tabId]);
-    console.log("tab", tab);
 
   return (
-    <Header
-      title={tab?.title}
-      url={tab?.url}
-      onSearch={handleSearch}
-      onBackWard={onBackWard}
-      onToggleDevTools={onToggleDevTools}
-      onReload={onReload}
-      onCloseTab={onCloseTab}
-      onRequestPIP={onRequestPIP}
-      isLoading={isLoading}
-    />
+    <Suspense fallback={<div className="h-9">Loading header ...</div>}>
+      <Header
+        key={tabId}
+        title={tab?.title}
+        url={tab?.url}
+        onSearch={handleSearch}
+        onBackWard={onBackWard}
+        onToggleDevTools={onToggleDevTools}
+        onReload={onReload}
+        onRequestPIP={onRequestPIP}
+        isLoading={isLoading}
+      />
+    </Suspense>
   );
 };
 const CustomApp = () => {
@@ -145,10 +140,16 @@ const WebViewInstance = ({ id }: { id: string }) => {
       console.log("error", error);
     }
   };
+  useEffect(() => {
+    window.api.LISTENER("TOGGLE_DEV_TOOLS", () => {
+      window.api.EMIT("TOGGLE_DEV_TOOLS", { id });
+    });
+  }, []);
+
   return (
     <div className="h-[calc(100vh-36px)] rounded-md relative overflow-hidden">
       <div
-        className="mx-auto absolute z-0 left-0 top-0 w-full h-full flex justify-center items-center"
+        className="mx-auto absolute z-0 left-0 top-0 w-full h-full flex justify-center items-center mt-auto"
         ref={webviewRef}
       >
         <IconInnerShadowTopLeft className="animate-spin" />

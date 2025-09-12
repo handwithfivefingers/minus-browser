@@ -1,15 +1,43 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
-import { Outlet } from "react-router";
+import { Outlet, useNavigate } from "react-router";
 import { ThemeProvider } from "../context/theme";
 import { useTabStore } from "../stores/useTabStore";
 import { Tab } from "~/features/browsers/classes/tab";
-import { useKeyboardBinding } from "../hooks/useKeyboardBinding";
+// import { useKeyboardBinding } from "../hooks/useKeyboardBinding";
+import { ErrorBoundary } from "react-error-boundary";
+
 const SideMenu = lazy(() => import("../components").then((module) => ({ default: module.SideMenu })));
 const Spotlight = lazy(() => import("../components").then((module) => ({ default: module.Spotlight })));
 const UPDATE_TIMEOUT = 15 * 1000;
 const Layout = () => {
-  useKeyboardBinding();
-  const { initialize, tabs, index } = useTabStore();
+  console.log("render overtime");
+  return (
+    <LayoutSideEffect>
+      <ThemeProvider>
+        <div className="flex h-screen overflow-hidden">
+          <Suspense fallback={"Loading..."}>
+            <SideMenu />
+          </Suspense>
+          <div className="flex flex-col flex-1 bg-slate-100">
+            <div className="h-full overflow-auto">
+              <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
+                <Outlet />
+              </ErrorBoundary>
+            </div>
+          </div>
+        </div>
+        <Suspense fallback={"Loading..."}>
+          <SpotlightProvider />
+        </Suspense>
+      </ThemeProvider>
+    </LayoutSideEffect>
+  );
+};
+
+const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
+  // useKeyboardBinding();
+  const { initialize, tabs, index, addNewTab } = useTabStore();
+  const navigate = useNavigate();
   useLayoutEffect(() => {
     const getScreenData = async () => {
       try {
@@ -27,23 +55,17 @@ const Layout = () => {
     }, UPDATE_TIMEOUT);
     return () => clearInterval(interval);
   }, [tabs]);
-  return (
-    <ThemeProvider>
-      <div className="flex h-screen overflow-hidden">
-        <Suspense fallback={"Loading..."}>
-          <SideMenu />
-        </Suspense>
-        <div className="flex flex-col flex-1 bg-slate-100">
-          <div className="h-full overflow-auto">
-            <Outlet />
-          </div>
-        </div>
-      </div>
-      <Suspense fallback={"Loading..."}>
-        <SpotlightProvider />
-      </Suspense>
-    </ThemeProvider>
-  );
+
+  useEffect(() => {
+    window.api.LISTENER("CREATE_TAB", (tab?: Partial<Tab>) => {
+      const newTab = addNewTab(tab);
+      if (newTab.id) {
+        navigate(newTab.id);
+      }
+    });
+  }, []);
+
+  return children;
 };
 
 const SpotlightProvider = () => {

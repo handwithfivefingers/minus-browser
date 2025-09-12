@@ -1,6 +1,6 @@
 import { ElectronBlocker, fullLists, Request } from "@ghostery/adblocker-electron";
 import fetch from "cross-fetch";
-import { ipcMain, session, WebContentsView } from "electron";
+import { session, WebContentsView } from "electron";
 import log from "electron-log";
 export const ALL_LISTS = new Set([
   "https://easylist.to/easylist/easylist.txt",
@@ -17,50 +17,6 @@ export const ALL_LISTS = new Set([
   ...fullLists,
 ]);
 
-// class CustomBlockingContext {
-//   session: Electron.Session;
-//   blocker: CustomAds;
-//   constructor(session: Electron.Session, blocker: CustomAds) {
-//     this.session = session;
-//     this.blocker = blocker;
-//   }
-//   enable() {
-//     ipcMain.handle("@ghostery/adblocker/inject-cosmetic-filters", this.blocker.onInjectCosmeticFilters);
-//     ipcMain.handle("@ghostery/adblocker/is-mutation-observer-enabled", this.blocker.onIsMutationObserverEnabled);
-
-//     this.session.webRequest.onHeadersReceived({ urls: ["<all_urls>"] }, this.blocker.onHeadersReceived);
-//     this.session.webRequest.onBeforeRequest({ urls: ["<all_urls>"] }, this.blocker.onBeforeRequest);
-//   }
-//   disable() {
-//     this.session.webRequest.onHeadersReceived({ urls: ["<all_urls>"] }, null);
-//     this.session.webRequest.onBeforeRequest({ urls: ["<all_urls>"] }, null);
-//   }
-// }
-
-// class CustomAds extends ElectronBlocker {
-//   newCtx = new WeakMap();
-//   constructor(props: any) {
-//     super(props);
-//   }
-
-//   onEnable(session: Electron.Session) {
-//     let ctx = this.newCtx.get(session);
-//     if (ctx !== undefined) {
-//       return ctx;
-//     }
-//     ctx = new CustomBlockingContext(session, this);
-//     this.newCtx.set(session, ctx);
-//     ctx.enable();
-//     return ctx;
-//   }
-//   onDisable(session: Electron.Session) {
-//     const ctx = this.newCtx.get(session);
-//     if (ctx !== undefined) {
-//       ctx.disable();
-//       this.newCtx.delete(session);
-//     }
-//   }
-// }
 export class AdBlocker {
   // blocker: CustomAds;
   blocker: ElectronBlocker;
@@ -68,42 +24,12 @@ export class AdBlocker {
     this.initialize();
   }
   async initialize() {
-    // delete CustomAds.prototype.enableBlockingInSession;
-    // CustomAds.fromLists(fetch, Array.from(ALL_LISTS.values())).then((blocker) => {
-    //   this.blocker = blocker;
-    // });
-
     this.blocker = await ElectronBlocker.fromLists(fetch, Array.from(ALL_LISTS.values()));
   }
 
   setupAdvancedRequestBlocking(view: WebContentsView) {
-    // this.blocker.onEnable(view.webContents.session);
     this.blocker.enableBlockingInSession(session.defaultSession);
-    // this.blocker.on("request-blocked", (request: Request) => {
-    //   log.info("%crequest-blocked", request.tabId, request.url);
-    // });
-    // this.blocker.on("request-redirected", (request: Request) => {
-    //   log.info("%crequest-redirected", request.tabId, request.url);
-    // });
-
-    // this.blocker.on("request-whitelisted", (request: Request) => {
-    //   log.info("%crequest-whitelisted", request.tabId, request.url);
-    // });
-
-    // this.blocker.on("csp-injected", (request: Request, csps: string) => {
-    //   log.info("%ccsp-injected", request.url, csps);
-    // });
-
-    // this.blocker.on("script-injected", (script: string, url: string) => {
-    //   // log.info("%cRed script-injected", script.length, url, "color: red");
-
-    // });
-
-    // this.blocker.on("style-injected", (style: string, url: string) => {
-    //   log.info("%cRed style-injected", style.length, url);
-    // });
-
-    // this.blocker.on("filter-matched", console.log.bind(console, "%cfilter-matched"));
+    this.injectYoutubeAdblockSponsor(view);
   }
 
   injectYoutubeAdblockSponsor(view: WebContentsView) {
@@ -113,11 +39,11 @@ export class AdBlocker {
      * - Custom Plugin same as Tampermonkey
      */
     if (!view || !view.webContents) return;
-    const script = `${this.skipAds()}`;
+    const script = [this.youtubePatchPlayer(), this.youtubeRemovePopups(), this.skipAds()];
 
     // Inject trực tiếp vào renderer
     view.webContents
-      .executeJavaScript(script)
+      .executeJavaScript(script.join("\n"))
       .then(() => {
         console.error("[YT Adblock] Successfully injected patch!");
       })
@@ -126,52 +52,141 @@ export class AdBlocker {
       });
   }
 
-  skipAds() {
-    return `
-      function skipAds() {
-        const pipMode = document.querySelector('ytd-pip-container, ytd-miniplayer-player-container');
-        const adVideo = document.querySelector('.ad-showing video');
-        if (adVideo && adVideo.duration) {
-            adVideo.currentTime = adVideo.duration;
-            adVideo.muted = true;
+  youtubePatchPlayer() {
+    const script = function () {
+      "use strict";
+      console.log("[YT Adblock] Injecting patch...");
+      const origDefineProperty = Object.defineProperty;
+      Object.defineProperty = function (obj, prop, desc) {
+        if (prop === "ads" || prop === "ytads") {
+          console.log("[YT Adblock] Blocked property injection:", prop);
+          return obj;
         }
-        const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern');
-        if (skipBtn) {
-            skipBtn.click();
+        return origDefineProperty.apply(this, arguments);
+      };
+      // Quan sát DOM và patch player khi có
+      const observer = new MutationObserver(() => {
+        const player = document.querySelector("ytd-player");
+        /** @ts-ignore */
+        if (player && player.player_ && typeof player.player_.getAdState === "function") {
+          /** @ts-ignore */
+          player.player_.getAdState = () => 0; // luôn không có ad
+          console.log("[YT Adblock] Patched mid-roll ads!");
+          observer.disconnect();
         }
- 
-        if (document.querySelector('.ad-showing')) {
-            setTimeout(skipAds, 500);
-        }
-    }
-    function keepVideoPlayingEarly() {
-        const video = document.querySelector('video');
-        if (!video || video.dataset.keepPlayingEarly) return;
- 
-        video.dataset.keepPlayingEarly = "true";
- 
-        const onPause = () => {
-            if (video.currentTime <= 3) {
-                video.play().then(() => {
-            }).catch(err => {
-                console.warn("[Userscript] Impossible de play :", err);
-            });
-        }
-        video.removeEventListener('pause', onPause);
+      });
+      observer.observe(document, { childList: true, subtree: true });
     };
- 
-    video.addEventListener('pause', onPause);
-    }
- 
-    let debounceTimeout;
-    const observer = new MutationObserver(() => {
+    return `(${script.toString()})();`;
+  }
+
+  youtubeRemovePopups() {
+    const script = function () {
+      "use strict";
+      const removeElements = () => {
+        const popupContainer = document.querySelector("ytd-popup-container");
+        const overlayBackdrop = document.querySelector("tp-yt-iron-overlay-backdrop");
+
+        if (popupContainer) {
+          popupContainer.remove();
+          console.log("Removed ytd-popup-container");
+        }
+
+        if (overlayBackdrop) {
+          overlayBackdrop.remove();
+          console.log("Removed overlay backdrop");
+        }
+      };
+      // Run initially
+      removeElements();
+      // Observe and re-run when elements are reinserted
+      const observer = new MutationObserver(removeElements);
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+    };
+    return `(${script.toString()})();`;
+  }
+
+  skipAds() {
+    const script = function () {
+      function skipAds() {
+        const pipMode = document.querySelector("ytd-pip-container, ytd-miniplayer-player-container");
+        const adVideo = document.querySelector(".ad-showing video");
+
+        /**@ts-ignore */
+        if (adVideo && adVideo.duration) {
+          /**@ts-ignore */
+          adVideo.currentTime = adVideo.duration;
+          /**@ts-ignore */
+          adVideo.muted = true;
+        }
+        const skipBtn = document.querySelector(".ytp-ad-skip-button, .ytp-ad-skip-button-modern");
+        if (skipBtn) {
+          /**@ts-ignore */
+          skipBtn.click();
+        }
+
+        if (document.querySelector(".ad-showing")) {
+          setTimeout(skipAds, 500);
+        }
+      }
+      function keepVideoPlayingEarly() {
+        const video = document.querySelector("video");
+        if (!video || video.dataset.keepPlayingEarly) return;
+
+        video.dataset.keepPlayingEarly = "true";
+
+        const onPause = () => {
+          if (video.currentTime <= 3) {
+            video
+              .play()
+              .then(() => {})
+              .catch((err) => {
+                console.warn("[Userscript] Impossible de play :", err);
+              });
+          }
+          video.removeEventListener("pause", onPause);
+        };
+
+        video.addEventListener("pause", onPause);
+      }
+      /**@ts-ignore */
+      let debounceTimeout;
+      const observer = new MutationObserver(() => {
+        /**@ts-ignore */
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
-            skipAds();
-            keepVideoPlayingEarly();
+          skipAds();
+          keepVideoPlayingEarly();
         }, 100);
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    return `(${script.toString()})();`;
+  }
+
+  onShowADBlockRequest() {
+    this.blocker.on("request-blocked", (request: Request) => {
+      log.info("%crequest-blocked", request.tabId, request.url, "color: red");
     });
-    observer.observe(document.body, { childList: true, subtree: true });
-    `;
+    this.blocker.on("request-redirected", (request: Request) => {
+      log.info("%crequest-redirected", request.tabId, request.url, "color: red");
+    });
+    this.blocker.on("request-whitelisted", (request: Request) => {
+      log.info("%crequest-whitelisted", request.tabId, request.url, "color: red");
+    });
+    this.blocker.on("csp-injected", (request: Request, csps: string) => {
+      log.info("%ccsp-injected", request.url, csps, "color: red");
+    });
+    this.blocker.on("script-injected", (script: string, url: string) => {
+      // log.info("%cRed script-injected", script.length, url, "color: red");
+    });
+    this.blocker.on("style-injected", (style: string, url: string) => {
+      log.info("%cRed style-injected", style.length, url, "color: red");
+    });
+    this.blocker.on("filter-matched", console.log.bind(console, "%cfilter-matched"));
   }
 }

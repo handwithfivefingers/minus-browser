@@ -6,9 +6,3 @@
   container-name: sidebar;
   container-type: inline-size;
 }
-
-@container sidebar (width <= 56px) {
-  .tabItem > span {
-    display: none;
-  }
-}

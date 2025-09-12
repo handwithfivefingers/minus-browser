@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { contextBridge, ipcRenderer } from "electron";
+import log from "electron-log";
+log.initialize();
 enum TabEventType {
   CREATE_TAB = "CREATE_TAB",
   UPDATE_TAB = "UPDATE_TAB",

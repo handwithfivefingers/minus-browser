@@ -36,12 +36,12 @@ const useTabStore = create<TabStore>((set, get) => ({
     return get().tabs[currentIndex];
   },
   addNewTab: (tab?: Partial<Tab>) => {
-    return set((state) => {
-      const tabObject = new Tab({
-        index: state.index,
-        isFocused: false,
-        ...tab,
-      });
+    const tabObject = new Tab({
+      isFocused: false,
+      ...tab,
+    });
+    set((state) => {
+      tabObject.index = state.index;
       let newIndex = state.index + 1;
       const ob = {
         tabs: [...state.tabs, tabObject],
@@ -51,6 +51,7 @@ const useTabStore = create<TabStore>((set, get) => ({
       };
       return ob as Partial<TabStore>;
     });
+    return tabObject;
   },
   updateTab: (id: string, tab: Partial<Tab>) => {
     const currentIndex = get().tabsIndex[id];

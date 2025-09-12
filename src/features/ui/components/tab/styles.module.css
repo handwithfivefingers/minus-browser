@@ -14,3 +14,16 @@
   text-shadow: none;
   text-transform: capitalize;
 }
+
+.tabItem {
+  display: flex;
+  position: relative;
+}
+@container sidebar (width <= 56px) {
+  .title {
+    display: none;
+  }
+  .closeIcon {
+    display: none;
+  }
+}

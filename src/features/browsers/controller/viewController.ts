@@ -1,8 +1,9 @@
-import { app, BrowserWindow, ipcMain, session, WebContentsView, Notification, systemPreferences } from "electron";
+import { app, BrowserWindow, ipcMain, Notification, session, WebContentsView } from "electron";
 import log from "electron-log";
-import { IHandleResizeView, IPC, ITab, IViewController } from "../interfaces";
+import { IHandleResizeView, IPC, ITab } from "../interfaces";
 import { StoreManager } from "../stores";
 import { AdBlocker } from "./adsBlockController";
+import { WebContentsViewController } from "./webContentsViewController";
 
 enum TabEventType {
   CREATE_TAB = "CREATE_TAB",
@@ -28,8 +29,9 @@ enum ViewEventType {
   UPDATE_VIEW_SIZE = "UPDATE_VIEW_SIZE",
   VIEW_CHANGE_URL = "VIEW_CHANGE_URL",
 }
-export class ViewController implements IViewController {
+export class ViewController {
   window: BrowserWindow;
+  wc: Electron.WebContents;
   viewManager: Record<string, WebContentsView & { isOpenedDevTools?: boolean }> = {};
   viewActive: string = "";
   userStore: StoreManager = new StoreManager("userData");
@@ -38,6 +40,8 @@ export class ViewController implements IViewController {
   private adBlocker: AdBlocker;
   constructor(window: BrowserWindow) {
     this.window = window;
+    this.wc = window.webContents;
+
     this.initializeHandlers();
     this.init();
     this.adBlocker = new AdBlocker();
@@ -86,7 +90,7 @@ export class ViewController implements IViewController {
   async init() {
     ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
     ipcMain.on("send", (event, args: IPC) => this.onListener(args));
-    this.adBlocker = await new AdBlocker();
+    this.adBlocker = new AdBlocker(); // async function
   }
 
   onCloseApp() {
@@ -129,12 +133,15 @@ export class ViewController implements IViewController {
   }
 
   async handleShowViewById(props: IHandleResizeView) {
-    const { tab, screen } = props;
+    const { tab } = props;
     if (!tab.id) throw new Error("Tab id not found");
     const isViewExist = this.viewManager[tab.id];
     try {
       if (!isViewExist) {
-        const { view } = await this.createContentView(tab.id);
+        const { view } = new WebContentsViewController({
+          tabId: tab.id,
+          blocker: this.adBlocker,
+        });
         this.viewManager[tab.id] = view;
         this.loadContentView(tab.id);
         await view.webContents.loadURL(tab.url);
@@ -165,62 +172,6 @@ export class ViewController implements IViewController {
     }
   }
 
-  async createContentView(id: string) {
-    const view = new WebContentsView({
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-    });
-    view.setBorderRadius(4);
-    const contentView = view.webContents;
-    this.adBlocker.setupAdvancedRequestBlocking(view);
-    this.addViewEventListeners(view, id);
-    view.webContents.setFrameRate(60); // DETERMINE FRAME RATE
-    return { view, contentView };
-  }
-  addViewEventListeners(view: WebContentsView, id: string) {
-    const didStartLoad = () => {
-      // log.info("didStartLoad");
-      this.window.webContents.send(`did-start-load:${id}`);
-    };
-    const didStopLoad = () => {
-      this.window.webContents.send(`did-stop-loading:${id}`);
-    };
-    const pageTitleUpdated = () => {
-      this.window.webContents.send(`page-title-updated:${id}`, {
-        title: view.webContents.getTitle(),
-        url: view.webContents.getURL(),
-      });
-    };
-    const pageFaviconUpdated = (event: Electron.Event, favicons: string[]) => {
-      this.window.webContents.send(`page-favicon-updated:${id}`, { favicon: favicons[0] });
-    };
-
-    view.webContents.on("did-start-loading", didStartLoad);
-    view.webContents.on("did-stop-loading", didStopLoad);
-    view.webContents.on("page-title-updated", pageTitleUpdated);
-    view.webContents.on("page-favicon-updated", pageFaviconUpdated);
-
-    view.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
-      callback({ video: request.frame });
-    });
-    view.webContents.session.setPermissionCheckHandler((webContents, permission, request) => {
-      return true;
-    });
-    view.webContents.session.setPermissionRequestHandler((webContents, permission, request) => {
-      return true;
-    });
-    view.webContents.on("destroyed", () => {
-      // log.info("destroyed");
-      // view.webContents.off("did-start-loading", didStartLoad);
-      // view.webContents.off("did-stop-loading", didStopLoad);
-      // view.webContents.off("page-title-updated", pageTitleUpdated);
-      // view.webContents.off("page-favicon-updated", pageFaviconUpdated);
-      view.webContents.removeAllListeners();
-    });
-  }
-
   loadContentView(id: string) {
     const view = this.viewManager[id];
     this.window.contentView.addChildView(view);
@@ -236,8 +187,8 @@ export class ViewController implements IViewController {
         console.error(`View with id ${id} not found`);
         return;
       }
-      view.webContents.removeAllListeners();
-      this.addViewEventListeners(view, id);
+      // view.webContents.removeAllListeners();
+      // this.addViewEventListeners(view, id);
       await view.webContents.loadURL(url);
       const viewCookie = await session.defaultSession.cookies.get({ url: new URL(url).origin });
 
@@ -284,6 +235,7 @@ export class ViewController implements IViewController {
   }
 
   onGoBack(props: { data: ITab }) {
+    console.log("props", props);
     if (!props?.data?.id) return;
     const currentView = this.viewManager[props?.data?.id];
     if (!currentView) return;
@@ -309,14 +261,6 @@ export class ViewController implements IViewController {
     }, 500);
   }
 
-  /**
-   * @todo
-   * 1. handle toggle dev tools
-   * 2. show dev tools
-   * 3. add flag devtools for future use
-   * 4. when call @function handleHideView  -> close dev tools
-   * 5. when call @function handleShowViewById  -> check flag -> show dev tools
-   */
   handleToggleDevTools(props: { id: string }) {
     if (!props || !props.id) return;
     const view = this.viewManager[props.id];
@@ -338,7 +282,7 @@ export class ViewController implements IViewController {
     if (view) {
       view.webContents.reload();
     } else {
-      const { view } = await this.createContentView(props.id);
+      const { view } = new WebContentsViewController({ tabId: props.id });
       this.viewManager[props.id] = view;
       this.handleActiveView(props.id);
       this.loadContentView(props.id);

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Notification, screen, session } from "electron";
+import { app, BrowserWindow, desktopCapturer, Menu, Notification, screen, session } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
@@ -56,6 +56,8 @@ class MinusBrowser {
         contextIsolation: true,
         preload: preloadPath,
         session: session.defaultSession,
+        enableDeprecatedPaste: true,
+        sandbox: true,
       },
     });
 
@@ -69,7 +71,6 @@ class MinusBrowser {
       /**@ts-ignore */
       browser.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
     }
-
     browser.show();
     if (process.env.NODE_ENV === "development") {
       browser.webContents.openDevTools();
@@ -77,21 +78,31 @@ class MinusBrowser {
     log.transports.console.format = "[LOGGER] - {h}:{i}:{s} > {text}";
     log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
     new ViewController(browser);
+
+    this.registerCommand();
+    this.registerNotification();
+    this.requestPermission();
+    log.info = console.log;
+  };
+  registerCommand() {
     let gS: CommandController;
-    browser.webContents.on("focus", () => {
+    this.browser.webContents.on("focus", () => {
       gS = new CommandController();
     });
+    this.browser.on("hide", () => {
+      gS?.destroy();
+    });
+    this.browser.on("blur", () => {
+      gS?.destroy();
+    });
+    this.browser.on("closed", () => {
+      gS?.destroy();
+    });
+  }
 
-    browser.on("hide", () => {
-      gS?.destroy();
-    });
-    browser.on("blur", () => {
-      gS?.destroy();
-    });
-    browser.on("closed", () => {
-      gS?.destroy();
-    });
-  };
+  registerNotification() {
+    this.showNotification();
+  }
   showNotification() {
     new Notification({
       title: "Minus Browser",
@@ -99,7 +110,19 @@ class MinusBrowser {
     }).show();
   }
 
-  cookieHandler() {}
+  requestPermission() {
+    session.defaultSession.setDisplayMediaRequestHandler(
+      (request, callback) => {
+        console.log("request", request);
+        return desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+          callback({ video: sources[0], audio: "loopback" });
+        });
+      },
+      {
+        useSystemPicker: true,
+      }
+    );
+  }
 }
 
 new MinusBrowser();
