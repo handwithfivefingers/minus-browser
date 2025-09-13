@@ -45,7 +45,23 @@ export class StoreManager {
   saveFiles: <T>(data: T) => void = (data) => {
     return new Promise((resolve, reject) => {
       log.info("saveFiles > ", this.configFile);
-      return fs.writeFile(this.configFile, JSON.stringify(data), (error) => (error ? reject(error) : resolve(true)));
+      const tmp = this.configFile.replace(/\.json$/, "-temp.json");
+      fs.writeFile(tmp, JSON.stringify(data), (error) => {
+        if (error) return reject(error);
+        fs.rename(tmp, this.configFile, (error) => {
+          if (error) return reject(error);
+          fs.unlink(tmp, (error) => {
+            if (error) {
+              console.log(
+                "Can't remove temp file",
+                JSON.stringify({ tmp, stack: error.stack, message: error.message })
+              );
+            }
+            resolve(true);
+          });
+        });
+      });
+      // return fs.writeFile(this.configFile, JSON.stringify(data), (error) => (error ? reject(error) : resolve(true)));
     });
   };
 }
