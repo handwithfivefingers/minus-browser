@@ -4,12 +4,12 @@ import started from "electron-squirrel-startup";
 import path from "node:path";
 import { CommandController, ViewController } from "./features/browsers/controller";
 import { StoreManager } from "./features/browsers";
-import { ExtensionController } from "./features/extensions";
-app.disableHardwareAcceleration();
-const disableGpu = process.env.ELECTRON_DISABLE_GPU || process.argv.includes("--disable-gpu");
-if (disableGpu) {
-  console.log("App running with Hardware acceleration disabled.");
-}
+// import { ExtensionController } from "./features/extensions";
+// const disableGpu = process.env.ELECTRON_DISABLE_GPU || process.argv.includes("--disable-gpu");
+// if (disableGpu) {
+  // app.disableHardwareAcceleration();
+  // console.log("App running with Hardware acceleration disabled.");
+// }
 
 if (started) {
   app.quit();

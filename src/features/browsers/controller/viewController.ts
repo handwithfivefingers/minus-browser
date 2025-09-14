@@ -29,6 +29,15 @@ enum ViewEventType {
   UPDATE_VIEW_SIZE = "UPDATE_VIEW_SIZE",
   VIEW_CHANGE_URL = "VIEW_CHANGE_URL",
 }
+interface IUserInterface {
+  layout: string;
+  mode: string;
+  dataSync: {
+    intervalTime: string;
+    hardwareAcceleration: string;
+  };
+}
+
 export class ViewController {
   window: BrowserWindow;
   wc: Electron.WebContents;
@@ -426,13 +435,12 @@ export class ViewController {
         });
     }
   }
-}
 
-interface IUserInterface {
-  layout: string;
-  mode: string;
-  dataSync: {
-    intervalTime: string;
-    hardwareAcceleration: string;
-  };
+  clearCache() {
+    try {
+      // this.window.webContents.session.clearCache(); // RENDERER
+      this.viewManager[this.viewActive].webContents.session.clearCache(); // TAB
+    } catch (error) {
+    }
+  }
 }
