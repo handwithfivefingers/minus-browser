@@ -7,7 +7,6 @@ const useTabStore = create<TabStore>((set, get) => ({
   activeTab: null,
   tabsIndex: {},
   index: 0,
-
   initialize: ({ tabs }: { tabs: ITab[] }) => {
     return set((state) => {
       const newTabs: Tab[] = [];
@@ -69,7 +68,9 @@ const useTabStore = create<TabStore>((set, get) => ({
     const currentIndex = get().tabsIndex[id];
     if (currentIndex === undefined) return;
     return set((state) => {
-      return { activeTab: state.tabs[currentIndex] };
+      const tab = state.tabs[currentIndex];
+      tab.timestamp = Date.now();
+      return { activeTab: tab };
     });
   },
   closeTab(tab: Tab) {
@@ -86,6 +87,16 @@ const useTabStore = create<TabStore>((set, get) => ({
       return { ...state };
     });
     return { nextIndex, nextTab };
+  },
+  sync: () => {
+    try {
+      const tabs = get().tabs.filter((item) => !!item);
+      const index = get().index;
+      window.api.INVOKE("CLOUD_SAVE", { data: tabs, index });
+      return;
+    } catch (error) {
+      console.log("Syncing tabs Error:", error);
+    }
   },
 }));
 

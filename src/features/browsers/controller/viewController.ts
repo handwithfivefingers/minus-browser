@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Notification, session, WebContentsView } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Notification, session, WebContentsView } from "electron";
 import log from "electron-log";
 import { IHandleResizeView, IPC, ITab } from "../interfaces";
 import { StoreManager } from "../stores";
@@ -181,6 +181,7 @@ export class ViewController {
     this.window.contentView.addChildView(view);
     this.viewActive = id;
     view.setVisible(true);
+    view.webContents.focus();
   }
 
   async handleURLChange(tab: ITab) {
@@ -191,8 +192,6 @@ export class ViewController {
         console.error(`View with id ${id} not found`);
         return;
       }
-      // view.webContents.removeAllListeners();
-      // this.addViewEventListeners(view, id);
       await view.webContents.loadURL(url);
       const viewCookie = await session.defaultSession.cookies.get({ url: new URL(url).origin });
 
@@ -222,6 +221,10 @@ export class ViewController {
     if (!tab.id) return;
     if (!tab || !screen || !this.viewManager[tab.id]) return;
     this.viewManager[tab.id]?.setBounds(screen);
+    this.interfaceStore.readFiles<IUserInterface>().then((data) => {
+      if (data.layout === "BASIC") this.viewManager[tab.id].setBorderRadius(0);
+      else this.viewManager[tab.id].setBorderRadius(8);
+    });
   }
 
   handleHideView(props: { id: string }) {
@@ -396,6 +399,7 @@ export class ViewController {
       mode: "default",
       dataSync: {
         intervalTime: "15",
+        hardwareAcceleration: "1",
       },
     };
     Object.assign(defaultData, userInterface);
@@ -404,6 +408,23 @@ export class ViewController {
 
   interfaceSave(data: IUserInterface) {
     this.interfaceStore.saveFiles(data);
+    if (data.dataSync.hardwareAcceleration === "0") {
+      dialog
+        .showMessageBox({
+          title: "Warning",
+          message: "Hardware acceleration is disabled. This may cause some issues. Do you want to continue? ",
+          buttons: ["Yes", "No"],
+        })
+        .then((res) => {
+          if (res.response === 0) {
+            process.env.ELECTRON_DISABLE_GPU = "true";
+            app.relaunch({ args: process.argv.slice(1).concat(["--relaunch --disable-gpu"]) });
+            app.exit(0);
+          } else {
+            process.env.ELECTRON_DISABLE_GPU = "";
+          }
+        });
+    }
   }
 }
 
@@ -412,5 +433,6 @@ interface IUserInterface {
   mode: string;
   dataSync: {
     intervalTime: string;
+    hardwareAcceleration: string;
   };
 }

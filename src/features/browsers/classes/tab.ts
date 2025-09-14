@@ -9,6 +9,7 @@ export class Tab implements ITab {
   isFocused: boolean = false;
   index: number;
   favicon: string = "";
+  timestamp: number = Date.now();
   memoryUsage: {
     workingSetSize: 0;
     peakWorkingSetSize: 0;

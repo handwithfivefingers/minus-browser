@@ -1,31 +1,48 @@
-import { app, BrowserWindow, desktopCapturer, Menu, Notification, screen, session } from "electron";
+import { app, BrowserWindow, Menu, Notification, screen, session } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
 import { CommandController, ViewController } from "./features/browsers/controller";
+import { StoreManager } from "./features/browsers";
+import { ExtensionController } from "./features/extensions";
+app.disableHardwareAcceleration();
+const disableGpu = process.env.ELECTRON_DISABLE_GPU || process.argv.includes("--disable-gpu");
+if (disableGpu) {
+  console.log("App running with Hardware acceleration disabled.");
+}
+
 if (started) {
   app.quit();
 }
+// app.disableHardwareAcceleration();
 
 const preloadPath = path.join(__dirname, "/preload.js");
-console.log("preloadPath", preloadPath);
+
+process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
+
 if (process.platform !== "darwin") {
   Menu.setApplicationMenu(null);
 }
-process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 class MinusBrowser {
   browser: BrowserWindow | null = null;
+  interfaceStore: StoreManager = new StoreManager("interface");
   constructor() {
+    this.initialize();
+  }
+
+  async initialize() {
+    // const userInterface = await this.interfaceStore.readFiles<IUserInterface>();
+    // if (userInterface.dataSync.hardwareAcceleration === "0") {
+    //   app.disableHardwareAcceleration();
+    // }
     app.on("ready", () => {
       log.initialize();
     });
-
     app.on("quit", async () => {
       if (process.platform !== "darwin") {
         app.quit();
       }
     });
-
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         this.createWindow();
@@ -38,13 +55,15 @@ class MinusBrowser {
     app.on("render-process-gone", function (event, detailed) {
       app.quit();
     });
-    app.whenReady().then(() => {
+
+    app.whenReady().then(async () => {
       this.createWindow();
     });
   }
   createWindow = async () => {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.workAreaSize;
+
     const browser = new BrowserWindow({
       width,
       height,
@@ -135,9 +154,4 @@ class MinusBrowser {
     // });
   }
 }
-// Notification.requestPermission().then(r => {
-//     console.log(r)
-// }).catch(e =>{
-//     console.log("e",e)
-// })
 new MinusBrowser();

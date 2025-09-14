@@ -44,7 +44,7 @@ export const isValidDomainOrIP = (url: string) => {
     }
 
     // If not IP, validate as domain
-    return isValidDomain(addressPart);
+    return isValidDomainOrIPSimple(addressPart);
   } catch (error) {
     return false;
   }
@@ -112,10 +112,10 @@ export const isValidDomainOrIPSimple = (url: string): boolean => {
 console.log("=== Domain and IP Validation ===");
 
 const allTestCases = [
-  // Domains
-  "domain.com",
-  "https://sub.domain.com",
-  "localhost:3000",
+  // // Domains
+  // "domain.com",
+  // "https://sub.domain.com",
+  // "localhost:3000",
 
   // IPv4
   "192.168.1.1",
@@ -132,6 +132,11 @@ const allTestCases = [
   "invalid",
   "",
   "domain.c",
+
+  "landing.flodev.net",
+  "landing.flodev.net",
+  "landing.flodev.net/v5",
+  "landing.flodev.net/v4",
 ];
 
 allTestCases.forEach((test) => {
@@ -165,3 +170,11 @@ const typeTestCases = ["domain.com", "192.168.1.1", "2001:db8::1", "localhost", 
 typeTestCases.forEach((test) => {
   console.log(`${test} -> ${getAddressType(test)}`);
 });
+
+export const debounce = <A = unknown, R = void>(callback: (args?: A) => R, n: number) => {
+  let timer: NodeJS.Timeout | undefined | number = undefined;
+  return (args?: A) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => callback(args), n);
+  };
+};

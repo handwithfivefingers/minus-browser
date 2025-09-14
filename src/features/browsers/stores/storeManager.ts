@@ -33,7 +33,7 @@ export class StoreManager {
     }
   }
 
-  readFiles = <T>(): Promise<Record<string, T>> => {
+  readFiles = <T>(): Promise<T> => {
     return new Promise((resolve, reject) => {
       log.info("readFiles > ", this.configFile);
       return fs.readFile(this.configFile, "utf-8", (error, data) => {
@@ -50,18 +50,9 @@ export class StoreManager {
         if (error) return reject(error);
         fs.rename(tmp, this.configFile, (error) => {
           if (error) return reject(error);
-          fs.unlink(tmp, (error) => {
-            if (error) {
-              console.log(
-                "Can't remove temp file",
-                JSON.stringify({ tmp, stack: error.stack, message: error.message })
-              );
-            }
-            resolve(true);
-          });
+          resolve(true);
         });
       });
-      // return fs.writeFile(this.configFile, JSON.stringify(data), (error) => (error ? reject(error) : resolve(true)));
     });
   };
 }

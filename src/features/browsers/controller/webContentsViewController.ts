@@ -1,4 +1,5 @@
-import { BrowserWindow, Menu, WebContentsView } from "electron";
+import { BrowserWindow, WebContentsView } from "electron";
+import { ExtensionController } from "../../extensions";
 import { AdBlocker } from "./adsBlockController";
 import { ContextMenuController } from "./contextMenuController";
 interface IDestroy {
@@ -11,6 +12,7 @@ class WebContentsViewController {
   webContents: Electron.WebContents & IDestroy;
   tabId: string;
   blocker: AdBlocker;
+  registerEvent: boolean = false;
   constructor(props: { tabId: string; blocker?: AdBlocker }) {
     Object.assign(this, props);
     this.initialize();
@@ -25,13 +27,18 @@ class WebContentsViewController {
     this.registerFocusEvent();
     this.applyStyles();
     this.createContextMenu();
+    this.registerExtension();
+    console.log("view.getMaxListeners()");
   }
 
   requestPermissions() {
     const view = this.view;
-    view.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
-      callback({ video: request.frame });
-    });
+    view.webContents.session.setDisplayMediaRequestHandler(
+      (request, callback) => {
+        callback({ video: request.frame });
+      },
+      { useSystemPicker: true }
+    );
     // view.webContents.session.setPermissionCheckHandler((webContents, permission, request) => {
     //   console.log("view.webContents.session.setPermissionCheckHandler", permission);
     //   return true;
@@ -45,8 +52,9 @@ class WebContentsViewController {
         permission === "storage-access" ||
         permission === "top-level-storage-access" ||
         permission === "mediaKeySystem"
-      )
+      ) {
         return request(false);
+      }
       return request(true);
     });
 
@@ -66,13 +74,14 @@ class WebContentsViewController {
   registerFocusEvent() {
     const view = this.view;
     const tabId = this.tabId;
-    const window = BrowserWindow.getFocusedWindow();
     view.webContents.on("focus", () => {
       console.log("focus on tab", tabId);
+      if (this.registerEvent) return;
       this.registerEventListeners();
     });
     view.webContents.on("blur", () => {
       console.log("blur on tab", tabId);
+      if (!this.registerEvent) return;
       this.unregisterFocusEvent();
     });
   }
@@ -83,6 +92,7 @@ class WebContentsViewController {
     view.webContents.on("did-stop-loading", this.didStopLoad);
     view.webContents.on("page-title-updated", this.pageTitleUpdated);
     view.webContents.on("page-favicon-updated", this.pageFaviconUpdated);
+    this.registerEvent = true;
   }
 
   destroy() {
@@ -96,10 +106,15 @@ class WebContentsViewController {
     view.webContents.removeListener("did-stop-loading", this.didStopLoad);
     view.webContents.removeListener("page-title-updated", this.pageTitleUpdated);
     view.webContents.removeListener("page-favicon-updated", this.pageFaviconUpdated);
+    this.registerEvent = false;
   }
 
   createContextMenu() {
     this.webContents.on("context-menu", new ContextMenuController().initialize);
+  }
+
+  registerExtension() {
+    new ExtensionController({ extensionName: "GGTranslate", extensionId: "aggiiclaiamajehmlfpkjmlbadmkledi/1.74_0" });
   }
 
   private applyStyles() {

@@ -88,7 +88,7 @@ const SideMenu = () => {
         >
           <IconSettings />
         </Link>
-        <span className="font-normal text-xs text-center">Tab: {tabs.length}</span>
+        <span className="font-normal text-xs text-center">Tab: {tabs.filter((item) => !!item).length}</span>
       </div>
     </ResizableSidebar>
   );

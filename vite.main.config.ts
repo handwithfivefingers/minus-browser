@@ -15,4 +15,8 @@ export default defineConfig({
       },
     },
   ],
+  define: {
+    "process.platform": JSON.stringify(process.platform),
+    ELECTRON_DISABLE_GPU: JSON.stringify(process.env.ELECTRON_DISABLE_GPU),
+  },
 });

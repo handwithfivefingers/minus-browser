@@ -1,6 +1,6 @@
 import { IconTable, IconTableFilled } from "@tabler/icons-react";
 import clsx from "clsx";
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
 enum LayoutTemplate {
   BASIC = "BASIC",
@@ -12,16 +12,17 @@ const CLASSES = {
   FLOATING: "bg-slate-100 w-full h-full rounded-lg p-8",
 };
 const Setting = () => {
-  const { layout, mode, dataSync } = useMinusThemeStore();
-
-  // useEffect(() => {
-  //   window.api.INVOKE("INTERFACE_SAVE", { layout, mode, dataSync });
-  // }, []);
-
+  const { layout, mode, initialize } = useMinusThemeStore();
+  const tempRef = useRef(null);
+  const dataAdjRef = useRef(null);
   const save = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    window.api.INVOKE("INTERFACE_SAVE", { layout, mode, dataSync });
+    const template = tempRef.current.get();
+    const dataSync = dataAdjRef.current.get();
+    const data = { layout: template, mode, dataSync: { ...dataSync } };
+    window.api.INVOKE("INTERFACE_SAVE", data);
+    initialize(data);
   };
 
   return (
@@ -29,12 +30,15 @@ const Setting = () => {
       <div className={CLASSES[layout]}>
         <h1 className="font-bold text-xl py-4">Setting</h1>
         <div className="flex gap-2">
-          <DataAdjustment />
+          <DataAdjustment ref={dataAdjRef} />
           <FontAdjustment />
-          <Template />
+          <Template ref={tempRef} />
         </div>
 
-        <button className="px-2 py-2 rounded-md bg-indigo-500 text-white my-2" onClick={save}>
+        <button
+          className="px-2 py-2 rounded-md bg-indigo-500 text-white my-2 active:translate-y-0.5 cursor-pointer"
+          onClick={save}
+        >
           Save Setting
         </button>
       </div>
@@ -42,13 +46,17 @@ const Setting = () => {
   );
 };
 
-const DataAdjustment = () => {
+const DataAdjustment = forwardRef<{ get: () => { intervalTime: string } }>((props, ref) => {
   const [dataAdj, setDataAdj] = useState({
     intervalTime: "15",
+    hardwareAcceleration: "0",
   });
+  useImperativeHandle(ref, () => ({
+    get: () => dataAdj,
+  }));
   return (
     <div className="bg-slate-200 p-4 rounded-lg flex gap-2 flex-col">
-      <span className="font-bold text-lg">Font Adjustment:</span>
+      <span className="font-bold text-lg">System:</span>
       <div className="flex w-full justify-between gap-2">
         <div>Sync data interval:</div>
         <select
@@ -63,11 +71,22 @@ const DataAdjustment = () => {
           <option value={"off"}>Off</option>
         </select>
       </div>
+      <div className="flex w-full justify-between gap-2">
+        <div>Hardware acceleration:</div>
+        <select
+          className="bg-slate-300 rounded px-2 w-24"
+          value={dataAdj.hardwareAcceleration}
+          onChange={(e) => setDataAdj((prev) => ({ ...prev, hardwareAcceleration: e.target.value }))}
+        >
+          <option value={"0"}>Off</option>
+          <option value={"1"}>On</option>
+        </select>
+      </div>
     </div>
   );
-};
+});
 
-const FontAdjustment = () => {
+const FontAdjustment = forwardRef((props, ref) => {
   const [fontAdj, setFontAdj] = useState({
     fontSize: "10",
   });
@@ -95,29 +114,31 @@ const FontAdjustment = () => {
       </div>
     </div>
   );
-};
-const Template = () => {
-  // const [template, setTemplate] = useState(LayoutTemplate.FLOATING);
-
-  const { setLayout, layout } = useMinusThemeStore();
+});
+const Template = forwardRef<{ get: () => "BASIC" | "FLOATING" }>((props, ref) => {
+  const { layout } = useMinusThemeStore();
+  const [layoutTemplate, setLayoutTemplate] = useState<"BASIC" | "FLOATING">(layout);
+  useImperativeHandle(ref, () => ({
+    get: () => layoutTemplate,
+  }));
   return (
     <div className="bg-slate-200 p-4 rounded-lg flex gap-2 flex-col">
       <span className="font-bold text-lg">Layout:</span>
-      <div className="flex gap-2 w-full justify-between flex-col gap-2">
+      <div className="flex gap-2 w-full justify-between flex-col">
         <div
           className={clsx("flex gap-2 border rounded bg-slate-100 border-slate-200 p-2 cursor-pointer", {
-            ["!bg-indigo-500 text-white"]: layout === LayoutTemplate.BASIC,
+            ["!bg-indigo-500 text-white"]: layoutTemplate === LayoutTemplate.BASIC,
           })}
-          onClick={() => setLayout(LayoutTemplate.BASIC)}
+          onClick={() => setLayoutTemplate(LayoutTemplate.BASIC)}
         >
           <IconTable />
           <span>{LayoutTemplate.BASIC}</span>
         </div>
         <div
           className={clsx("flex gap-2 border rounded bg-slate-100 border-slate-200 p-2 cursor-pointer", {
-            ["!bg-indigo-500 text-white"]: layout === LayoutTemplate.FLOATING,
+            ["!bg-indigo-500 text-white"]: layoutTemplate === LayoutTemplate.FLOATING,
           })}
-          onClick={() => setLayout(LayoutTemplate.FLOATING)}
+          onClick={() => setLayoutTemplate(LayoutTemplate.FLOATING)}
         >
           <IconTableFilled />
           <span>{LayoutTemplate.FLOATING}</span>
@@ -125,6 +146,6 @@ const Template = () => {
       </div>
     </div>
   );
-};
+});
 
 export default Setting;

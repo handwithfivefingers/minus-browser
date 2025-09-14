@@ -30,6 +30,7 @@ export class CommandController {
   search: CommandShortCut;
   createTab: CommandShortCut;
   toggleDevTools: CommandShortCut;
+  reloadPage: CommandShortCut;
 
   constructor() {
     this.initialize();
@@ -50,6 +51,10 @@ export class CommandController {
       commandName: "F12",
       callback: () => this.onToggleDevTools(),
     });
+    this.reloadPage = new CommandShortCut({
+      commandName: "CommandOrControl+R",
+      callback: () => this.onReloadPage(),
+    });
   }
 
   onSearchCallback() {
@@ -65,6 +70,10 @@ export class CommandController {
   onToggleDevTools() {
     let view = BrowserWindow.getFocusedWindow();
     view.webContents.send("TOGGLE_DEV_TOOLS");
+  }
+  onReloadPage() {
+    let view = BrowserWindow.getFocusedWindow();
+    view.webContents.send("ON_RELOAD");
   }
   destroy() {
     this.search.destroy();

@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { ITab } from "~/features/browsers";
 import { useContentView } from "../../hooks/useContentView";
-import { isValidDomainOrIP } from "../../libs";
+import { debounce, isValidDomainOrIP } from "../../libs";
 import { useTabStore } from "../../stores/useTabStore";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
 
@@ -70,6 +70,7 @@ const PreHeader = ({ tabId }: { tabId: string }) => {
     const onDidFinishLoad = () => {
       setIsLoading(false);
     };
+    window.api.LISTENER("ON_RELOAD", onReload);
     window.api.LISTENER(`did-start-load:${tabId}`, onDidStartLoad);
     window.api.LISTENER(`did-stop-loading:${tabId}`, onDidFinishLoad);
   }, [tabId]);
@@ -93,7 +94,11 @@ const PreHeader = ({ tabId }: { tabId: string }) => {
 const CustomApp = () => {
   const { customApp: tabId } = useParams<{ customApp: string }>();
   const { layout } = useMinusThemeStore();
+  const { setActiveTab } = useTabStore();
 
+  useEffect(() => {
+    setActiveTab(tabId);
+  }, [tabId]);
   return (
     <div className={LAYOUT_HEADER_CLASS[layout]}>
       <PreHeader tabId={tabId} />
@@ -120,14 +125,14 @@ const WebViewInstance = ({ id }: { id: string }) => {
     if (!tab) return;
     setActiveTab(tab.id);
     getContentView(tab);
-    const autoSize = () => {
+    const autoSize = debounce(() => {
       if (!webviewRef.current) return;
       const { x, y, width, height } = webviewRef.current.getBoundingClientRect();
       window.api.EMIT("VIEW_RESPONSIVE", {
         tab,
         screen: { x, y, width, height },
       });
-    };
+    }, 100);
     const resizeObserver = new ResizeObserver(() => autoSize());
     resizeObserver?.observe(webviewRef.current);
 

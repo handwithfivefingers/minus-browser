@@ -31,12 +31,13 @@ const Layout = () => {
       <Suspense fallback={"Loading..."}>
         <SpotlightProvider />
       </Suspense>
+      <SyncSideEffect />
     </LayoutSideEffect>
   );
 };
 
 const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
-  const { initialize, tabs, index, addNewTab } = useTabStore();
+  const { initialize, addNewTab } = useTabStore();
   const minus = useMinusThemeStore();
   const navigate = useNavigate();
   useLayoutEffect(() => {
@@ -54,13 +55,6 @@ const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
     getScreenData();
   }, []);
   useEffect(() => {
-    let interval = setInterval(() => {
-      window.api.INVOKE("CLOUD_SAVE", { data: tabs?.filter((item) => !!item), index });
-    }, UPDATE_TIMEOUT);
-    return () => clearInterval(interval);
-  }, [tabs]);
-
-  useEffect(() => {
     window.api.LISTENER("CREATE_TAB", (tab?: Partial<Tab>) => {
       const newTab = addNewTab(tab);
       if (newTab.id) {
@@ -68,8 +62,31 @@ const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
       }
     });
   }, []);
-console.log('load')
   return children;
+};
+
+const SyncSideEffect = () => {
+  const { sync } = useTabStore();
+  const dataSync = useMinusThemeStore().dataSync;
+  const intervalTime =
+    dataSync.intervalTime === "off"
+      ? false
+      : isNaN(Number(dataSync.intervalTime))
+        ? 15
+        : Number(dataSync.intervalTime) * 1000;
+  console.log("intervalTime", intervalTime);
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (intervalTime) {
+      interval = setInterval(() => {
+        console.log("sync", intervalTime);
+        sync();
+      }, intervalTime);
+    }
+
+    return () => intervalTime && interval && clearInterval(interval);
+  }, [intervalTime]);
+  return "";
 };
 
 const SpotlightProvider = () => {
