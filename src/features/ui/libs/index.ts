@@ -139,9 +139,9 @@ const allTestCases = [
   "landing.flodev.net/v4",
 ];
 
-allTestCases.forEach((test) => {
-  console.log(`${test.padEnd(40)} -> Advanced: ${isValidDomainOrIP(test)}, Simple: ${isValidDomainOrIPSimple(test)}`);
-});
+// allTestCases.forEach((test) => {
+//   console.log(`${test.padEnd(40)} -> Advanced: ${isValidDomainOrIP(test)}, Simple: ${isValidDomainOrIPSimple(test)}`);
+// });
 
 // Utility function to determine what type of address it is
 export const getAddressType = (url: string): "domain" | "ipv4" | "ipv6" | "localhost" | "invalid" => {

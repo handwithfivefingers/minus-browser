@@ -78,5 +78,7 @@ export class CommandController {
   destroy() {
     this.search.destroy();
     this.createTab.destroy();
+    this.toggleDevTools.destroy();
+    this.reloadPage.destroy();
   }
 }
