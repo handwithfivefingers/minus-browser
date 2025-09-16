@@ -18,17 +18,27 @@ class WebContentsViewController {
     this.initialize();
   }
   initialize() {
-    const view = new WebContentsView();
-    this.view = view;
-    this.webContents = view.webContents;
-    view.setMaxListeners(20);
-    this.blocker?.setupAdvancedRequestBlocking?.(view);
-    this.requestPermissions();
-    this.registerFocusEvent();
-    this.applyStyles();
-    this.createContextMenu();
-    this.registerExtension();
-    console.log("view.getMaxListeners()");
+    try {
+      const view = new WebContentsView({
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: false,
+        },
+      });
+      console.log("view", view);
+      this.view = view;
+      this.webContents = view.webContents;
+      view.setMaxListeners(20);
+      this.blocker?.setupAdvancedRequestBlocking?.(view);
+      this.registerCommonEvent();
+      this.registerFocusEvent();
+      this.createContextMenu();
+      this.registerExtension();
+      this.requestPermissions();
+      this.applyStyles();
+    } catch (error) {
+      console.log("error", error);
+    }
   }
 
   requestPermissions() {
@@ -45,7 +55,7 @@ class WebContentsViewController {
     // });
     view.webContents.session.setPermissionRequestHandler((webContents, permission, request) => {
       // 'clipboard-read' | 'clipboard-sanitized-write' | 'display-capture' | 'fullscreen' | 'geolocation' | 'idle-detection' | 'media' | 'mediaKeySystem' | 'midi' | 'midiSysex' | 'notifications' | 'pointerLock' | 'keyboardLock' | 'openExternal' | 'speaker-selection' | 'storage-access' | 'top-level-storage-access' | 'window-management' | 'unknown' | 'fileSystem',
-      console.log("view.webContents.session.setPermissionRequestHandler", permission, webContents, request);
+      // console.log("view.webContents.session.setPermissionRequestHandler", permission, webContents, request);
       if (
         permission === "unknown" ||
         permission === "fileSystem" ||
@@ -61,7 +71,6 @@ class WebContentsViewController {
     view.webContents.setWindowOpenHandler(({ url }) => {
       try {
         const validURL = new URL(url);
-        console.log("Open as new tab", validURL);
         const browserView = BrowserWindow.getFocusedWindow();
         browserView.webContents.send("CREATE_TAB", { url: url });
         return { action: "deny" };
@@ -71,42 +80,35 @@ class WebContentsViewController {
     });
   }
 
-  registerFocusEvent() {
-    const view = this.view;
-    const tabId = this.tabId;
-    view.webContents.on("focus", () => {
-      console.log("focus on tab", tabId);
-      if (this.registerEvent) return;
-      this.registerEventListeners();
-    });
-    view.webContents.on("blur", () => {
-      console.log("blur on tab", tabId);
-      if (!this.registerEvent) return;
-      this.unregisterFocusEvent();
-    });
+  registerCommonEvent() {
+    if (!this.webContents) return;
+    this.webContents.on("page-favicon-updated", this.pageFaviconUpdated);
   }
-
-  registerEventListeners() {
+  onViewFocus() {
+    if (!this.webContents) return;
+    if (this.registerEvent) return;
+    // this.registerEventListeners();
     const view = this.view;
-    view.webContents.on("did-start-loading", this.didStartLoad);
-    view.webContents.on("did-stop-loading", this.didStopLoad);
-    view.webContents.on("page-title-updated", this.pageTitleUpdated);
-    view.webContents.on("page-favicon-updated", this.pageFaviconUpdated);
+    this.webContents.on("did-start-loading", this.didStartLoad);
+    this.webContents.on("did-stop-loading", this.didStopLoad);
     this.registerEvent = true;
+  }
+  onViewBlur() {
+    if (!this.registerEvent) return;
+    if (!this.webContents) return;
+    this.webContents.removeListener("did-start-loading", this.didStartLoad);
+    this.webContents.removeListener("did-stop-loading", this.didStopLoad);
+    this.registerEvent = false;
+  }
+  registerFocusEvent() {
+    if (!this.webContents) return;
+    this.webContents.on("focus", this.onViewFocus);
+    this.webContents.on("blur", this.onViewBlur);
   }
 
   destroy() {
-    this.view.webContents.removeAllListeners();
-    this.view.webContents.close();
-  }
-
-  unregisterFocusEvent() {
-    const view = this.view;
-    view.webContents.removeListener("did-start-loading", this.didStartLoad);
-    view.webContents.removeListener("did-stop-loading", this.didStopLoad);
-    view.webContents.removeListener("page-title-updated", this.pageTitleUpdated);
-    view.webContents.removeListener("page-favicon-updated", this.pageFaviconUpdated);
-    this.registerEvent = false;
+    this.webContents.removeAllListeners();
+    this.webContents.close();
   }
 
   createContextMenu() {
@@ -114,7 +116,7 @@ class WebContentsViewController {
   }
 
   registerExtension() {
-    new ExtensionController({ extensionName: "GGTranslate", extensionId: "aggiiclaiamajehmlfpkjmlbadmkledi/1.74_0" });
+    // new ExtensionController({ extensionName: "GGTranslate", extensionId: "aggiiclaiamajehmlfpkjmlbadmkledi/1.74_0" });
   }
 
   private applyStyles() {
@@ -131,19 +133,15 @@ class WebContentsViewController {
     const tabId = this.tabId;
     window.webContents.send(`did-stop-loading:${tabId}`);
   };
-  private pageTitleUpdated = () => {
-    const window = BrowserWindow.getFocusedWindow();
-    const tabId = this.tabId;
-    const view = this.view;
-    window.webContents.send(`page-title-updated:${tabId}`, {
-      title: view.webContents.getTitle(),
-      url: view.webContents.getURL(),
-    });
-  };
   private pageFaviconUpdated = (event: Electron.Event, favicons: string[]) => {
     const window = BrowserWindow.getFocusedWindow();
     const tabId = this.tabId;
-    window.webContents.send(`page-favicon-updated:${tabId}`, { favicon: favicons[0] });
+    const view = this.view;
+    window.webContents.send(`page-favicon-updated:${tabId}`, {
+      title: view?.webContents?.getTitle(),
+      url: view?.webContents?.getURL(),
+      favicon: favicons[0],
+    });
   };
 }
 

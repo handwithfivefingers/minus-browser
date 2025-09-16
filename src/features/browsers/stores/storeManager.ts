@@ -8,25 +8,31 @@ const filesPath = {
     userData: path.join("appData", "userData.json"),
     interface: path.join("appData", "interface.json"),
     session: path.join("appData", "session.json"),
+    bookmark: path.join("appData", "bookmark.json"),
+    history: path.join("appData", "history.json"),
   },
   production: {
     userData: path.join(app.getPath("userData"), "userData.json"),
     interface: path.join(app.getPath("userData"), "interface.json"),
     session: path.join(app.getPath("userData"), "session.json"),
+    bookmark: path.join(app.getPath("userData"), "bookmark.json"),
+    history: path.join(app.getPath("userData"), "history.json"),
   },
 };
+
+type StoreName = "userData" | "interface" | "session" | "bookmark" | "history";
 const pathConfig = process.env.NODE_ENV === "development" ? filesPath.development : filesPath.production;
 export class StoreManager {
   storage = new Map();
   configFile = pathConfig.userData;
-  constructor(props: "userData" | "interface" | "session" = "userData") {
-    if (!["userData", "interface", "session"].includes(props)) {
+  constructor(props: StoreName = "userData") {
+    if (!["userData", "interface", "session", "bookmark", "history"].includes(props)) {
       throw new Error("Invalid props");
     }
     this.configFile = pathConfig[props];
     this.initialize(props);
   }
-  initialize(fileName: "userData" | "interface" | "session") {
+  initialize(fileName: StoreName) {
     const isExist = fs.existsSync(pathConfig[fileName]);
     if (!isExist) {
       fs.writeFileSync(pathConfig[fileName], "");

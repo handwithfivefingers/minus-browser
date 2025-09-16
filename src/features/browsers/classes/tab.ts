@@ -10,18 +10,9 @@ export class Tab implements ITab {
   index: number;
   favicon: string = "";
   timestamp: number = Date.now();
-  memoryUsage: {
-    workingSetSize: 0;
-    peakWorkingSetSize: 0;
-    privateBytes: 0;
-    sharedBytes: 0;
-  };
-  cpuUsage: {
-    percentCPUUsage: 0;
-    idleWakeupsPerSecond: 0;
-  };
-
-  constructor({ memoryUsage, cpuUsage, ...props }: Partial<ITab>) {
+  isBookmarked: boolean = false;
+  cookies: Electron.Cookie[];
+  constructor(props: Partial<ITab>) {
     Object.assign(this, props);
   }
 

@@ -16,6 +16,7 @@ import { TabItem } from "../tab";
 /** @ts-ignore */
 import styles from "./styles.module.css";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
+import { ITab } from "~/features/browsers";
 interface IResizeProps {
   children: React.ReactNode;
   initialWidth?: number;
@@ -29,6 +30,11 @@ const SideMenu = () => {
   const onClose = useCallback(() => {
     window.api.EMIT("CLOSE_APP");
   }, []);
+  const onAddNewTab = async () => {
+    const tab = await window.api.INVOKE<Partial<ITab>>("CREATE_TAB");
+    addNewTab(tab);
+  };
+
   return (
     <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={clsx(styles.sidebar)}>
       <div className="flex gap-1 flex-col flex-1 overflow-y-auto overflow-x-hidden h-full scrollbar ">
@@ -65,7 +71,7 @@ const SideMenu = () => {
             );
           })}
         <div
-          onClick={() => addNewTab()}
+          onClick={() => onAddNewTab()}
           className={clsx(
             `sticky z-[1] bottom-0 h-10 px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-500 shrink-0 bg-slate-100`
           )}

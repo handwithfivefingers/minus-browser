@@ -1,9 +1,11 @@
 import { app, BrowserWindow, dialog, ipcMain, Notification, session, WebContentsView } from "electron";
 import log from "electron-log";
 import { IHandleResizeView, IPC, ITab } from "../interfaces";
+import { ErrorServices } from "../services/error.services";
 import { StoreManager } from "../stores";
 import { AdBlocker } from "./adsBlockController";
-import { WebContentsViewController } from "./webContentsViewController";
+import { TabCoordinator } from "./tabCoordinator";
+import { isSameURl } from "../utils";
 
 enum TabEventType {
   CREATE_TAB = "CREATE_TAB",
@@ -19,6 +21,7 @@ enum TabEventType {
   TOGGLE_DEV_TOOLS = "TOGGLE_DEV_TOOLS",
   ON_RELOAD = "ON_RELOAD",
   ON_CLOSE_TAB = "ON_CLOSE_TAB",
+  TOGGLE_BOOKMARK = "TOGGLE_BOOKMARK",
 }
 
 enum ViewEventType {
@@ -37,50 +40,52 @@ interface IUserInterface {
     hardwareAcceleration: string;
   };
 }
-
 export class ViewController {
   window: BrowserWindow;
   wc: Electron.WebContents;
+  /**
+   * @deprecated
+   * using tabManger instead
+   */
   viewManager: Record<string, WebContentsView & { isOpenedDevTools?: boolean }> = {};
+  /**
+   * @deprecated
+   */
   viewActive: string = "";
+
   userStore: StoreManager = new StoreManager("userData");
   interfaceStore: StoreManager = new StoreManager("interface");
+  sessionStore: StoreManager = new StoreManager("session");
+
+  tabCoordinator = new TabCoordinator();
+
   private invokeHandlers: Record<string, (data?: any) => any>;
   private listenerHandlers: Record<string, (data?: any) => void>;
   private adBlocker: AdBlocker;
+
   constructor(window: BrowserWindow) {
     this.window = window;
     this.wc = window.webContents;
-
     this.initializeHandlers();
     this.init();
     this.adBlocker = new AdBlocker();
-    window.webContents.on("render-process-gone", function (event, detailed) {
+    window.webContents?.on("render-process-gone", function (event, detailed) {
       log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
       if (detailed.reason == "crashed") {
-        window.webContents.reload();
+        window.webContents?.reload();
       } else {
         app.relaunch({ args: process.argv.slice(1).concat(["--relaunch"]) });
         app.exit(0);
       }
     });
   }
-  async getTabs() {
-    const data = await this.userStore.readFiles();
-    const sampleData: { tabs: ITab[]; index: number } = {
-      index: 0,
-      tabs: [],
-    };
-    const res = Object.assign(sampleData, data);
-    return res;
-  }
 
   private initializeHandlers() {
     this.invokeHandlers = {
       [TabEventType.GET_TABS]: () => this.getTabs(),
+      [TabEventType.CREATE_TAB]: (tab?: Partial<ITab>) => this.createTab(tab),
       GET_USER_INTERFACE: () => this.loadUserInterface(),
-      CLOUD_SAVE: (data) => this.cloudSave(data),
-      GET_PIP: () => this.getPIPState(),
+      CLOUD_SAVE: () => this.cloudSave(),
       SEARCH_PAGE: (data) => this.handleSearchPage(data),
       INTERFACE_SAVE: (data) => this.interfaceSave(data),
     };
@@ -96,7 +101,7 @@ export class ViewController {
       [TabEventType.ON_RELOAD]: (data) => this.handleReloadTab(data),
       ["CLOSE_APP"]: () => this.onCloseApp(),
       REQUEST_PIP: (data) => this.requestPIP(data),
-      // REQUEST_PIP: (data) => this.requestPIP(data),
+      [TabEventType.TOGGLE_BOOKMARK]: (data) => this.handleToggleBookmark(data),
     };
   }
 
@@ -104,15 +109,11 @@ export class ViewController {
     ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
     ipcMain.on("send", (event, args: IPC) => this.onListener(args));
     this.adBlocker = new AdBlocker(); // async function
+    this.window.webContents.send("GET_TABS", { tabs: this.tabCoordinator.getTabs });
   }
 
-  onCloseApp() {
-    if (Object.keys(this.viewManager).length) {
-      for (let key in this.viewManager) {
-        this.viewManager[key].webContents.session.flushStorageData();
-      }
-    }
-    app.quit();
+  async getTabs() {
+    return this.tabCoordinator.getTabs;
   }
 
   private onInvoke(args: IPC) {
@@ -136,203 +137,121 @@ export class ViewController {
     }
   }
 
-  destroy() {
-    this.viewActive = "";
-    for (let key in this.viewManager) {
-      this.viewManager[key].webContents.session.flushStorageData();
-    }
-    this.viewManager = {};
-    this.window = null as unknown as BrowserWindow;
+  createTab(tab?: Partial<ITab>) {
+    return this.tabCoordinator.createTab(tab);
   }
 
   async handleShowViewById(props: IHandleResizeView) {
-    const { tab } = props;
-    if (!tab.id) throw new Error("Tab id not found");
-    const isViewExist = this.viewManager[tab.id];
-    try {
-      if (!isViewExist) {
-        const { view } = new WebContentsViewController({
-          tabId: tab.id,
-          blocker: this.adBlocker,
-        });
-        this.viewManager[tab.id] = view;
-        this.loadContentView(tab.id);
-        await view.webContents.loadURL(tab.url);
-      } else {
-        if (isViewExist.isOpenedDevTools) {
-          isViewExist.webContents.openDevTools();
-        }
-        this.loadContentView(tab.id);
-      }
-      if (!this.window.contentView.getVisible()) this.window.contentView.setVisible(true);
-
-      this.handleResizeView(props);
-
-      if (Object.keys(this.viewManager).length) {
-        for (let viewID in this.viewManager) {
-          if (viewID !== tab.id) {
-            this.viewManager[viewID]?.webContents?.closeDevTools();
-            this.viewManager[viewID]?.setVisible(false);
-          }
-        }
-      }
-    } catch (error) {
-      log.error("handleShowViewById error", error);
-    } finally {
-      if (isViewExist && isViewExist.webContents && !isViewExist.webContents.isFocused()) {
-        isViewExist.webContents.focus();
-      }
+    if (!props?.tab?.id) throw new Error("Tab id not found");
+    const tabMetadata = this.tabCoordinator.getActiveTab(props?.tab?.id);
+    if (!tabMetadata) throw new Error("Tab not found");
+    this.window.contentView.addChildView(tabMetadata.webContentsView.view);
+    tabMetadata.webContentsView.view.setVisible(true);
+    tabMetadata.webContentsView.view.setBounds(props.screen);
+    const url1 = tabMetadata.tab.url;
+    const url2 = tabMetadata.webContentsView.webContents.getURL();
+    if (!isSameURl(url1, url2)) {
+      tabMetadata.webContentsView.webContents.loadURL(tabMetadata.tab.url);
     }
-  }
-
-  loadContentView(id: string) {
-    const view = this.viewManager[id];
-    this.window.contentView.addChildView(view);
-    this.viewActive = id;
-    view.setVisible(true);
-    view.webContents.focus();
   }
 
   async handleURLChange(tab: ITab) {
     try {
       const { id, url } = tab;
-      const view = this.viewManager[id];
-      if (!view) {
-        console.error(`View with id ${id} not found`);
-        return;
-      }
-      await view.webContents.loadURL(url);
-      const viewCookie = await session.defaultSession.cookies.get({ url: new URL(url).origin });
-
-      if (viewCookie.length) {
-        viewCookie?.forEach((item) => {
-          view.webContents.session.cookies.set({
-            url: new URL(url).origin,
-            name: item.name,
-            domain: item.domain,
-            value: item.value,
-            path: item.path,
-            httpOnly: item.httpOnly,
-            secure: item.secure,
-            expirationDate: item.expirationDate,
-            sameSite: item.sameSite,
-          });
-        });
-      }
-      console.log(`✅ Loaded URL with ad blocking: ${url}`);
+      if (!id || !url) throw new Error("Tab id or url not found");
+      const tabMetadata = this.tabCoordinator.getActiveTab(id);
+      if (!tabMetadata) throw new Error("Tab not found");
+      await this.loadSessionByURL({ url, view: tabMetadata.webContentsView.view });
+      tabMetadata.webContentsView.webContents.loadURL(url);
     } catch (error) {
       console.error("❌ Error loading URL:", error);
     }
   }
 
+  async loadSessionByURL({ url, view }: { url: string; view: WebContentsView }) {
+    const { origin } = new URL(url);
+    if (!origin) return;
+    const viewCookie = await session.defaultSession.cookies.get({ url: origin });
+    console.log(`loadSessionByURL ${origin}`, viewCookie);
+    if (viewCookie.length) {
+      viewCookie?.forEach((item) => {
+        view.webContents?.session.cookies.set({
+          url: origin,
+          name: item.name,
+          domain: item.domain,
+          value: item.value,
+          path: item.path,
+          httpOnly: item.httpOnly,
+          secure: item.secure,
+          expirationDate: item.expirationDate,
+          sameSite: item.sameSite,
+        });
+      });
+    }
+  }
+
   handleResizeView(props: IHandleResizeView) {
     const { tab, screen } = props;
-    if (!tab.id) return;
-    if (!tab || !screen || !this.viewManager[tab.id]) return;
-    this.viewManager[tab.id]?.setBounds(screen);
-    this.interfaceStore.readFiles<IUserInterface>().then((data) => {
-      if (data.layout === "BASIC") this.viewManager[tab.id].setBorderRadius(0);
-      else this.viewManager[tab.id].setBorderRadius(8);
-    });
+    const tabMetadata = this.tabCoordinator.getActiveTab(tab.id);
+    if (!tabMetadata) return;
+    tabMetadata.webContentsView.view.setBounds(screen);
   }
 
   handleHideView(props: { id: string }) {
-    if (!props || !props.id) return;
-    const view = this.viewManager[props.id];
-    if (!view) return;
-    if (view.webContents && view.webContents?.isDestroyed()) return;
-    if (view && view.webContents && view.webContents.session) {
-      if (typeof this.window.webContents.session.flushStorageData === "function") {
-        this.window.webContents.session.flushStorageData();
-      }
-      this.window.contentView.removeChildView(view);
-      view.setVisible(false);
+    try {
+      if (!props || !props.id) return;
+      this.tabCoordinator.hideView({ id: props.id, window: this.window });
+    } catch (error) {
+      return new ErrorServices(error);
     }
   }
 
   onGoBack(props: { data: ITab }) {
-    console.log("props", props);
     if (!props?.data?.id) return;
-    const currentView = this.viewManager[props?.data?.id];
-    if (!currentView) return;
-    if (currentView.webContents.navigationHistory.canGoBack()) {
-      currentView.webContents.navigationHistory.goBack();
+    const tabMetadata = this.tabCoordinator.getActiveTab(props?.data?.id);
+    if (!tabMetadata) return;
+    if (tabMetadata.webContentsView?.webContents?.navigationHistory.canGoBack()) {
+      tabMetadata.webContentsView?.webContents?.navigationHistory.goBack();
     }
   }
 
   async onCloseTab(props: { id: string }) {
-    if (!props.id) return;
-    await this.handleHideView({ id: props.id });
-    const view = this.viewManager[props.id];
-    if (view) {
-      if (typeof this.viewManager[props.id].removeAllListeners === "function") {
-        this.viewManager[props.id].removeAllListeners();
-      }
-      if (typeof this.viewManager[props.id].webContents.close === "function") {
-        this.viewManager[props.id].webContents.close();
-      }
-    }
-    setTimeout(() => {
-      delete this.viewManager[props.id];
-    }, 500);
+    this.tabCoordinator.closeTab({ id: props.id, window: this.window });
   }
 
   handleToggleDevTools(props: { id: string }) {
     if (!props || !props.id) return;
-    const view = this.viewManager[props.id];
-    let isOpenedDevTools = view.webContents.isDevToolsOpened();
-    view.webContents.toggleDevTools();
+    const tabMetadata = this.tabCoordinator.getActiveTab(props?.id);
+    if (!tabMetadata) return;
+    const view = tabMetadata.webContentsView?.view;
+    if (!view) return;
+    let isOpenedDevTools = view.webContents?.isDevToolsOpened();
+    view.webContents?.toggleDevTools();
     if (isOpenedDevTools) {
-      view.webContents.closeDevTools();
-      view.isOpenedDevTools = false;
+      view.webContents?.closeDevTools();
     } else {
-      view.webContents.openDevTools();
-      view.isOpenedDevTools = true;
+      view.webContents?.openDevTools();
     }
   }
 
   async handleReloadTab(props: ITab) {
-    console.log("props.data", props);
-    if (!props.id) throw new Error("Tab id not found");
-    const view = this.viewManager[props.id];
-    if (view) {
-      view.webContents.reload();
-    } else {
-      const { view } = new WebContentsViewController({ tabId: props.id });
-      this.viewManager[props.id] = view;
-      this.handleActiveView(props.id);
-      this.loadContentView(props.id);
-    }
-  }
-
-  handleActiveView(id: string) {
-    this.viewManager[id].setVisible(true);
-    this.viewActive = id;
-  }
-
-  async cloudSave(props: { data: ITab[]; index: number }) {
     try {
-      log.info("cloudSave tabManager data");
-      const tabs = props.data.filter((tab) => tab);
-      const cookies = session.defaultSession.cookies;
-      await Promise.all([this.userStore.saveFiles({ tabs: tabs || [], index: props.index || 0 })]);
-      return this.window.webContents.send("SYNC");
-    } catch (error) {
-      const noti = new Notification({
-        title: "Error",
-        body: error.message,
-      });
-      noti.show();
+      if (!props.id) throw new Error("Tab id not found");
+      const tabMetadata = this.tabCoordinator.getActiveTab(props.id);
+      if (!tabMetadata) throw new Error("Tab not found");
+      tabMetadata.webContentsView.webContents.reload();
+    } catch (e) {
+      new ErrorServices(e);
     }
   }
 
-  async getPIPState() {
-    const obj: Record<string, boolean> = {};
-    for (let id in this.viewManager) {
-      obj[id] = this.viewManager[id].webContents.isCurrentlyAudible();
-    }
-    return obj;
-  }
+  // async getPIPState() {
+  //   const obj: Record<string, boolean> = {};
+  //   for (let id in this.viewManager) {
+  //     obj[id] = this.viewManager[id].webContents?.isCurrentlyAudible();
+  //   }
+  //   return obj;
+  // }
 
   async requestPIP({ tab }: { tab: ITab }) {
     if (!tab?.id) {
@@ -341,39 +260,21 @@ export class ViewController {
         body: "Tab id not found",
       }).show();
     }
+    const tabMetadata = this.tabCoordinator.getActiveTab(tab.id);
 
-    const view = this.viewManager[tab.id];
-    this.window.contentView;
-    if (!view) return;
-    if (!view.webContents.isFocused()) {
-      view.webContents.focus();
+    if (!tabMetadata) {
+      return new Notification({
+        title: "Error",
+        body: "Tab not found",
+      }).show();
     }
-    view.webContents
-      .executeJavaScript(
-        `
-      function enterPictureInPicture(videoElement) {
-          if(document.pictureInPictureEnabled && !videoElement.disablePictureInPicture) {
-              try {
-                  if (document.pictureInPictureElement) {
-                      document.exitPictureInPicture();
-                  }
-                videoElement.requestPictureInPicture().
-                  then(() => {
-                      console.log('Entered Picture-in-Picture mode.');
-                  })
-                  .catch((error) => {
-                      console.error('Failed to enter Picture-in-Picture mode:', error);
-                  });
-              } catch(err) {
-                  console.error(err);
-              }
-          }
-      }
-      setTimeout(() => {
-        enterPictureInPicture(document.querySelector("video"));
-      }, 500);
-      `
-      )
+
+    if (!tabMetadata.webContentsView) return;
+    if (!tabMetadata.webContentsView.webContents?.isFocused()) {
+      tabMetadata.webContentsView.webContents?.focus();
+    }
+    tabMetadata.webContentsView.webContents
+      .executeJavaScript(`(${preloadScript.toString()})()`)
       .then(() => {
         log.info("requestPIP success");
       })
@@ -383,21 +284,22 @@ export class ViewController {
   }
 
   handleSearchPage(v: any) {
-    const view = this.viewManager[this.viewActive];
-    log.info("handleSearchPage", view);
-    if (!view) return;
-    log.info("handleSearchPage clearSelection");
-
-    view.webContents.on("found-in-page", (event, result) => {
-      console.log("found-in-page");
-      if (result.finalUpdate) view.webContents.stopFindInPage("clearSelection");
-    });
-
-    view.webContents.findInPage(v.data, {
-      forward: false,
-      findNext: true,
-      matchCase: true,
-    });
+    // const view = this.viewManager[this.viewActive];
+    // log.info("handleSearchPage", view);
+    // if (!view) return;
+    // log.info("handleSearchPage clearSelection");
+    // view.webContents?.on("found-in-page", (event, result) => {
+    //   console.log("found-in-page");
+    //   if (result.finalUpdate) view.webContents?.stopFindInPage("clearSelection");
+    // });
+    // view.webContents?.findInPage(v.data, {
+    //   forward: false,
+    //   findNext: true,
+    //   matchCase: true,
+    // });
+  }
+  handleToggleBookmark({ url, id }: { url: string; id: string }) {
+    this.tabCoordinator.bookmark({ url, id });
   }
 
   async loadUserInterface() {
@@ -413,6 +315,35 @@ export class ViewController {
     };
     Object.assign(defaultData, userInterface);
     return userInterface;
+  }
+
+  async getCookieFromURL(url: string) {
+    const { origin } = new URL(url);
+    if (!origin) return;
+    const viewCookie = await session.defaultSession.cookies.get({ url: origin });
+    return viewCookie;
+  }
+  async cloudSave() {
+    try {
+      log.info("cloudSave tabManager data");
+      const tabs = this.tabCoordinator.getTabs;
+      const cookies = session.defaultSession.cookies;
+      for (let i = 0; i < tabs.length; i++) {
+        tabs[i].cookies = await this.getCookieFromURL(tabs[i].url);
+      }
+      await Promise.all([cookies.flushStore(), this.userStore.saveFiles({ tabs: tabs || [], index: 0 })]);
+      return this.window.webContents?.send("SYNC");
+    } catch (error) {
+      const noti = new Notification({
+        title: "Error",
+        body: error.message,
+      });
+      noti.show();
+    }
+  }
+
+  onCloseApp() {
+    app.quit();
   }
 
   interfaceSave(data: IUserInterface) {
@@ -436,11 +367,44 @@ export class ViewController {
     }
   }
 
-  clearCache() {
-    try {
-      // this.window.webContents.session.clearCache(); // RENDERER
-      this.viewManager[this.viewActive].webContents.session.clearCache(); // TAB
-    } catch (error) {
-    }
+  clearCache({ tab }: { tab: ITab }) {
+    return this.tabCoordinator.clearCache({ id: tab.id });
+  }
+  clearAllCache() {
+    return this.tabCoordinator.clearAllCache();
+  }
+
+  showNotification({ title, description }: { title: string; description: string }) {
+    return new Notification({
+      title: title,
+      body: description,
+    }).show();
   }
 }
+
+const preloadScript = () => {
+  // @ts-ignore
+  function enterPictureInPicture(videoElement) {
+    if (document.pictureInPictureEnabled && !videoElement.disablePictureInPicture) {
+      try {
+        if (document.pictureInPictureElement) {
+          document.exitPictureInPicture();
+        }
+        videoElement
+          .requestPictureInPicture()
+          .then(() => {
+            console.log("Entered Picture-in-Picture mode.");
+          })
+          // @ts-ignore
+          .catch((error) => {
+            console.error("Failed to enter Picture-in-Picture mode:", error);
+          });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+  setTimeout(() => {
+    enterPictureInPicture(document.querySelector("video"));
+  }, 500);
+};

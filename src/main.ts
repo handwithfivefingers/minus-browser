@@ -4,18 +4,9 @@ import started from "electron-squirrel-startup";
 import path from "node:path";
 import { CommandController, ViewController } from "./features/browsers/controller";
 import { StoreManager } from "./features/browsers";
-// import { ExtensionController } from "./features/extensions";
-// const disableGpu = process.env.ELECTRON_DISABLE_GPU || process.argv.includes("--disable-gpu");
-// if (disableGpu) {
-  // app.disableHardwareAcceleration();
-  // console.log("App running with Hardware acceleration disabled.");
-// }
-
 if (started) {
   app.quit();
 }
-// app.disableHardwareAcceleration();
-
 const preloadPath = path.join(__dirname, "/preload.js");
 
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -31,10 +22,6 @@ class MinusBrowser {
   }
 
   async initialize() {
-    // const userInterface = await this.interfaceStore.readFiles<IUserInterface>();
-    // if (userInterface.dataSync.hardwareAcceleration === "0") {
-    //   app.disableHardwareAcceleration();
-    // }
     app.on("ready", () => {
       log.initialize();
     });
@@ -75,10 +62,12 @@ class MinusBrowser {
         contextIsolation: true,
         preload: preloadPath,
         session: session.defaultSession,
-        enableDeprecatedPaste: true,
         sandbox: true,
       },
     });
+
+    // const cookies = await session.defaultSession.cookies.get({});
+    // console.log("session.defaultSession", cookies);
 
     this.browser = browser;
 
@@ -98,10 +87,10 @@ class MinusBrowser {
     log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
     new ViewController(browser);
 
-    this.registerCommand();
+    // this.registerCommand();
     this.registerNotification();
     this.requestPermission();
-    log.info = console.log;
+    console.log = log.log;
   };
   registerCommand() {
     let gS: CommandController;

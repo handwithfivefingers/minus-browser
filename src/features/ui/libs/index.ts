@@ -165,11 +165,11 @@ export const getAddressType = (url: string): "domain" | "ipv4" | "ipv6" | "local
 };
 
 // Test address type detection
-console.log("\n=== Address Type Detection ===");
-const typeTestCases = ["domain.com", "192.168.1.1", "2001:db8::1", "localhost", "invalid"];
-typeTestCases.forEach((test) => {
-  console.log(`${test} -> ${getAddressType(test)}`);
-});
+// console.log("\n=== Address Type Detection ===");
+// const typeTestCases = ["domain.com", "192.168.1.1", "2001:db8::1", "localhost", "invalid"];
+// typeTestCases.forEach((test) => {
+//   console.log(`${test} -> ${getAddressType(test)}`);
+// });
 
 export const debounce = <A = unknown, R = void>(callback: (args?: A) => R, n: number) => {
   let timer: NodeJS.Timeout | undefined | number = undefined;

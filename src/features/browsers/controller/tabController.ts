@@ -1,36 +1,70 @@
 import { View } from "electron";
+import log from "electron-log";
 import { Tab } from "../classes/tab";
 import { ITab } from "../interfaces";
-import log from "electron-log";
+import { StoreManager } from "../stores";
 export class TabController {
-  tabs: Tab[];
+  tabs: Tab[] = [];
   activeTab: Tab | null;
-  tabsIndex: Record<string, number>;
-  index: number;
-  wTabs = new WeakMap();
+  tabsIndex: Record<string, number> = {};
+  index: number = 0;
   hibernateMapping: Map<string, View> = new Map();
-  constructor(props?: { tabs: ITab[] }) {
-    this.initialize(props);
-    this.hibernateAlarm();
+  userStore: StoreManager = new StoreManager("userData");
+  bookmarkStore: StoreManager = new StoreManager("bookmark");
+  bookmarks: Set<string> = new Set();
+  constructor() {
+    this.getBookMarks().finally(() => {
+      this.initialize();
+    });
   }
-  initialize(props?: { tabs: ITab[] }) {
-    log.info("TabController initialized");
-    const newTabs: Tab[] = [];
-    const tabsIndex: { [key: string]: number } = {};
-    let index = 0;
-    for (index; index < props?.tabs.length; index++) {
-      const tab = props?.tabs[index];
-      const newTab = new Tab({
-        ...tab,
-        index,
-      });
-      newTabs.push(newTab);
-      tabsIndex[newTab.id] = index;
-    }
 
-    this.tabsIndex = tabsIndex;
-    this.tabs = newTabs;
-    this.index = index;
+  async getBookMarks() {
+    const bookmarkRaw = await this.bookmarkStore.readFiles<Record<string, string[]>>();
+    this.bookmarks = new Set(bookmarkRaw?.bookmark);
+  }
+  async initialize() {
+    try {
+      const { tabs = [] } = await this.userStore.readFiles<{ tabs: ITab[]; index: number }>();
+
+      const newTabs: Tab[] = [];
+      const tabsIndex: { [key: string]: number } = {};
+      let idx = 0;
+      for (idx; idx < tabs.length; idx++) {
+        const isBookmarked = this.bookmarks.has(new URL(tabs[idx].url).href);
+        const tab = tabs[idx];
+        const newTab = new Tab({
+          ...tab,
+          isBookmarked: isBookmarked,
+          index: idx,
+        });
+        newTabs.push(newTab);
+        tabsIndex[newTab.id] = idx;
+      }
+      this.tabsIndex = tabsIndex;
+      this.tabs = newTabs;
+      this.index = idx;
+      log.log("TabController initialized");
+      return this;
+    } catch (error) {
+      console.log("TabController initialize error", error);
+    }
+  }
+
+  addNewBookmark({ url, id }: Partial<Tab>) {
+    const tab = this.getTabById(id);
+    const validURL = new URL(url);
+    if (tab && !tab.isBookmarked && !this.bookmarks.has(validURL.href)) {
+      tab.isBookmarked = true;
+      this.updateTab(id, tab);
+      this.bookmarks.add(validURL.href);
+    } else {
+      tab.isBookmarked = false;
+      this.bookmarks.delete(validURL.href);
+    }
+    const mapAsArray = [...this.bookmarks.values()];
+    this.bookmarkStore.saveFiles({
+      bookmark: mapAsArray,
+    });
   }
   getTabById(id: string) {
     const currentIndex = this.tabsIndex[id];
@@ -39,9 +73,13 @@ export class TabController {
   }
   addNewTab(tab?: Partial<Tab>) {
     const tabObject = new Tab({
-      isFocused: true,
+      isFocused: false,
+      isBookmarked: false,
       ...tab,
     });
+    const tabUrl = new URL(tabObject.url);
+    const isBookmarked = this.bookmarks?.has(tabUrl.href);
+    tabObject.isBookmarked = isBookmarked;
     tabObject.index = this.index;
     let newIndex = this.index + 1;
     this.tabs = [...this.tabs, tabObject];
@@ -51,7 +89,7 @@ export class TabController {
     return tabObject;
   }
   updateTab(id: string, tab: Partial<Tab>) {
-    log.info("Updated Tab ${id}:", tab )
+    log.info("Updated Tab ${id}:", tab);
     const currentIndex = this.tabsIndex[id];
     if (currentIndex === undefined) return;
     const updatedTab = new Tab({ ...this.tabs[currentIndex], ...tab });

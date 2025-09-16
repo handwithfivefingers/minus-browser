@@ -10,8 +10,8 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: "TruyenApp",
-    appBundleId: "com.truyenmai.localdev.plist",
+    name: "MinusBrowser",
+    appBundleId: "com.minusbrowser.localdev.plist",
     icon: "./images/icon.icns",
     asar: true,
   },
@@ -21,7 +21,7 @@ const config: ForgeConfig = {
     new MakerSquirrel({}),
     // new MakerZIP({}, ["darwin"]),
     new MakerDMG({
-      name: "TruyenApp",
+      name: "MinusBrowser",
       format: "ULFO",
       overwrite: true,
     }),

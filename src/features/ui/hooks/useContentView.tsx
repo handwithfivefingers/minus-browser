@@ -32,6 +32,7 @@ export const useContentView = () => {
     return {
       showViewByID: async (params: IShowViewProps) => {
         try {
+          console.log("params", params);
           const response = await window.api.EMIT(EVENT_TYPE.SHOW_VIEW_BY_ID, params);
           return response;
         } catch (error) {

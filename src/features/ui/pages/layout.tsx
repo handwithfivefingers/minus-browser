@@ -37,16 +37,16 @@ const Layout = () => {
 };
 
 const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
-  const { initialize, addNewTab } = useTabStore();
+  const { addNewTab } = useTabStore();
   const minus = useMinusThemeStore();
   const navigate = useNavigate();
   useLayoutEffect(() => {
     const getScreenData = async () => {
       try {
-        const data = await window.api.INVOKE<{ tabs: Tab[]; index: number }>("GET_TABS");
+        // const data = await window.api.INVOKE<{ tabs: Tab[]; index: number }>("GET_TABS");
         const userI = await window.api.INVOKE("GET_USER_INTERFACE");
         console.log("userI", userI);
-        initialize(data);
+        // initialize(data);
         minus.initialize(userI);
       } catch (error) {
         console.error("Error getting tabs:", error);
@@ -74,18 +74,17 @@ const SyncSideEffect = () => {
       : isNaN(Number(dataSync.intervalTime))
         ? 15
         : Number(dataSync.intervalTime) * 1000;
-  console.log("intervalTime", intervalTime);
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (intervalTime) {
       interval = setInterval(() => {
-        console.log("sync", intervalTime);
         sync();
       }, intervalTime);
     }
 
     return () => intervalTime && interval && clearInterval(interval);
   }, [intervalTime]);
+  console.log("dataSync", dataSync);
   return "";
 };
 

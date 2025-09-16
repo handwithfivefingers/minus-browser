@@ -6,16 +6,9 @@ export interface ITab {
   isPinned: boolean;
   isFocused: boolean;
   favicon?: string;
-  memoryUsage?: {
-    workingSetSize: 0;
-    peakWorkingSetSize: 0;
-    privateBytes: 0;
-    sharedBytes: 0;
-  };
-  cpuUsage?: {
-    percentCPUUsage: 0;
-    idleWakeupsPerSecond: 0;
-  };
+  cookies?: any[]
+  isBookmarked?: boolean
+  
   updateTitle(title: string): void;
   updateUrl(url: string): void;
   onFocus(): void;

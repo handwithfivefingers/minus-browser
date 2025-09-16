@@ -42,14 +42,16 @@ export class AdBlocker {
     const script = [this.youtubePatchPlayer(), this.youtubeRemovePopups(), this.skipAds()];
 
     // Inject trực tiếp vào renderer
-    view.webContents
-      .executeJavaScript(script.join("\n"))
-      .then(() => {
-        console.error("[YT Adblock] Successfully injected patch!");
-      })
-      .catch((err) => {
-        console.error("[YT Adblock] Injection failed:", err);
-      });
+    if (view.webContents.getURL().includes("youtube.com")) {
+      view.webContents
+        .executeJavaScript(script.join("\n"))
+        .then(() => {
+          console.error("[YT Adblock] Successfully injected patch!");
+        })
+        .catch((err) => {
+          console.error("[YT Adblock] Injection failed:", err);
+        });
+    }
   }
 
   youtubePatchPlayer() {

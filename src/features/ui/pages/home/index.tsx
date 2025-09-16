@@ -87,7 +87,7 @@ const TodoHome = () => {
         <span ref={minRef} className="font-medium text-8xl text-white" />
       </div>
       <div className="h-full w-full max-w-80 flex gap-2 flex-col">
-        <div className="flex gap-2 flex-col max-h-[275px] overflow-x-hiddenoverflow-y-auto scrollbar">
+        <div className="flex gap-2 flex-col max-h-[275px] overflow-x-hidden overflow-y-auto scrollbar">
           {todos?.map((item) => {
             return <TodoItem {...item} key={item.id} onSave={onSave} onDelete={() => onDelete(item)} />;
           })}

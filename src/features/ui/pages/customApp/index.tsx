@@ -79,8 +79,10 @@ const PreHeader = ({ tabId }: { tabId: string }) => {
     <Suspense fallback={<div className="h-9">Loading header ...</div>}>
       <Header
         key={tabId}
+        id={tabId}
         title={tab?.title}
         url={tab?.url}
+        isBookmarked={tab?.isBookmarked}
         onSearch={handleSearch}
         onBackWard={onBackWard}
         onToggleDevTools={onToggleDevTools}
@@ -135,12 +137,8 @@ const WebViewInstance = ({ id }: { id: string }) => {
     }, 100);
     const resizeObserver = new ResizeObserver(() => autoSize());
     resizeObserver?.observe(webviewRef.current);
-
-    window.api.LISTENER(`page-title-updated:${tab.id}`, (value: { id: string; title: string; url: string }) => {
-      updateTab(tab.id, { title: value.title, url: value.url });
-    });
-    window.api.LISTENER(`page-favicon-updated:${tab.id}`, (value: { favicon: string }) => {
-      updateTab(tab.id, { favicon: value.favicon });
+    window.api.LISTENER(`page-favicon-updated:${tab.id}`, (value: { title: string; favicon: string }) => {
+      updateTab(tab.id, { ...value });
     });
 
     return () => {
