@@ -1,11 +1,5 @@
-import { BrowserWindow, clipboard, Menu, MenuItem, WebContentsView } from "electron";
+import { BrowserWindow, clipboard, Menu, MenuItem } from "electron";
 
-interface IContextTemplate {
-  label?: string;
-  role?: string;
-  click?: () => void;
-  type?: string;
-}
 export class ContextMenuController {
   template: any[];
 

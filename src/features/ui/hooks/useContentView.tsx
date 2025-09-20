@@ -7,7 +7,7 @@ const EVENT_TYPE = {
 };
 
 interface IShowViewProps {
-  tab: ITab;
+  tab: Partial<ITab>;
   screen: {
     width: number;
     height: number;

@@ -3,9 +3,8 @@ import log from "electron-log";
 import { IHandleResizeView, IPC, ITab } from "../interfaces";
 import { ErrorServices } from "../services/error.services";
 import { StoreManager } from "../stores";
-import { AdBlocker } from "./adsBlockController";
-import { TabCoordinator } from "./tabCoordinator";
 import { isSameURl } from "../utils";
+import { TabCoordinator } from "./tab/tabCoordinator";
 
 enum TabEventType {
   CREATE_TAB = "CREATE_TAB",
@@ -61,14 +60,11 @@ export class ViewController {
 
   private invokeHandlers: Record<string, (data?: any) => any>;
   private listenerHandlers: Record<string, (data?: any) => void>;
-  private adBlocker: AdBlocker;
-
   constructor(window: BrowserWindow) {
     this.window = window;
     this.wc = window.webContents;
     this.initializeHandlers();
     this.init();
-    this.adBlocker = new AdBlocker();
     window.webContents?.on("render-process-gone", function (event, detailed) {
       log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
       if (detailed.reason == "crashed") {
@@ -80,10 +76,11 @@ export class ViewController {
     });
   }
 
-  private initializeHandlers() {
+  private async initializeHandlers() {
     this.invokeHandlers = {
-      [TabEventType.GET_TABS]: () => this.getTabs(),
+      [TabEventType.GET_TABS]: () => this.tabCoordinator.getTabs,
       [TabEventType.CREATE_TAB]: (tab?: Partial<ITab>) => this.createTab(tab),
+      ["GET_TAB"]: (tab?: Partial<ITab>) => this.getTab({ id: tab.id }),
       GET_USER_INTERFACE: () => this.loadUserInterface(),
       CLOUD_SAVE: () => this.cloudSave(),
       SEARCH_PAGE: (data) => this.handleSearchPage(data),
@@ -106,14 +103,14 @@ export class ViewController {
   }
 
   async init() {
+    await this.tabCoordinator.initalize();
     ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
     ipcMain.on("send", (event, args: IPC) => this.onListener(args));
-    this.adBlocker = new AdBlocker(); // async function
-    this.window.webContents.send("GET_TABS", { tabs: this.tabCoordinator.getTabs });
   }
 
-  async getTabs() {
-    return this.tabCoordinator.getTabs;
+  async getTab({ id }: { id: string }) {
+    const tab = this.tabCoordinator.getActiveTab(id);
+    return tab.tab;
   }
 
   private onInvoke(args: IPC) {
@@ -256,7 +253,7 @@ export class ViewController {
   async requestPIP({ tab }: { tab: ITab }) {
     if (!tab?.id) {
       return new Notification({
-        title: "Error",
+        title: "requestPIP Error",
         body: "Tab id not found",
       }).show();
     }
@@ -335,7 +332,7 @@ export class ViewController {
       return this.window.webContents?.send("SYNC");
     } catch (error) {
       const noti = new Notification({
-        title: "Error",
+        title: "cloudSave Error",
         body: error.message,
       });
       noti.show();

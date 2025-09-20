@@ -1,22 +1,13 @@
-import {
-  IconChevronRight,
-  IconDragDrop,
-  IconDragDrop2,
-  IconGripVertical,
-  IconHome,
-  IconPlus,
-  IconSettings,
-  IconX,
-} from "@tabler/icons-react";
+import { IconGripVertical, IconHome, IconPlus, IconSettings, IconX } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router";
-import { useTabStore } from "../../stores/useTabStore";
+import { Link, useLocation, useNavigate } from "react-router";
+import { ITab } from "~/features/browsers";
+import { useMinusThemeStore } from "../../stores/useMinusTheme";
 import { TabItem } from "../tab";
 /** @ts-ignore */
 import styles from "./styles.module.css";
-import { useMinusThemeStore } from "../../stores/useMinusTheme";
-import { ITab } from "~/features/browsers";
+import { Tab } from "~/features/browsers/classes/tab";
 interface IResizeProps {
   children: React.ReactNode;
   initialWidth?: number;
@@ -25,16 +16,30 @@ interface IResizeProps {
   className?: string;
 }
 const SideMenu = () => {
-  const { tabs, addNewTab } = useTabStore();
+  const [tabs, setTabs] = useState([]);
+  const navigate = useNavigate();
   const pathname = useLocation().pathname;
+  useEffect(() => {
+    getData();
+  }, []);
   const onClose = useCallback(() => {
     window.api.EMIT("CLOSE_APP");
   }, []);
   const onAddNewTab = async () => {
     const tab = await window.api.INVOKE<Partial<ITab>>("CREATE_TAB");
-    addNewTab(tab);
+    setTabs((t) => [...t, tab]);
   };
 
+  const getData = async () => {
+    const resp = await window.api.INVOKE<Tab[]>("GET_TABS");
+    setTabs(resp);
+  };
+
+  const onCloseTab = async ({ id }: { id: string }) => {
+    window.api.EMIT("ON_CLOSE_TAB", { id });
+    getData();
+    navigate(`/`);
+  };
   return (
     <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={clsx(styles.sidebar)}>
       <div className="flex gap-1 flex-col flex-1 overflow-y-auto overflow-x-hidden h-full scrollbar ">
@@ -63,13 +68,19 @@ const SideMenu = () => {
         >
           <IconHome />
         </Link>
-        {tabs
-          ?.filter((tab) => tab)
-          ?.map((tab) => {
-            return (
-              <TabItem {...tab} key={tab.id} className={clsx("flex flex-col  items-center", styles.tabItem, {})} />
-            );
-          })}
+        {tabs?.length > 0 &&
+          tabs
+            ?.filter?.((tab) => tab)
+            ?.map((tab) => {
+              return (
+                <TabItem
+                  {...tab}
+                  key={tab.id}
+                  className={clsx("flex flex-col  items-center", styles.tabItem, {})}
+                  onClose={onCloseTab}
+                />
+              );
+            })}
         <div
           onClick={() => onAddNewTab()}
           className={clsx(
@@ -79,24 +90,32 @@ const SideMenu = () => {
         >
           <IconPlus />
         </div>
+        {/* SUB MENU */}
       </div>
-      <div className="flex flex-col gap-2 shrink-0 rounded-full px-1">
-        <Link
-          to="/setting"
-          className={clsx(
-            `h-10 px-0.5 transition-all rounded-md flex items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
-            {
-              [`bg-white text-slate-500 shadow-md`]: pathname === "/setting",
-              [`text-slate-500`]: pathname !== "/setting",
-            }
-          )}
-          title="Setting"
-        >
-          <IconSettings />
-        </Link>
-        <span className="font-normal text-xs text-center">Tab: {tabs.filter((item) => !!item).length}</span>
-      </div>
+      <SubMenuItem size={tabs?.length} />
     </ResizableSidebar>
+  );
+};
+
+const SubMenuItem = ({ size }: { size: number }) => {
+  const pathname = useLocation().pathname;
+  return (
+    <div className="flex flex-col gap-2 shrink-0 rounded-full px-1">
+      <Link
+        to="/setting"
+        className={clsx(
+          `h-10 px-0.5 transition-all rounded-md flex items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
+          {
+            [`bg-white text-slate-500 shadow-md`]: pathname === "/setting",
+            [`text-slate-500`]: pathname !== "/setting",
+          }
+        )}
+        title="Setting"
+      >
+        <IconSettings />
+      </Link>
+      <span className="font-normal text-xs text-center">Tab: {size > 0 ? size : "0"}</span>
+    </div>
   );
 };
 

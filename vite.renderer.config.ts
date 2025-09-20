@@ -11,4 +11,21 @@ export default defineConfig({
       },
     ],
   },
+  build: {
+    lib: {
+      entry: "./src/features/ui/components/sidebar/index.tsx",
+      name: "SidebarComponent",
+      fileName: () => "sidebar.js",
+      formats: ["umd"], // makes it accessible as <script>
+    },
+    rollupOptions: {
+      external: ["react", "react-dom"],
+      output: {
+        globals: {
+          react: "React",
+          "react-dom": "ReactDOM",
+        },
+      },
+    },
+  },
 });

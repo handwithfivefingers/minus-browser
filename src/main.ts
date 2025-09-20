@@ -4,6 +4,7 @@ import started from "electron-squirrel-startup";
 import path from "node:path";
 import { CommandController, ViewController } from "./features/browsers/controller";
 import { StoreManager } from "./features/browsers";
+import { Sidebar } from "./features/subWindow/sidebar";
 if (started) {
   app.quit();
 }
@@ -90,6 +91,7 @@ class MinusBrowser {
     // this.registerCommand();
     this.registerNotification();
     this.requestPermission();
+    this.sidebarInjection();
     console.log = log.log;
   };
   registerCommand() {
@@ -141,6 +143,10 @@ class MinusBrowser {
     //   console.log("permission", webContents, permission, request);
     //   return true;
     // });
+  }
+
+  sidebarInjection() {
+    // const sidebar = new Sidebar();
   }
 }
 new MinusBrowser();

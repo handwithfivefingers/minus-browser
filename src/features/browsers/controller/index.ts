@@ -1,3 +1,2 @@
 export * from "./viewController";
-export * from "./adsBlockController";
-export * from "./commandController";
+export * from "./command/commandController";

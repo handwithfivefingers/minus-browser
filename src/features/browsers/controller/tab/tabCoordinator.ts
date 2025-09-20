@@ -1,8 +1,8 @@
-import { Tab } from "../classes/tab";
-import { ITab } from "../interfaces";
+import { Tab } from "../../classes/tab";
+import { ITab } from "../../interfaces";
 import { TabController } from "./tabController";
 import { WebContentsViewController } from "./webContentsViewController";
-import { AdBlocker } from "./adsBlockController";
+import { AdBlocker } from "../adsBlock";
 import { BrowserWindow } from "electron";
 export class TabCoordinator {
   adBlocker: AdBlocker;
@@ -11,12 +11,13 @@ export class TabCoordinator {
   constructor() {
     this.tabController = new TabController();
     this.adBlocker = new AdBlocker();
-    this.initalize();
   }
-  initalize() {}
+  async initalize() {
+    await this.tabController.initialize();
+  }
 
   get getTabs() {
-    return this.tabController.tabs;
+    return this.tabController.tabs?.size ? [...this.tabController.tabs.values()] : [];
   }
 
   get getIndex() {
@@ -74,6 +75,7 @@ export class TabCoordinator {
       wcView.webContents?.session.clearCache();
     }
   }
+
   clearAllCache() {
     this.viewControllers.forEach((view) => {
       view.webContents?.session.clearCache();

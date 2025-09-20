@@ -6,21 +6,13 @@ import { Avatar } from "../avatar";
 /** @ts-ignore */
 import styles from "./styles.module.css";
 import { IconX } from "@tabler/icons-react";
-import { useTabStore } from "../../stores/useTabStore";
 interface ITabItem extends Omit<ITab, "updateTitle" | "updateUrl" | "onFocus" | "onBlur"> {
   className?: string;
+  onClose: ({ id }: { id: string }) => void;
 }
 
-const TabItem = memo(({ id, className, ...props }: ITabItem) => {
+const TabItem = memo(({ id, className, onClose, ...props }: ITabItem) => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const tabStore = useTabStore();
-  const onCloseTab = async () => {
-    window.api.EMIT("ON_CLOSE_TAB", { ...props, id });
-    const resp = tabStore.closeTab({ ...props, id });
-    console.log("resp", resp);
-    navigate(`/`);
-  };
   return (
     <div className={styles.tabItem}>
       <Link
@@ -44,7 +36,7 @@ const TabItem = memo(({ id, className, ...props }: ITabItem) => {
           "absolute right-0 top-0 rounded  hover:text-red-600 cursor-pointer z-[1] transition-colors",
           styles.closeIcon
         )}
-        onClick={onCloseTab}
+        onClick={() => onClose({ id })}
         size={16}
       />
     </div>

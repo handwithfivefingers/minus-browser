@@ -1,9 +1,7 @@
 import { BrowserWindow, WebContentsView } from "electron";
-import { ExtensionController } from "../../extensions";
-import { AdBlocker } from "./adsBlockController";
-import { ContextMenuController } from "./contextMenuController";
+import { AdBlocker } from "../adsBlock";
+import { ContextMenuController } from "../context";
 interface IDestroy {
-  // Previous interface
   destroy?: () => void;
 }
 
@@ -19,19 +17,13 @@ class WebContentsViewController {
   }
   initialize() {
     try {
-      const view = new WebContentsView({
-        webPreferences: {
-          nodeIntegration: true,
-          contextIsolation: false,
-        },
-      });
-      console.log("view", view);
+      const view = new WebContentsView();
       this.view = view;
       this.webContents = view.webContents;
       view.setMaxListeners(20);
       this.blocker?.setupAdvancedRequestBlocking?.(view);
       this.registerCommonEvent();
-      this.registerFocusEvent();
+      // this.registerFocusEvent();
       this.createContextMenu();
       this.registerExtension();
       this.requestPermissions();
@@ -70,7 +62,6 @@ class WebContentsViewController {
 
     view.webContents.setWindowOpenHandler(({ url }) => {
       try {
-        const validURL = new URL(url);
         const browserView = BrowserWindow.getFocusedWindow();
         browserView.webContents.send("CREATE_TAB", { url: url });
         return { action: "deny" };
@@ -82,29 +73,31 @@ class WebContentsViewController {
 
   registerCommonEvent() {
     if (!this.webContents) return;
-    this.webContents.on("page-favicon-updated", this.pageFaviconUpdated);
+    // this.webContents.on("page-favicon-updated", this.pageFaviconUpdated);
+    // this.webContents.on("did-start-loading", this.didStartLoad);
+    // this.webContents.on("did-stop-loading", this.didStopLoad);
   }
-  onViewFocus() {
-    if (!this.webContents) return;
-    if (this.registerEvent) return;
-    // this.registerEventListeners();
-    const view = this.view;
-    this.webContents.on("did-start-loading", this.didStartLoad);
-    this.webContents.on("did-stop-loading", this.didStopLoad);
-    this.registerEvent = true;
-  }
-  onViewBlur() {
-    if (!this.registerEvent) return;
-    if (!this.webContents) return;
-    this.webContents.removeListener("did-start-loading", this.didStartLoad);
-    this.webContents.removeListener("did-stop-loading", this.didStopLoad);
-    this.registerEvent = false;
-  }
-  registerFocusEvent() {
-    if (!this.webContents) return;
-    this.webContents.on("focus", this.onViewFocus);
-    this.webContents.on("blur", this.onViewBlur);
-  }
+  // onViewFocus() {
+  //   if (!this.webContents) return;
+  //   if (this.registerEvent) return;
+  //   // this.registerEventListeners();
+  //   const view = this.view;
+  //   this.webContents.on("did-start-loading", this.didStartLoad);
+  //   this.webContents.on("did-stop-loading", this.didStopLoad);
+  //   this.registerEvent = true;
+  // }
+  // onViewBlur() {
+  //   if (!this.registerEvent) return;
+  //   if (!this.webContents) return;
+  //   this.webContents.removeListener("did-start-loading", this.didStartLoad);
+  //   this.webContents.removeListener("did-stop-loading", this.didStopLoad);
+  //   this.registerEvent = false;
+  // }
+  // registerFocusEvent() {
+  //   if (!this.webContents) return;
+  //   this.webContents.on("focus", this.onViewFocus);
+  //   this.webContents.on("blur", this.onViewBlur);
+  // }
 
   destroy() {
     this.webContents.removeAllListeners();
@@ -137,11 +130,11 @@ class WebContentsViewController {
     const window = BrowserWindow.getFocusedWindow();
     const tabId = this.tabId;
     const view = this.view;
-    window.webContents.send(`page-favicon-updated:${tabId}`, {
-      title: view?.webContents?.getTitle(),
-      url: view?.webContents?.getURL(),
-      favicon: favicons[0],
-    });
+    // window.webContents.send(`page-favicon-updated:${tabId}`, {
+    //   title: view?.webContents?.getTitle(),
+    //   url: view?.webContents?.getURL(),
+    //   favicon: favicons[0],
+    // });
   };
 }
 

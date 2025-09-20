@@ -16,6 +16,11 @@ const LAYOUT_CLASS = {
 
 const Layout = () => {
   const layout = useMinusThemeStore().layout;
+  useEffect(() => {
+    window.api.LISTENER("GET_TABS", (v) => {
+      console.log("LAYOUT: getScreenData v", v);
+    });
+  }, []);
   return (
     <LayoutSideEffect>
       <div className={LAYOUT_CLASS[layout]}>
@@ -45,8 +50,6 @@ const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
       try {
         // const data = await window.api.INVOKE<{ tabs: Tab[]; index: number }>("GET_TABS");
         const userI = await window.api.INVOKE("GET_USER_INTERFACE");
-        console.log("userI", userI);
-        // initialize(data);
         minus.initialize(userI);
       } catch (error) {
         console.error("Error getting tabs:", error);
@@ -84,7 +87,6 @@ const SyncSideEffect = () => {
 
     return () => intervalTime && interval && clearInterval(interval);
   }, [intervalTime]);
-  console.log("dataSync", dataSync);
   return "";
 };
 

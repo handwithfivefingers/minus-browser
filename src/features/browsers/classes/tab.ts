@@ -1,8 +1,8 @@
-import { v4 as uuid_v4 } from "uuid";
+import { v7 as uuid_v7 } from "uuid";
 import { ITab } from "../interfaces";
 
 export class Tab implements ITab {
-  id: string = uuid_v4();
+  id: string = uuid_v7();
   title: string = "New Tab";
   url: string = "https://google.com";
   isPinned: boolean = false;
@@ -22,6 +22,10 @@ export class Tab implements ITab {
 
   updateUrl(url: string) {
     this.url = url;
+  }
+
+  updateTab(tab: Partial<ITab>) {
+    Object.assign(this, tab);
   }
 
   onFocus() {

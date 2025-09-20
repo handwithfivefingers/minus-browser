@@ -11,6 +11,7 @@ import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { isValidDomainOrIP } from "../libs";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
+import { Switch } from "./switch";
 interface IHeader {
   url?: string;
   id: string;
@@ -74,6 +75,9 @@ const Header = ({
           <IconChevronLeft size={16} />
         </button>
       </div>
+      <div className="bg-slate-200 px-4 rounded-full">
+        <Switch title={"Hibernate"} />
+      </div>
       <div
         className={[
           "flex gap-1 w-1/2 bg-white rounded-full  border-2 transition-all relative mx-auto",
@@ -132,6 +136,7 @@ const Header = ({
           <IconSearch size={12} />
         </button>
       </div>
+
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded-full flex gap-2 items-center bg-slate-200">
         <Sync />
 
