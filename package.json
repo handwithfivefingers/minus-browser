@@ -1,8 +1,8 @@
 {
   "name": "minusbrowser",
   "productName": "MinusBrowser",
-  "appBundleId": "com.minusbrowser.localdev.plist",
-  "appId": "com.minusbrowser.localdev.plist",
+  "appBundleId": "com.minusbrowser.localdev",
+  "appId": "com.minusbrowser.localdev",
   "version": "1.0.1",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",

@@ -16,15 +16,41 @@ export class TabController {
   constructor() {}
   async initialize() {
     try {
-      console.log("TabController initalize");
+      log.log("TabController initalizing...");
       await this.bm.initialize();
-      const { tabs = [] } = await this.userStore.readFiles<{ tabs: ITab[]; index: number }>();
+      // Đảm bảo readFiles luôn trả về object mặc định nếu file lỗi/rỗng
+      const data = await this.userStore.readFiles<{
+        tabs: ITab[];
+        index: number;
+      }>();
+      const tabs = data?.tabs || [];
       const newTabs = new Map();
       const tabsIndex: { [key: string]: number } = {};
       let idx = 0;
-      for (idx; idx < tabs.length; idx++) {
-        const isBookmarked = this.bm.bookmarks.has(new URL(tabs[idx].url).href);
+      for (idx; idx < tabs?.length; idx++) {
+        // const isBookmarked = this.bm.bookmarks.has(new URL(tabs[idx].url).href) || false;
+        // const tab = tabs[idx];
+        // delete tab.id;
+        // const newTab = new Tab({
+        //   ...tab,
+        //   isBookmarked: isBookmarked,
+        //   index: idx,
+        // });
+        // newTabs.set(newTab.id, newTab);
+        let isBookmarked = false;
+        try {
+          if (tabs[idx] && tabs[idx].url) {
+            const validUrl = new URL(tabs[idx].url).href;
+            isBookmarked = this.bm.bookmarks.has(validUrl);
+          }
+        } catch (urlError) {
+          console.warn(`Invalid URL at index ${idx}:`, tabs[idx].url);
+        }
+
         const tab = tabs[idx];
+        // Tránh lỗi nếu phần tử tab bị undefined
+        if (!tab) continue;
+
         delete tab.id;
         const newTab = new Tab({
           ...tab,
@@ -33,7 +59,6 @@ export class TabController {
         });
         newTabs.set(newTab.id, newTab);
       }
-      console.log("newTabs", newTabs);
       this.tabsIndex = tabsIndex;
       this.tabs = newTabs;
       this.index = idx;
@@ -119,7 +144,7 @@ export class TabController {
           console.log("hibernate view", view);
         }
       },
-      1000 * 60 * 5
+      1000 * 60 * 5,
     );
   }
 

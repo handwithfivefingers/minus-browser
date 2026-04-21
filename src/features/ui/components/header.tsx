@@ -26,8 +26,10 @@ interface IHeader {
 }
 
 const LAYOUT_HEADER_CLASS = {
-  BASIC: "flex gap-2 border-b border-slate-200 px-2 py-1 justify-between bg-slate-100 w-full",
-  FLOATING: "flex gap-2 border-b border-slate-200 px-2 py-1 justify-between bg-slate-100 w-full rounded-lg",
+  BASIC:
+    "flex gap-2 border-b border-slate-200 px-2 py-1 justify-between bg-slate-100 w-full",
+  FLOATING:
+    "flex gap-2 border-b border-slate-200 px-2 py-1 justify-between bg-slate-100 w-full rounded-lg",
 };
 
 const Header = ({
@@ -58,7 +60,6 @@ const Header = ({
   const handleSearch = () => {
     if (!ref.current) return;
     let v = ref.current.value;
-    console.log("v", v);
     onSearch(v);
   };
   const onBookmark = () => {
@@ -84,23 +85,25 @@ const Header = ({
           (focus && "border-indigo-500/50") || "border-transparent",
         ].join(" ")}
       >
-        {" "}
         <button
           onClick={onReload}
           className={clsx(
             "hover:text-white transition-all px-1 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute left-0.5 top-0.5 rounded-full",
             {
               "animate-spin": isLoading,
-            }
+            },
           )}
         >
           <IconReload size={12} />
         </button>
         <div className="flex px-6 items-center rounded-full gap-0.5 w-full">
           <input
-            className={clsx("py-1 w-full transition-all outline-transparent outline bg-white text-xs", {
-              ["hidden"]: !focus,
-            })}
+            className={clsx(
+              "py-1 w-full transition-all outline-transparent outline bg-white text-xs",
+              {
+                ["hidden"]: !focus,
+              },
+            )}
             ref={ref}
             onBlur={() => setFocus(false)}
             placeholder="Ctrl + K"
@@ -113,9 +116,12 @@ const Header = ({
             title={ref.current?.value}
           />
           <input
-            className={clsx("py-1 w-full transition-all outline-transparent outline bg-white text-xs", {
-              ["hidden"]: focus,
-            })}
+            className={clsx(
+              "py-1 w-full transition-all outline-transparent outline bg-white text-xs",
+              {
+                ["hidden"]: focus,
+              },
+            )}
             value={title}
             onFocus={() => {
               setFocus(true);
@@ -156,9 +162,12 @@ const Header = ({
         </button>
 
         <button
-          className={clsx("hover:text-yellow-500 rounded cursor-pointer p-1 transition-all", {
-            ["text-yellow-500"]: isBookmarked,
-          })}
+          className={clsx(
+            "hover:text-yellow-500 rounded cursor-pointer p-1 transition-all",
+            {
+              ["text-yellow-500"]: isBookmarked,
+            },
+          )}
           title="Bookmark"
           onClick={onBookmark}
         >
@@ -181,13 +190,18 @@ const Sync = () => {
   }, []);
   return (
     <button
-      className={clsx("rounded cursor-pointer p-1 transition-colors flex gap-0.5 relative", {
-        ["text-green-500"]: isSync,
-        [""]: !isSync,
-      })}
+      className={clsx(
+        "rounded cursor-pointer p-1 transition-colors flex gap-0.5 relative",
+        {
+          ["text-green-500"]: isSync,
+          [""]: !isSync,
+        },
+      )}
       title="Sync data"
     >
-      {isSync && <span className="text-[8px] absolute right-6 top-2">Synced</span>}
+      {isSync && (
+        <span className="text-[8px] absolute right-6 top-2">Synced</span>
+      )}
       <IconCloudUp size={16} />
     </button>
   );

@@ -1,10 +1,19 @@
-import { app, BrowserWindow, Menu, Notification, screen, session } from "electron";
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  Notification,
+  screen,
+  session,
+} from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
-import { CommandController, ViewController } from "./features/browsers/controller";
+import {
+  CommandController,
+  ViewController,
+} from "./features/browsers/controller";
 import { StoreManager } from "./features/browsers";
-import { Sidebar } from "./features/subWindow/sidebar";
 if (started) {
   app.quit();
 }
@@ -49,55 +58,74 @@ class MinusBrowser {
     });
   }
   createWindow = async () => {
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.workAreaSize;
+    try {
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { width, height } = primaryDisplay.workAreaSize;
 
-    const browser = new BrowserWindow({
-      width,
-      height,
-      show: false,
-      frame: false,
-      transparent: false,
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: true,
-        preload: preloadPath,
-        session: session.defaultSession,
-        sandbox: true,
-      },
-    });
+      const browser = new BrowserWindow({
+        width,
+        height,
+        show: false,
+        frame: false,
+        transparent: false,
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: true,
+          preload: preloadPath,
+          session: session.defaultSession,
+          sandbox: true,
+        },
+      });
 
-    // const cookies = await session.defaultSession.cookies.get({});
-    // console.log("session.defaultSession", cookies);
+      // const cookies = await session.defaultSession.cookies.get({});
+      // console.log("session.defaultSession", cookies);
 
-    this.browser = browser;
+      this.browser = browser;
 
-    /**@ts-ignore */
-    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       /**@ts-ignore */
-      browser.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    } else {
-      /**@ts-ignore */
-      browser.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
-    }
-    browser.show();
-    if (process.env.NODE_ENV === "development") {
+      if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+        /**@ts-ignore */
+        browser.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+      } else {
+        browser.loadFile(
+          path.join(
+            __dirname /**@ts-ignore */,
+            `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`,
+          ),
+        );
+      }
+      browser.show();
+      // if (process.env.NODE_ENV === "development") {
       browser.webContents.openDevTools();
-    }
-    log.transports.console.format = "[LOGGER] - {h}:{i}:{s} > {text}";
-    log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
-    new ViewController(browser);
+      // }
+      //
+      browser.webContents.on(
+        "did-fail-load",
+        (event, errorCode, errorDescription) => {
+          console.log("Failed to load:", errorCode, errorDescription);
+        },
+      );
+      log.transports.console.format = "[LOGGER] - {h}:{i}:{s} > {text}";
+      log.transports.file.resolvePathFn = () =>
+        path.join(app.getPath("userData"), "logs/main.log");
 
-    // this.registerCommand();
-    this.registerNotification();
-    this.requestPermission();
-    this.sidebarInjection();
-    console.log = log.log;
+      new ViewController(browser);
+
+      this.registerNotification();
+      this.requestPermission();
+      // this.sidebarInjection();
+      console.log = log.log;
+    } catch (error) {
+      console.log("[ERROR] Create Window Error - ", error);
+    }
   };
   registerCommand() {
     let gS: CommandController;
     this.browser.webContents.on("focus", () => {
       gS = new CommandController();
+    });
+    this.browser.webContents.on("blur", () => {
+      gS?.destroy();
     });
     this.browser.on("hide", () => {
       gS?.destroy();

@@ -5,8 +5,13 @@ export class Bookmark {
   private bookmarkStore: StoreManager = new StoreManager("bookmark");
 
   async initialize() {
-    const bookmarkRaw = await this.bookmarkStore.readFiles<Record<string, string[]>>();
-    this.bookmarks = new Set(bookmarkRaw?.bookmark);
+    try {
+      const bookmarkRaw =
+        await this.bookmarkStore.readFiles<Record<string, string[]>>();
+      this.bookmarks = new Set(bookmarkRaw?.bookmark || []);
+    } catch (error) {
+      this.bookmarks = new Set();
+    }
   }
 
   saveBookmark() {

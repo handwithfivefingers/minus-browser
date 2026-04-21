@@ -1,4 +1,12 @@
-import { app, BrowserWindow, dialog, ipcMain, Notification, session, WebContentsView } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Notification,
+  session,
+  WebContentsView,
+} from "electron";
 import log from "electron-log";
 import { IHandleResizeView, IPC, ITab } from "../interfaces";
 import { ErrorServices } from "../services/error.services";
@@ -46,7 +54,10 @@ export class ViewController {
    * @deprecated
    * using tabManger instead
    */
-  viewManager: Record<string, WebContentsView & { isOpenedDevTools?: boolean }> = {};
+  viewManager: Record<
+    string,
+    WebContentsView & { isOpenedDevTools?: boolean }
+  > = {};
   /**
    * @deprecated
    */
@@ -55,18 +66,23 @@ export class ViewController {
   userStore: StoreManager = new StoreManager("userData");
   interfaceStore: StoreManager = new StoreManager("interface");
   sessionStore: StoreManager = new StoreManager("session");
-
   tabCoordinator = new TabCoordinator();
 
   private invokeHandlers: Record<string, (data?: any) => any>;
   private listenerHandlers: Record<string, (data?: any) => void>;
+
   constructor(window: BrowserWindow) {
     this.window = window;
     this.wc = window.webContents;
     this.initializeHandlers();
     this.init();
-    window.webContents?.on("render-process-gone", function (event, detailed) {
-      log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
+    this.wc?.on("render-process-gone", function (event, detailed) {
+      log.info(
+        "!crashed, reason: " +
+          detailed.reason +
+          ", exitCode = " +
+          detailed.exitCode,
+      );
       if (detailed.reason == "crashed") {
         window.webContents?.reload();
       } else {
@@ -77,35 +93,48 @@ export class ViewController {
   }
 
   private async initializeHandlers() {
-    this.invokeHandlers = {
-      [TabEventType.GET_TABS]: () => this.tabCoordinator.getTabs,
-      [TabEventType.CREATE_TAB]: (tab?: Partial<ITab>) => this.createTab(tab),
-      ["GET_TAB"]: (tab?: Partial<ITab>) => this.getTab({ id: tab.id }),
-      GET_USER_INTERFACE: () => this.loadUserInterface(),
-      CLOUD_SAVE: () => this.cloudSave(),
-      SEARCH_PAGE: (data) => this.handleSearchPage(data),
-      INTERFACE_SAVE: (data) => this.interfaceSave(data),
-    };
+    try {
+      this.invokeHandlers = {
+        [TabEventType.GET_TABS]: () => this.tabCoordinator.getTabs,
+        [TabEventType.CREATE_TAB]: (tab?: Partial<ITab>) => this.createTab(tab),
+        ["GET_TAB"]: (tab?: Partial<ITab>) => this.getTab({ id: tab.id }),
+        GET_USER_INTERFACE: () => this.loadUserInterface(),
+        CLOUD_SAVE: () => this.cloudSave(),
+        SEARCH_PAGE: (data) => this.handleSearchPage(data),
+        INTERFACE_SAVE: (data) => this.interfaceSave(data),
+      };
 
-    this.listenerHandlers = {
-      [ViewEventType.SHOW_VIEW_BY_ID]: (data) => this.handleShowViewById(data),
-      [ViewEventType.VIEW_CHANGE_URL]: (data) => this.handleURLChange(data),
-      [ViewEventType.VIEW_RESPONSIVE]: (data) => this.handleResizeView(data),
-      [ViewEventType.HIDE_VIEW]: (data) => this.handleHideView(data),
-      [TabEventType.ON_BACKWARD]: (data) => this.onGoBack(data),
-      [TabEventType.ON_CLOSE_TAB]: (data) => this.onCloseTab(data),
-      [TabEventType.TOGGLE_DEV_TOOLS]: (data) => this.handleToggleDevTools(data),
-      [TabEventType.ON_RELOAD]: (data) => this.handleReloadTab(data),
-      ["CLOSE_APP"]: () => this.onCloseApp(),
-      REQUEST_PIP: (data) => this.requestPIP(data),
-      [TabEventType.TOGGLE_BOOKMARK]: (data) => this.handleToggleBookmark(data),
-    };
+      this.listenerHandlers = {
+        [ViewEventType.SHOW_VIEW_BY_ID]: (data) =>
+          this.handleShowViewById(data),
+        [ViewEventType.VIEW_CHANGE_URL]: (data) => this.handleURLChange(data),
+        [ViewEventType.VIEW_RESPONSIVE]: (data) => this.handleResizeView(data),
+        [ViewEventType.HIDE_VIEW]: (data) => this.handleHideView(data),
+        [TabEventType.ON_BACKWARD]: (data) => this.onGoBack(data),
+        [TabEventType.ON_CLOSE_TAB]: (data) => this.onCloseTab(data),
+        [TabEventType.TOGGLE_DEV_TOOLS]: (data) =>
+          this.handleToggleDevTools(data),
+        [TabEventType.ON_RELOAD]: (data) => this.handleReloadTab(data),
+        ["CLOSE_APP"]: () => this.onCloseApp(),
+        REQUEST_PIP: (data) => this.requestPIP(data),
+        [TabEventType.TOGGLE_BOOKMARK]: (data) =>
+          this.handleToggleBookmark(data),
+      };
+      console.log("initializeHandlers Completed");
+    } catch (err) {
+      console.log("initializeHandlers Error");
+    }
   }
 
   async init() {
-    await this.tabCoordinator.initalize();
-    ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
-    ipcMain.on("send", (event, args: IPC) => this.onListener(args));
+    try {
+      await this.tabCoordinator.initalize();
+      console.log("tabCoordinator initalized");
+      ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
+      ipcMain.on("send", (event, args: IPC) => this.onListener(args));
+    } catch (error) {
+      console.log("[ERROR] View Controller -", error);
+    }
   }
 
   async getTab({ id }: { id: string }) {
@@ -115,7 +144,7 @@ export class ViewController {
 
   private onInvoke(args: IPC) {
     const { channel, data } = args;
-    log.info(`[IPC Invoke] channel: ${channel}`);
+    // log.info(`[IPC Invoke] channel: ${channel}`);
     const handler = this.invokeHandlers[channel];
     if (handler) {
       return handler(data);
@@ -125,7 +154,7 @@ export class ViewController {
 
   private onListener(args: IPC) {
     const { channel, data } = args;
-    log.info(`[IPC Listen] channel: ${channel}`);
+    // log.info(`[IPC Listen] channel: ${channel}`);
     const handler = this.listenerHandlers[channel];
     if (handler) {
       handler(data);
@@ -158,17 +187,28 @@ export class ViewController {
       if (!id || !url) throw new Error("Tab id or url not found");
       const tabMetadata = this.tabCoordinator.getActiveTab(id);
       if (!tabMetadata) throw new Error("Tab not found");
-      await this.loadSessionByURL({ url, view: tabMetadata.webContentsView.view });
+      await this.loadSessionByURL({
+        url,
+        view: tabMetadata.webContentsView.view,
+      });
       tabMetadata.webContentsView.webContents.loadURL(url);
     } catch (error) {
       console.error("❌ Error loading URL:", error);
     }
   }
 
-  async loadSessionByURL({ url, view }: { url: string; view: WebContentsView }) {
+  async loadSessionByURL({
+    url,
+    view,
+  }: {
+    url: string;
+    view: WebContentsView;
+  }) {
     const { origin } = new URL(url);
     if (!origin) return;
-    const viewCookie = await session.defaultSession.cookies.get({ url: origin });
+    const viewCookie = await session.defaultSession.cookies.get({
+      url: origin,
+    });
     console.log(`loadSessionByURL ${origin}`, viewCookie);
     if (viewCookie.length) {
       viewCookie?.forEach((item) => {
@@ -207,7 +247,9 @@ export class ViewController {
     if (!props?.data?.id) return;
     const tabMetadata = this.tabCoordinator.getActiveTab(props?.data?.id);
     if (!tabMetadata) return;
-    if (tabMetadata.webContentsView?.webContents?.navigationHistory.canGoBack()) {
+    if (
+      tabMetadata.webContentsView?.webContents?.navigationHistory.canGoBack()
+    ) {
       tabMetadata.webContentsView?.webContents?.navigationHistory.goBack();
     }
   }
@@ -300,8 +342,8 @@ export class ViewController {
   }
 
   async loadUserInterface() {
+    console.log("loading User Interface");
     const userInterface = await this.interfaceStore.readFiles();
-
     const defaultData: IUserInterface = {
       layout: "default",
       mode: "default",
@@ -317,7 +359,9 @@ export class ViewController {
   async getCookieFromURL(url: string) {
     const { origin } = new URL(url);
     if (!origin) return;
-    const viewCookie = await session.defaultSession.cookies.get({ url: origin });
+    const viewCookie = await session.defaultSession.cookies.get({
+      url: origin,
+    });
     return viewCookie;
   }
   async cloudSave() {
@@ -328,7 +372,10 @@ export class ViewController {
       for (let i = 0; i < tabs.length; i++) {
         tabs[i].cookies = await this.getCookieFromURL(tabs[i].url);
       }
-      await Promise.all([cookies.flushStore(), this.userStore.saveFiles({ tabs: tabs || [], index: 0 })]);
+      await Promise.all([
+        cookies.flushStore(),
+        this.userStore.saveFiles({ tabs: tabs || [], index: 0 }),
+      ]);
       return this.window.webContents?.send("SYNC");
     } catch (error) {
       const noti = new Notification({
@@ -349,13 +396,16 @@ export class ViewController {
       dialog
         .showMessageBox({
           title: "Warning",
-          message: "Hardware acceleration is disabled. This may cause some issues. Do you want to continue? ",
+          message:
+            "Hardware acceleration is disabled. This may cause some issues. Do you want to continue? ",
           buttons: ["Yes", "No"],
         })
         .then((res) => {
           if (res.response === 0) {
             process.env.ELECTRON_DISABLE_GPU = "true";
-            app.relaunch({ args: process.argv.slice(1).concat(["--relaunch --disable-gpu"]) });
+            app.relaunch({
+              args: process.argv.slice(1).concat(["--relaunch --disable-gpu"]),
+            });
             app.exit(0);
           } else {
             process.env.ELECTRON_DISABLE_GPU = "";
@@ -371,7 +421,13 @@ export class ViewController {
     return this.tabCoordinator.clearAllCache();
   }
 
-  showNotification({ title, description }: { title: string; description: string }) {
+  showNotification({
+    title,
+    description,
+  }: {
+    title: string;
+    description: string;
+  }) {
     return new Notification({
       title: title,
       body: description,
@@ -382,7 +438,10 @@ export class ViewController {
 const preloadScript = () => {
   // @ts-ignore
   function enterPictureInPicture(videoElement) {
-    if (document.pictureInPictureEnabled && !videoElement.disablePictureInPicture) {
+    if (
+      document.pictureInPictureEnabled &&
+      !videoElement.disablePictureInPicture
+    ) {
       try {
         if (document.pictureInPictureElement) {
           document.exitPictureInPicture();
