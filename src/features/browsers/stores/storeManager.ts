@@ -1,4 +1,3 @@
-import { IconCircleLetterG } from "@tabler/icons-react";
 import { app } from "electron";
 import log from "electron-log";
 import fs from "node:fs";
@@ -11,6 +10,8 @@ const filesPath = {
     session: path.join("appData", "session.json"),
     bookmark: path.join("appData", "bookmark.json"),
     history: path.join("appData", "history.json"),
+    userscripts: path.join("appData", "userscripts.json"),
+    passwordVault: path.join("appData", "passwordVault.json"),
   },
   production: {
     userData: path.join(app.getPath("userData"), "userData.json"),
@@ -18,10 +19,19 @@ const filesPath = {
     session: path.join(app.getPath("userData"), "session.json"),
     bookmark: path.join(app.getPath("userData"), "bookmark.json"),
     history: path.join(app.getPath("userData"), "history.json"),
+    userscripts: path.join(app.getPath("userData"), "userscripts.json"),
+    passwordVault: path.join(app.getPath("userData"), "passwordVault.json"),
   },
 };
 
-type StoreName = "userData" | "interface" | "session" | "bookmark" | "history";
+type StoreName =
+  | "userData"
+  | "interface"
+  | "session"
+  | "bookmark"
+  | "history"
+  | "userscripts"
+  | "passwordVault";
 const pathConfig =
   process.env.NODE_ENV === "development"
     ? filesPath.development
@@ -31,9 +41,15 @@ export class StoreManager {
   configFile = pathConfig.userData;
   constructor(props: StoreName = "userData") {
     if (
-      !["userData", "interface", "session", "bookmark", "history"].includes(
-        props,
-      )
+      ![
+        "userData",
+        "interface",
+        "session",
+        "bookmark",
+        "history",
+        "userscripts",
+        "passwordVault",
+      ].includes(props)
     ) {
       throw new Error("Invalid props");
     }

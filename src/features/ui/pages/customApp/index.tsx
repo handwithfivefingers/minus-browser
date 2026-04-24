@@ -1,5 +1,5 @@
 import { IconInnerShadowTopLeft } from "@tabler/icons-react";
-import { lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, useEffect, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router";
 import { useContentView } from "../../hooks/useContentView";
 import { Tab } from "../../interfaces";
@@ -19,10 +19,32 @@ const WEBVIEW_CLASSES = {
   FLOATING: "h-[calc(100vh-46px)] rounded-md relative overflow-hidden",
 };
 
+interface IPasswordVaultItem {
+  id: string;
+  site: string;
+  username: string;
+  password: string;
+  notes?: string;
+}
+
+interface IDetectedCredentialPayload {
+  tabId: string;
+  username?: string;
+  password?: string;
+  url?: string;
+}
+
+interface IPendingCredentialSave {
+  site: string;
+  username: string;
+  password: string;
+}
+
 const CustomApp = () => {
   const { customApp: tabId } = useParams<{ customApp: string }>();
   const { layout } = useMinusThemeStore();
   const [isLoading, setIsLoading] = useState(false);
+  const handledCredentialRef = useRef<Set<string>>(new Set());
   const tab = useTabStore((s) => s.activeTab);
   const updateTab = useTabStore((s) => s.updateTab);
   const setActiveTab = useTabStore((s) => s.setActiveTab);
@@ -37,6 +59,7 @@ const CustomApp = () => {
     window.api.LISTENER(`TITLE_UPDATED:${tabId}`, (str: string) => {
       updateTab(tabId, { title: str });
     });
+    window.api.LISTENER("VAULT_CREDENTIAL_DETECTED", onCredentialDetected);
   }, [tabId]);
 
   const onTabNavigate = (isLoading: boolean) => {
@@ -86,6 +109,129 @@ const CustomApp = () => {
     window.api.EMIT("REQUEST_PIP", { tab });
   };
 
+  const onFillPassword = async () => {
+    try {
+      const credentials = await window.api.INVOKE<IPasswordVaultItem[]>(
+        "VAULT_LIST",
+      );
+      if (!credentials?.length) return;
+      const currentUrl = tab?.url || "";
+      const host = (() => {
+        try {
+          return new URL(currentUrl).hostname.toLowerCase();
+        } catch (error) {
+          return "";
+        }
+      })();
+      const matchedCredentials = credentials.filter((item) => {
+        const site = (item.site || "").toLowerCase();
+        return site && host && (host.includes(site) || site.includes(host));
+      });
+      const candidateList = matchedCredentials.length
+        ? matchedCredentials
+        : credentials;
+      let selected = candidateList[0];
+      if (candidateList.length > 1) {
+        const selectedId = await window.api.INVOKE<string | null>(
+          "VAULT_SELECT_CREDENTIAL",
+          {
+            tabId,
+            candidates: candidateList.map((item) => ({
+              id: item.id,
+              username: item.username,
+              site: item.site,
+            })),
+          },
+        );
+        selected =
+          candidateList.find((item) => item.id === selectedId) ||
+          candidateList[0];
+      }
+      if (!selected) return;
+      await fillByCredential(selected);
+    } catch (error) {
+      console.log("onFillPassword error", error);
+    }
+  };
+
+  const onOpenVaultManager = async () => {
+    try {
+      await window.api.INVOKE("VAULT_OPEN_MANAGER", { tabId });
+    } catch (error) {
+      console.log("onOpenVaultManager error", error);
+    }
+  };
+
+  const onOpenUserscriptManager = async () => {
+    try {
+      await window.api.INVOKE("USERSCRIPT_OPEN_MANAGER", { tabId });
+    } catch (error) {
+      console.log("onOpenUserscriptManager error", error);
+    }
+  };
+
+  const fillByCredential = async (credential: IPasswordVaultItem) => {
+    if (!credential) return;
+    await window.api.INVOKE("VAULT_FILL", {
+      tabId,
+      credentialId: credential.id,
+    });
+  };
+
+  const onCredentialDetected = async (payload: IDetectedCredentialPayload) => {
+    try {
+      if (!payload || payload.tabId !== tabId) return;
+      if (!payload.password?.trim()) return;
+      const site = (() => {
+        try {
+          return new URL(payload.url || tab?.url || "").hostname.toLowerCase();
+        } catch (error) {
+          return "";
+        }
+      })();
+      if (!site) return;
+      const cacheKey = `${payload.tabId}:${site}:${payload.username || ""}:${payload.password}`;
+      if (handledCredentialRef.current.has(cacheKey)) return;
+      handledCredentialRef.current.add(cacheKey);
+      const pendingCredentialSave: IPendingCredentialSave = {
+        site,
+        username: (payload.username || "").trim() || "unknown",
+        password: payload.password,
+      };
+      const shouldSave = await window.api.INVOKE<boolean>("VAULT_CONFIRM_SAVE", {
+        tabId,
+        username: pendingCredentialSave.username,
+        site: pendingCredentialSave.site,
+      });
+      if (!shouldSave) return;
+      const existingVault = await window.api.INVOKE<IPasswordVaultItem[]>(
+        "VAULT_LIST",
+      );
+      const existing = existingVault.find(
+        (item) =>
+          item.site.toLowerCase() === pendingCredentialSave.site &&
+          item.username.trim().toLowerCase() ===
+            pendingCredentialSave.username.trim().toLowerCase(),
+      );
+      if (existing) {
+        await window.api.INVOKE("VAULT_UPDATE", {
+          id: existing.id,
+          patch: {
+            password: pendingCredentialSave.password,
+          },
+        });
+      } else {
+        await window.api.INVOKE("VAULT_ADD", {
+          site: pendingCredentialSave.site,
+          username: pendingCredentialSave.username,
+          password: pendingCredentialSave.password,
+        });
+      }
+    } catch (error) {
+      console.log("onCredentialDetected error", error);
+    }
+  };
+
   const getScreenData = async () => {
     const tab = await window.api.INVOKE<Tab>("GET_TAB", { id: tabId });
     updateTab(tabId, tab);
@@ -104,6 +250,9 @@ const CustomApp = () => {
         onToggleDevTools={onToggleDevTools}
         onReload={onReload}
         onRequestPIP={onRequestPIP}
+        onFillPassword={onFillPassword}
+        onOpenVaultManager={onOpenVaultManager}
+        onOpenUserscriptManager={onOpenUserscriptManager}
         isLoading={isLoading}
       />
       <WebViewInstance id={tabId} />

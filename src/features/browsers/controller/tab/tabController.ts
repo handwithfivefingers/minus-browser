@@ -5,6 +5,7 @@ import { Tab } from "../../classes/tab";
 import { ITab } from "../../interfaces";
 import { Bookmark } from "../bookmark";
 import { AdBlocker } from "../adsBlock";
+import { UserScriptController } from "../../../userscripts";
 export class TabController {
   activeTab: Tab | null;
   tabsIndex: Record<string, number> = {};
@@ -14,11 +15,13 @@ export class TabController {
   bookmark = new Bookmark();
   tabs: Map<string, Tab> = new Map();
   AdBlock = new AdBlocker();
+  userScripts = new UserScriptController();
   async initialize() {
     try {
       log.log("TabController initalizing...");
       await this.bookmark.initialize();
       await this.AdBlock.initialize();
+      await this.userScripts.initialize();
       // Đảm bảo readFiles luôn trả về object mặc định nếu file lỗi/rỗng
       const data = await this.userStore.readFiles<{
         tabs: ITab[];
@@ -49,6 +52,7 @@ export class TabController {
           isBookmarked: isBookmarked,
           index: idx,
           blocker: this.AdBlock,
+          userscriptController: this.userScripts,
         });
         newTabs.set(newTab.id, newTab);
       }
@@ -89,6 +93,7 @@ export class TabController {
       isFocused: false,
       isBookmarked: false,
       blocker: this.AdBlock,
+      userscriptController: this.userScripts,
       ...tab,
     });
     const tabUrl = new URL(tabObject?.url || "https://google.com");
@@ -109,6 +114,7 @@ export class TabController {
       ...currentTab,
       ...tab,
       blocker: this.AdBlock,
+      userscriptController: this.userScripts,
     });
     this.tabs.set(id, updatedTab);
     if (this.activeTab?.id === id) {

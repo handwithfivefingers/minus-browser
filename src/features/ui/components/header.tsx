@@ -2,6 +2,7 @@ import {
   IconChevronLeft,
   IconCloudUp,
   IconCode,
+  IconKey,
   IconPictureInPicture,
   IconReload,
   IconSearch,
@@ -19,6 +20,9 @@ interface IHeader {
   onToggleDevTools: () => void;
   onReload: () => void;
   onRequestPIP: () => void;
+  onFillPassword: () => void;
+  onOpenVaultManager: () => void;
+  onOpenUserscriptManager: () => void;
   title?: string;
   isLoading: boolean;
   isBookmarked: boolean;
@@ -42,6 +46,9 @@ const Header = ({
   onToggleDevTools,
   onReload,
   onRequestPIP,
+  onFillPassword,
+  onOpenVaultManager,
+  onOpenUserscriptManager,
 }: IHeader) => {
   const ref = useRef<HTMLInputElement>(null);
   const [focus, setFocus] = useState(false);
@@ -159,6 +166,27 @@ const Header = ({
           title="Dev tools"
         >
           <IconCode size={16} />
+        </button>
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
+          onClick={onFillPassword}
+          title="Fill password"
+        >
+          <IconKey size={16} />
+        </button>
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
+          onClick={onOpenVaultManager}
+          title="Open Vault Manager"
+        >
+          Vault
+        </button>
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
+          onClick={onOpenUserscriptManager}
+          title="Open Tampermonkey Manager"
+        >
+          Script
         </button>
 
         <button

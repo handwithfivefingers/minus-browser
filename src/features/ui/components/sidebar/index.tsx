@@ -9,7 +9,6 @@ import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Tab } from "../../interfaces/tab";
-import { tabServices } from "../../services/tab.service";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
 import { useTabStore } from "../../stores/useTabStore";
 import { TabItem } from "../tab";
@@ -78,7 +77,7 @@ const SideMenu = () => {
         >
           <IconHome />
         </Link>
-        {tabs?.length > 0 &&
+        {(tabs?.length > 0 &&
           tabs
             ?.filter?.((tab) => tab)
             ?.map((tab) => {
@@ -94,7 +93,8 @@ const SideMenu = () => {
                   onClose={onCloseTab}
                 />
               );
-            })}
+            })) ||
+          ""}
         <div
           onClick={() => onAddNewTab()}
           className={clsx(

@@ -1,3 +1,9 @@
+import type {
+  IPCEmitChannel,
+  IPCInvokeChannel,
+  IPCRendererEventChannel,
+} from "./features/browsers/constants/ipc";
+
 type LISTENER_CHANNEL =
   | "LOADING"
   | "ON_RELOAD"
@@ -10,10 +16,10 @@ type LISTENER_CHANNEL =
   | "FAVICON_UPDATED";
 
 export interface IElectronAPI {
-  INVOKE: <T>(channel: string, data?: any) => Promise<T> | T;
-  EMIT: <T>(channel: string, data?: any) => Promise<T> | T;
+  INVOKE: <T>(channel: IPCInvokeChannel, data?: any) => Promise<T> | T;
+  EMIT: <T>(channel: IPCEmitChannel, data?: any) => Promise<T> | T;
   LISTENER: <C extends LISTENER_CHANNEL, T>(
-    channel: `${C}:${string}` | `${C}`,
+    channel: `${C}:${string}` | `${C}` | IPCRendererEventChannel | string,
     func: (...args: any[]) => void,
   ) => Promise<T> | T;
 }

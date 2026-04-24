@@ -5,10 +5,10 @@ import { Tab } from "~/features/browsers/classes/tab";
 import { useTabStore } from "../stores/useTabStore";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
 import { tabServices } from "../services/tab.service";
-
-const SideMenu = lazy(() =>
-  import("../components").then((module) => ({ default: module.SideMenu })),
-);
+import { SideMenu } from "../components";
+// const SideMenu = lazy(() =>
+//   import("../components").then((module) => ({ default: module.SideMenu })),
+// );
 const Spotlight = lazy(() =>
   import("../components").then((module) => ({ default: module.Spotlight })),
 );
@@ -17,33 +17,28 @@ const LAYOUT_CLASS = {
   BASIC: "flex h-screen overflow-hidden bg-slate-800",
   FLOATING: "flex h-screen overflow-hidden bg-slate-800 p-1 gap-1",
 };
-
 const Layout = () => {
   const layout = useMinusThemeStore().layout;
   const setTabs = useTabStore((s) => s.setTabs);
-  const tabs = useTabStore((s) => s.tabs);
   useEffect(() => {
-    getTabs();
-  }, []);
+    let timeout = setTimeout(async () => {
+      const tabs = await tabServices.getTabs();
+      setTabs(tabs);
+    }, 5000);
 
-  const getTabs = async () => {
-    const response = await tabServices.getTabs();
-    setTabs(response);
-  };
-
-  useEffect(() => {
     window.api.LISTENER("GET_TABS", (v) => {
+      if (timeout) clearTimeout(timeout);
       setTabs(v);
     });
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
   }, []);
   return (
     <LayoutSideEffect>
       <div className={LAYOUT_CLASS[layout]}>
-        {tabs.length && (
-          <Suspense fallback={"Loading..."}>
-            <SideMenu />
-          </Suspense>
-        )}
+        <SideMenu />
         <div className="h-full overflow-auto w-full">
           <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
             <Outlet />

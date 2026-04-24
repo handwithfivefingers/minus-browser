@@ -1,9 +1,11 @@
-import { WebContentsView, BrowserWindow, ipcMain } from "electron";
+import { WebContentsView, BrowserWindow } from "electron";
 import { v7 as uuid_v7 } from "uuid";
 import { AdBlocker } from "../controller/adsBlock";
 import { ContextMenuController } from "../controller/context";
 import { ITab } from "../interfaces";
 import log from "electron-log";
+import { UserScriptController } from "../../userscripts";
+import { IPC_RENDERER_EVENT } from "../constants/ipc";
 interface IDestroy {
   destroy?: () => void;
 }
@@ -51,9 +53,19 @@ export class Tab {
   cookies: Electron.Cookie[];
   view: WebContentsView = new WebContentsView();
   webContents: Electron.WebContents & IDestroy;
+  userscriptController: UserScriptController;
+  credentialDetectionRegistered = false;
 
-  constructor({ blocker, ...props }: Partial<ITab> & { blocker: AdBlocker }) {
+  constructor({
+    blocker,
+    userscriptController,
+    ...props
+  }: Partial<ITab> & {
+    blocker: AdBlocker;
+    userscriptController?: UserScriptController;
+  }) {
     Object.assign(this, props);
+    this.userscriptController = userscriptController;
     this.webContents = this.view.webContents;
     this.view.setMaxListeners(20);
     blocker.setupAdvancedRequestBlocking(this.view);
@@ -114,7 +126,7 @@ export class Tab {
     this.view.webContents.setWindowOpenHandler(({ url }) => {
       try {
         const browserView = BrowserWindow.getFocusedWindow();
-        browserView.webContents.send("CREATE_TAB", { url: url });
+        browserView?.webContents?.send("CREATE_TAB", { url: url });
         return { action: "deny" };
       } catch (error) {
         return { action: "deny" };
@@ -160,6 +172,7 @@ export class Tab {
     this.didStartLoad();
     this.didStopLoad();
     this.pageTitleUpdated();
+    this.registerCredentialDetection();
   }
 
   unregisterTabEvents() {
@@ -218,11 +231,12 @@ export class Tab {
     this.url = url;
     const browser = BrowserWindow.getFocusedWindow();
     browser?.webContents?.send(`URL_CHANGED:${this.id}`, url);
+    this.runMatchedUserScripts(url);
   }
 
   private updateNavigate(data: { isLoading: boolean }) {
     const browser = BrowserWindow.getFocusedWindow();
-    browser.webContents.send(`LOADING:${this.id}`, data.isLoading);
+    browser?.webContents?.send(`LOADING:${this.id}`, data.isLoading);
   }
 
   private didStartLoad() {
@@ -236,6 +250,9 @@ export class Tab {
       "did-stop-loading",
       this.updateNavigate.bind(this, { isLoading: false }),
     );
+    this.view.webContents.on("did-stop-loading", () => {
+      this.runMatchedUserScripts(this.view.webContents.getURL());
+    });
   }
 
   private pageTitleUpdated() {
@@ -248,7 +265,18 @@ export class Tab {
   private pageTitleUpdate(event: any, data: string) {
     const browser = BrowserWindow.getFocusedWindow();
     this.updateTitle(data);
-    browser.webContents.send(`TITLE_UPDATED:${this.id}`, data);
+    browser?.webContents?.send?.(`TITLE_UPDATED:${this.id}`, data);
+  }
+
+  private registerCredentialDetection() {
+    if (this.credentialDetectionRegistered) return;
+    this.credentialDetectionRegistered = true;
+    this.view.webContents.on("will-navigate", () => {
+      this.captureCredentialBeforeNavigate();
+    });
+    this.view.webContents.on("will-redirect", () => {
+      this.captureCredentialBeforeNavigate();
+    });
   }
 
   toJSON() {
@@ -264,5 +292,67 @@ export class Tab {
       isBookmarked: this.isBookmarked,
       cookies: this.cookies,
     };
+  }
+
+  private async runMatchedUserScripts(url: string) {
+    try {
+      if (!this.userscriptController || !url) return;
+      const scripts = this.userscriptController.getScriptsForURL(url);
+      for (const script of scripts) {
+        try {
+          await this.view.webContents.executeJavaScript(script.source, true);
+        } catch (error) {
+          log.error(`[UserScript:${script.name}] execution failed`, error);
+        }
+      }
+    } catch (error) {
+      log.error("runMatchedUserScripts error", error);
+    }
+  }
+
+  private async captureCredentialBeforeNavigate() {
+    try {
+      const payload = await this.view.webContents.executeJavaScript(
+        `(() => {
+          const passwordInput = Array.from(
+            document.querySelectorAll('input[type="password"]')
+          ).find((item) => item && item.value && item.value.trim().length > 0);
+          if (!passwordInput) return null;
+          const selectors = [
+            'input[type="email"]',
+            'input[name*="user" i]',
+            'input[name*="email" i]',
+            'input[id*="user" i]',
+            'input[id*="email" i]',
+            'input[type="text"]'
+          ];
+          let usernameInput = passwordInput.form
+            ? selectors.map((selector) => passwordInput.form.querySelector(selector)).find(Boolean)
+            : null;
+          if (!usernameInput) {
+            usernameInput = selectors.map((selector) => document.querySelector(selector)).find(Boolean);
+          }
+          const username = usernameInput && usernameInput.value ? String(usernameInput.value).trim() : "";
+          const password = String(passwordInput.value || "");
+          if (!password.trim()) return null;
+          return {
+            username,
+            password,
+            url: window.location.href
+          };
+        })();`,
+        true,
+      );
+      if (!payload?.password) return;
+      const browser =
+        this.webContents?.getOwnerBrowserWindow?.() ||
+        BrowserWindow.getFocusedWindow();
+      browser?.webContents?.send(IPC_RENDERER_EVENT.VAULT_CREDENTIAL_DETECTED, {
+        tabId: this.id,
+        ...payload,
+      });
+    } catch (error) {
+      // Ignore capture errors because this is a best-effort detection hook.
+    }
   }
 }
