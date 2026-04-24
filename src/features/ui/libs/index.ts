@@ -52,7 +52,8 @@ export const isValidDomainOrIP = (url: string) => {
 
 // IPv4 validation
 const isValidIPv4 = (ip: string): boolean => {
-  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  const ipv4Regex =
+    /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
   return ipv4Regex.test(ip);
 };
 
@@ -109,8 +110,6 @@ export const isValidDomainOrIPSimple = (url: string): boolean => {
 };
 
 // Test all cases
-console.log("=== Domain and IP Validation ===");
-
 const allTestCases = [
   // // Domains
   // "domain.com",
@@ -144,7 +143,9 @@ const allTestCases = [
 // });
 
 // Utility function to determine what type of address it is
-export const getAddressType = (url: string): "domain" | "ipv4" | "ipv6" | "localhost" | "invalid" => {
+export const getAddressType = (
+  url: string,
+): "domain" | "ipv4" | "ipv6" | "localhost" | "invalid" => {
   try {
     let address = url.replace(/^https?:\/\//, "").split(":")[0];
 
@@ -171,10 +172,43 @@ export const getAddressType = (url: string): "domain" | "ipv4" | "ipv6" | "local
 //   console.log(`${test} -> ${getAddressType(test)}`);
 // });
 
-export const debounce = <A = unknown, R = void>(callback: (args?: A) => R, n: number) => {
+export const debounce = <A = unknown, R = void>(
+  callback: (args?: A) => R,
+  n: number,
+) => {
   let timer: NodeJS.Timeout | undefined | number = undefined;
   return (args?: A) => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => callback(args), n);
   };
+};
+
+export const navigateOrSearch = (
+  input: string,
+  searchEngineUrl = "https://google.com/search?q=",
+) => {
+  const query = input.trim();
+  if (!query) return;
+
+  // 1. Check for explicit protocols (http, https, ftp, file)
+  if (/^(https?|ftp|file):\/\//i.test(query)) {
+    return query;
+  }
+
+  // 2. Check for Localhost or IP Addresses (e.g., localhost:3000 or 127.0.0.1)
+  const localOrIpRegex =
+    /^(localhost|(\d{1,3}\.){3}\d{1,3}|\[[a-fA-F0-9:]+\])(:\d+)?(\/.*)?$/i;
+  if (localOrIpRegex.test(query)) {
+    return `http://${query}`; // Assume http for local
+  }
+
+  // 3. Check for valid Domain patterns (e.g., example.com, site.org/path)
+  // Rule: Must have a dot, NO spaces, and end with a likely TLD (2+ chars)
+  const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}(\/.*)?$/i;
+  if (!/\s/.test(query) && domainRegex.test(query)) {
+    return `https://${query}`;
+  }
+
+  // 4. Default: Treat as a Search Query
+  return searchEngineUrl + encodeURIComponent(query);
 };

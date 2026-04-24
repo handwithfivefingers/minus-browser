@@ -54,7 +54,6 @@ export class StoreManager {
   readFiles = <T>(): Promise<T> => {
     return new Promise((resolve, reject) => {
       log.info("Đang đọc file: ", this.configFile);
-
       fs.readFile(this.configFile, "utf-8", (error, data) => {
         // 1. Xử lý lỗi hệ thống (ví dụ: File không tồn tại)
         if (error) {
@@ -83,7 +82,6 @@ export class StoreManager {
 
   saveFiles: <T>(data: T) => void = (data) => {
     return new Promise((resolve, reject) => {
-      log.info("saveFiles > ", this.configFile);
       const tmp = this.configFile.replace(/\.json$/, "-temp.json");
       fs.writeFile(tmp, JSON.stringify(data), (error) => {
         if (error) return reject(error);

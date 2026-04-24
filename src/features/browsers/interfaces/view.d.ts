@@ -1,4 +1,5 @@
 import { WebContentsView, BrowserView, Electron } from "electron";
+import { ITab } from "./tab";
 import { WebContentsViewController } from "../controller/webContentsViewController";
 
 export interface IView extends WebContentsView {

@@ -1,4 +1,8 @@
-import { ElectronBlocker, fullLists, Request } from "@ghostery/adblocker-electron";
+import {
+  ElectronBlocker,
+  fullLists,
+  Request,
+} from "@ghostery/adblocker-electron";
 import fetch from "cross-fetch";
 import { session, WebContentsView } from "electron";
 import log from "electron-log";
@@ -20,15 +24,15 @@ export const ALL_LISTS = new Set([
 export class AdBlocker {
   // blocker: CustomAds;
   blocker: ElectronBlocker;
-  constructor() {
-    this.initialize();
-  }
   async initialize() {
-    this.blocker = await ElectronBlocker.fromLists(fetch, Array.from(ALL_LISTS.values()));
+    this.blocker = await ElectronBlocker.fromLists(
+      fetch,
+      Array.from(ALL_LISTS.values()),
+    );
   }
 
   setupAdvancedRequestBlocking(view: WebContentsView) {
-    this.blocker.enableBlockingInSession(session.defaultSession);
+    this.blocker?.enableBlockingInSession(session.defaultSession);
     this.injectYoutubeAdblockSponsor(view);
   }
 
@@ -39,7 +43,11 @@ export class AdBlocker {
      * - Custom Plugin same as Tampermonkey
      */
     if (!view || !view.webContents) return;
-    const script = [this.youtubePatchPlayer(), this.youtubeRemovePopups(), this.skipAds()];
+    const script = [
+      this.youtubePatchPlayer(),
+      this.youtubeRemovePopups(),
+      this.skipAds(),
+    ];
 
     // Inject trực tiếp vào renderer
     if (view.webContents.getURL().includes("youtube.com")) {
@@ -68,9 +76,13 @@ export class AdBlocker {
       };
       // Quan sát DOM và patch player khi có
       const observer = new MutationObserver(() => {
-        const player = document.querySelector("ytd-player");
+        const player: any = document.querySelector("ytd-player");
         /** @ts-ignore */
-        if (player && player.player_ && typeof player.player_.getAdState === "function") {
+        if (
+          player &&
+          player.player_ &&
+          typeof player.player_.getAdState === "function"
+        ) {
           /** @ts-ignore */
           player.player_.getAdState = () => 0; // luôn không có ad
           console.log("[YT Adblock] Patched mid-roll ads!");
@@ -87,7 +99,9 @@ export class AdBlocker {
       "use strict";
       const removeElements = () => {
         const popupContainer = document.querySelector("ytd-popup-container");
-        const overlayBackdrop = document.querySelector("tp-yt-iron-overlay-backdrop");
+        const overlayBackdrop = document.querySelector(
+          "tp-yt-iron-overlay-backdrop",
+        );
 
         if (popupContainer) {
           popupContainer.remove();
@@ -114,7 +128,9 @@ export class AdBlocker {
   skipAds() {
     const script = function () {
       function skipAds() {
-        const pipMode = document.querySelector("ytd-pip-container, ytd-miniplayer-player-container");
+        const pipMode = document.querySelector(
+          "ytd-pip-container, ytd-miniplayer-player-container",
+        );
         const adVideo = document.querySelector(".ad-showing video");
 
         /**@ts-ignore */
@@ -124,7 +140,9 @@ export class AdBlocker {
           /**@ts-ignore */
           adVideo.muted = true;
         }
-        const skipBtn = document.querySelector(".ytp-ad-skip-button, .ytp-ad-skip-button-modern");
+        const skipBtn = document.querySelector(
+          ".ytp-ad-skip-button, .ytp-ad-skip-button-modern",
+        );
         if (skipBtn) {
           /**@ts-ignore */
           skipBtn.click();
@@ -175,10 +193,20 @@ export class AdBlocker {
       log.info("%crequest-blocked", request.tabId, request.url, "color: red");
     });
     this.blocker.on("request-redirected", (request: Request) => {
-      log.info("%crequest-redirected", request.tabId, request.url, "color: red");
+      log.info(
+        "%crequest-redirected",
+        request.tabId,
+        request.url,
+        "color: red",
+      );
     });
     this.blocker.on("request-whitelisted", (request: Request) => {
-      log.info("%crequest-whitelisted", request.tabId, request.url, "color: red");
+      log.info(
+        "%crequest-whitelisted",
+        request.tabId,
+        request.url,
+        "color: red",
+      );
     });
     this.blocker.on("csp-injected", (request: Request, csps: string) => {
       log.info("%ccsp-injected", request.url, csps, "color: red");
@@ -189,6 +217,9 @@ export class AdBlocker {
     this.blocker.on("style-injected", (style: string, url: string) => {
       log.info("%cRed style-injected", style.length, url, "color: red");
     });
-    this.blocker.on("filter-matched", console.log.bind(console, "%cfilter-matched"));
+    this.blocker.on(
+      "filter-matched",
+      console.log.bind(console, "%cfilter-matched"),
+    );
   }
 }

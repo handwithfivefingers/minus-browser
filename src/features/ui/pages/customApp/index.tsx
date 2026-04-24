@@ -1,10 +1,12 @@
 import { IconInnerShadowTopLeft } from "@tabler/icons-react";
 import { lazy, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useParams } from "react-router";
-import { ITab } from "~/features/browsers";
+import { Navigate, useParams } from "react-router";
 import { useContentView } from "../../hooks/useContentView";
-import { debounce } from "../../libs";
+import { Tab } from "../../interfaces";
+import { debounce, navigateOrSearch } from "../../libs";
+import { tabServices } from "../../services/tab.service";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
+import { useTabStore } from "../../stores/useTabStore";
 
 const Header = lazy(() => import("~/features/ui/components/header"));
 const LAYOUT_HEADER_CLASS = {
@@ -20,15 +22,31 @@ const WEBVIEW_CLASSES = {
 const CustomApp = () => {
   const { customApp: tabId } = useParams<{ customApp: string }>();
   const { layout } = useMinusThemeStore();
-  const [tab, setTab] = useState<ITab>({} as ITab);
   const [isLoading, setIsLoading] = useState(false);
-
-  useLayoutEffect(() => {
+  const tab = useTabStore((s) => s.activeTab);
+  const updateTab = useTabStore((s) => s.updateTab);
+  const setActiveTab = useTabStore((s) => s.setActiveTab);
+  useEffect(() => {
+    setActiveTab(tabId);
     getScreenData();
+    tabServices.subscribeTab(tabId, ({ favicon, title, url }) => {
+      updateTab(tabId, { favicon, title, url });
+    });
+    window.api.LISTENER("ON_RELOAD", onReload);
+    window.api.LISTENER(`LOADING:${tabId}`, onTabNavigate);
+    window.api.LISTENER(`TITLE_UPDATED:${tabId}`, (str: string) => {
+      updateTab(tabId, { title: str });
+    });
   }, [tabId]);
+
+  const onTabNavigate = (isLoading: boolean) => {
+    setIsLoading(isLoading);
+  };
+
   const handleSearch = async (url: string) => {
     try {
       const outputFormat = navigateOrSearch(url);
+      updateTab(tabId, { url: outputFormat });
       window.api.EMIT("VIEW_CHANGE_URL", { id: tabId, url: outputFormat });
     } catch (error) {
       console.log("VIEW_CHANGE_URL error", error);
@@ -39,35 +57,7 @@ const CustomApp = () => {
    * Processes input from a custom address bar (Omnibox).
    * Handles: Protocols, Localhost, IPs, Domains, and Search Queries.
    */
-  function navigateOrSearch(
-    input: string,
-    searchEngineUrl = "https://google.com/search?q=",
-  ) {
-    const query = input.trim();
-    if (!query) return;
 
-    // 1. Check for explicit protocols (http, https, ftp, file)
-    if (/^(https?|ftp|file):\/\//i.test(query)) {
-      return query;
-    }
-
-    // 2. Check for Localhost or IP Addresses (e.g., localhost:3000 or 127.0.0.1)
-    const localOrIpRegex =
-      /^(localhost|(\d{1,3}\.){3}\d{1,3}|\[[a-fA-F0-9:]+\])(:\d+)?(\/.*)?$/i;
-    if (localOrIpRegex.test(query)) {
-      return `http://${query}`; // Assume http for local
-    }
-
-    // 3. Check for valid Domain patterns (e.g., example.com, site.org/path)
-    // Rule: Must have a dot, NO spaces, and end with a likely TLD (2+ chars)
-    const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}(\/.*)?$/i;
-    if (!/\s/.test(query) && domainRegex.test(query)) {
-      return `https://${query}`;
-    }
-
-    // 4. Default: Treat as a Search Query
-    return searchEngineUrl + encodeURIComponent(query);
-  }
   const onBackWard = async () => {
     try {
       return window.api.EMIT("ON_BACKWARD", { data: tab });
@@ -83,6 +73,7 @@ const CustomApp = () => {
       console.log("onToggleDevTools error", error);
     }
   };
+
   const onReload = async () => {
     try {
       window.api.EMIT("ON_RELOAD", tab);
@@ -90,29 +81,16 @@ const CustomApp = () => {
       console.log("onToggleDevTools error", error);
     }
   };
+
   const onRequestPIP = async () => {
     window.api.EMIT("REQUEST_PIP", { tab });
   };
 
-  useEffect(() => {
-    if (!tabId) return;
-    const onDidStartLoad = () => {
-      setIsLoading(true);
-    };
-    const onDidFinishLoad = () => {
-      setIsLoading(false);
-    };
-    window.api.LISTENER("ON_RELOAD", onReload);
-    window.api.LISTENER(`did-start-load:${tabId}`, onDidStartLoad);
-    window.api.LISTENER(`did-stop-loading:${tabId}`, onDidFinishLoad);
-  }, [tabId]);
-
   const getScreenData = async () => {
-    const tab = await window.api.INVOKE<ITab>("GET_TAB", { id: tabId });
-    setTab(tab);
+    const tab = await window.api.INVOKE<Tab>("GET_TAB", { id: tabId });
+    updateTab(tabId, tab);
   };
-  console.log("CustomApp tab >>>>", tab);
-  if (!tab.id) return;
+  if (!tabId) return <Navigate to={"/"} />;
   return (
     <div className={LAYOUT_HEADER_CLASS[layout]}>
       <Header
@@ -156,7 +134,6 @@ const WebViewInstance = ({ id }: { id: string }) => {
     // window.api.LISTENER(`page-favicon-updated:${id}`, (value: { title: string; favicon: string }) => {
     //   // updateTab(id, { ...value });
     // });
-
     return () => {
       id && window.api.EMIT("HIDE_VIEW", { id });
       webviewRef.current &&
@@ -164,7 +141,7 @@ const WebViewInstance = ({ id }: { id: string }) => {
     };
   }, [id]);
 
-  const getContentView = async (tab: Partial<ITab>) => {
+  const getContentView = async (tab: Partial<Tab>) => {
     try {
       if (!webviewRef.current) return;
       const { x, y, width, height } =

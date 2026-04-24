@@ -12,7 +12,7 @@ import { IHandleResizeView, IPC, ITab } from "../interfaces";
 import { ErrorServices } from "../services/error.services";
 import { StoreManager } from "../stores";
 import { isSameURl } from "../utils";
-import { TabCoordinator } from "./tab/tabCoordinator";
+import { TabController } from "./tab";
 
 enum TabEventType {
   CREATE_TAB = "CREATE_TAB",
@@ -50,52 +50,41 @@ interface IUserInterface {
 export class ViewController {
   window: BrowserWindow;
   wc: Electron.WebContents;
-  /**
-   * @deprecated
-   * using tabManger instead
-   */
-  viewManager: Record<
-    string,
-    WebContentsView & { isOpenedDevTools?: boolean }
-  > = {};
-  /**
-   * @deprecated
-   */
-  viewActive: string = "";
-
   userStore: StoreManager = new StoreManager("userData");
   interfaceStore: StoreManager = new StoreManager("interface");
   sessionStore: StoreManager = new StoreManager("session");
-  tabCoordinator = new TabCoordinator();
+  tabController = new TabController();
 
   private invokeHandlers: Record<string, (data?: any) => any>;
   private listenerHandlers: Record<string, (data?: any) => void>;
 
   constructor(window: BrowserWindow) {
     this.window = window;
-    this.wc = window.webContents;
     this.initializeHandlers();
     this.init();
-    this.wc?.on("render-process-gone", function (event, detailed) {
-      log.info(
-        "!crashed, reason: " +
-          detailed.reason +
-          ", exitCode = " +
-          detailed.exitCode,
-      );
-      if (detailed.reason == "crashed") {
-        window.webContents?.reload();
-      } else {
-        app.relaunch({ args: process.argv.slice(1).concat(["--relaunch"]) });
-        app.exit(0);
-      }
-    });
+    this.window.webContents?.on(
+      "render-process-gone",
+      function (event, detailed) {
+        log.info(
+          "!crashed, reason: " +
+            detailed.reason +
+            ", exitCode = " +
+            detailed.exitCode,
+        );
+        if (detailed.reason == "crashed") {
+          window.webContents?.reload();
+        } else {
+          app.relaunch({ args: process.argv.slice(1).concat(["--relaunch"]) });
+          app.exit(0);
+        }
+      },
+    );
   }
 
   private async initializeHandlers() {
     try {
       this.invokeHandlers = {
-        [TabEventType.GET_TABS]: () => this.tabCoordinator.getTabs,
+        [TabEventType.GET_TABS]: () => this.getTabs(),
         [TabEventType.CREATE_TAB]: (tab?: Partial<ITab>) => this.createTab(tab),
         ["GET_TAB"]: (tab?: Partial<ITab>) => this.getTab({ id: tab.id }),
         GET_USER_INTERFACE: () => this.loadUserInterface(),
@@ -128,28 +117,34 @@ export class ViewController {
 
   async init() {
     try {
-      await this.tabCoordinator.initalize();
-      console.log("tabCoordinator initalized");
+      await this.tabController.initialize();
       ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
       ipcMain.on("send", (event, args: IPC) => this.onListener(args));
     } catch (error) {
       console.log("[ERROR] View Controller -", error);
     }
   }
-
+  getTabs() {
+    const response = this.tabController.getTabs();
+    return response;
+  }
   async getTab({ id }: { id: string }) {
-    const tab = this.tabCoordinator.getActiveTab(id);
-    return tab.tab;
+    const tab = this.tabController.getTabById(id);
+    return tab.toJSON();
   }
 
   private onInvoke(args: IPC) {
-    const { channel, data } = args;
-    // log.info(`[IPC Invoke] channel: ${channel}`);
-    const handler = this.invokeHandlers[channel];
-    if (handler) {
-      return handler(data);
+    try {
+      const { channel, data } = args;
+      log.info(`[IPC Invoke] channel: ${channel}`);
+      const handler = this.invokeHandlers[channel];
+      if (handler) {
+        return handler(data);
+      }
+      log.warn(`No invoke handler for channel: ${channel}`);
+    } catch (error) {
+      console.log("[ERRROR] INVOKE :", error);
     }
-    log.warn(`No invoke handler for channel: ${channel}`);
   }
 
   private onListener(args: IPC) {
@@ -164,20 +159,28 @@ export class ViewController {
   }
 
   createTab(tab?: Partial<ITab>) {
-    return this.tabCoordinator.createTab(tab);
+    const newTab = this.tabController.addNewTab(tab);
+    this.window.webContents.send("GET_TABS", this.getTabs());
+    return newTab;
   }
 
   async handleShowViewById(props: IHandleResizeView) {
-    if (!props?.tab?.id) throw new Error("Tab id not found");
-    const tabMetadata = this.tabCoordinator.getActiveTab(props?.tab?.id);
-    if (!tabMetadata) throw new Error("Tab not found");
-    this.window.contentView.addChildView(tabMetadata.webContentsView.view);
-    tabMetadata.webContentsView.view.setVisible(true);
-    tabMetadata.webContentsView.view.setBounds(props.screen);
-    const url1 = tabMetadata.tab.url;
-    const url2 = tabMetadata.webContentsView.webContents.getURL();
-    if (!isSameURl(url1, url2)) {
-      tabMetadata.webContentsView.webContents.loadURL(tabMetadata.tab.url);
+    try {
+      if (!props?.tab.id) throw new Error("Tab id not found");
+      const currentTab = this.tabController.getTabById(props.tab?.id);
+      this.attachChildView(currentTab.view);
+      // currentTab.view.webContents.loadURL(currentTab.url);
+      const url1 = currentTab.url;
+      const url2 = currentTab.webContents.getURL();
+      if (!isSameURl(url1, url2)) {
+        currentTab.webContents.loadURL(currentTab.url);
+      }
+      currentTab.show();
+      currentTab.view.setBounds(props.screen);
+      this.tabController.setActiveTab(currentTab.id);
+      // currentTab.registerTabEvents();
+    } catch (error) {
+      return new ErrorServices(error);
     }
   }
 
@@ -185,13 +188,15 @@ export class ViewController {
     try {
       const { id, url } = tab;
       if (!id || !url) throw new Error("Tab id or url not found");
-      const tabMetadata = this.tabCoordinator.getActiveTab(id);
-      if (!tabMetadata) throw new Error("Tab not found");
+      const currentTab = this.tabController.getTabById(id);
+      if (!currentTab) throw new Error("Tab not found");
       await this.loadSessionByURL({
         url,
-        view: tabMetadata.webContentsView.view,
+        view: currentTab.view,
       });
-      tabMetadata.webContentsView.webContents.loadURL(url);
+      currentTab.webContents.loadURL(url);
+      currentTab.updateUrl(url);
+      this.window.webContents.send("GET_TABS", this.getTabs());
     } catch (error) {
       console.error("❌ Error loading URL:", error);
     }
@@ -209,7 +214,6 @@ export class ViewController {
     const viewCookie = await session.defaultSession.cookies.get({
       url: origin,
     });
-    console.log(`loadSessionByURL ${origin}`, viewCookie);
     if (viewCookie.length) {
       viewCookie?.forEach((item) => {
         view.webContents?.session.cookies.set({
@@ -229,40 +233,54 @@ export class ViewController {
 
   handleResizeView(props: IHandleResizeView) {
     const { tab, screen } = props;
-    const tabMetadata = this.tabCoordinator.getActiveTab(tab.id);
-    if (!tabMetadata) return;
-    tabMetadata.webContentsView.view.setBounds(screen);
+    const currentTab = this.tabController.getTabById(tab.id);
+    if (!currentTab) return;
+    currentTab.view.setBounds(screen);
   }
 
   handleHideView(props: { id: string }) {
     try {
       if (!props || !props.id) return;
-      this.tabCoordinator.hideView({ id: props.id, window: this.window });
+      const currentTab = this.tabController.getTabById(props.id);
+      if (!currentTab) return;
+      currentTab.hide();
+      this.detachChildView(currentTab.view);
     } catch (error) {
       return new ErrorServices(error);
     }
   }
 
   onGoBack(props: { data: ITab }) {
-    if (!props?.data?.id) return;
-    const tabMetadata = this.tabCoordinator.getActiveTab(props?.data?.id);
-    if (!tabMetadata) return;
-    if (
-      tabMetadata.webContentsView?.webContents?.navigationHistory.canGoBack()
-    ) {
-      tabMetadata.webContentsView?.webContents?.navigationHistory.goBack();
+    try {
+      if (!props?.data?.id) throw new Error("Tab not found");
+      const currentTab = this.tabController.getTabById(props?.data?.id);
+      if (!currentTab) throw new Error("Tab not found");
+      if (currentTab.webContents?.navigationHistory.canGoBack()) {
+        currentTab.webContents?.navigationHistory.goBack();
+      }
+    } catch (error) {
+      return new ErrorServices(error);
     }
   }
 
   async onCloseTab(props: { id: string }) {
-    this.tabCoordinator.closeTab({ id: props.id, window: this.window });
+    try {
+      if (!props || !props.id) throw new Error("Tab not found");
+      const currentTab = this.tabController.getTabById(props.id);
+      currentTab.hide();
+      this.detachChildView(currentTab.view);
+      const { nextTab } = this.tabController.closeTab(props.id);
+      this.attachChildView(nextTab.view);
+    } catch (error) {
+      return new ErrorServices(error);
+    }
   }
 
   handleToggleDevTools(props: { id: string }) {
     if (!props || !props.id) return;
-    const tabMetadata = this.tabCoordinator.getActiveTab(props?.id);
-    if (!tabMetadata) return;
-    const view = tabMetadata.webContentsView?.view;
+    const currentTab = this.tabController.getTabById(props?.id);
+    if (!currentTab) return;
+    const view = currentTab.view;
     if (!view) return;
     let isOpenedDevTools = view.webContents?.isDevToolsOpened();
     view.webContents?.toggleDevTools();
@@ -273,53 +291,25 @@ export class ViewController {
     }
   }
 
-  async handleReloadTab(props: ITab) {
+  async handleReloadTab(tab: ITab) {
     try {
-      if (!props.id) throw new Error("Tab id not found");
-      const tabMetadata = this.tabCoordinator.getActiveTab(props.id);
-      if (!tabMetadata) throw new Error("Tab not found");
-      tabMetadata.webContentsView.webContents.reload();
-    } catch (e) {
-      new ErrorServices(e);
+      let id = tab?.id || this.tabController.activeTab?.id;
+      if (!id) throw new Error("Tab not found");
+      const currentTab = this.tabController.getTabById(id);
+      return currentTab?.onReload();
+    } catch (error) {
+      return new ErrorServices(error);
     }
   }
 
-  // async getPIPState() {
-  //   const obj: Record<string, boolean> = {};
-  //   for (let id in this.viewManager) {
-  //     obj[id] = this.viewManager[id].webContents?.isCurrentlyAudible();
-  //   }
-  //   return obj;
-  // }
-
   async requestPIP({ tab }: { tab: ITab }) {
-    if (!tab?.id) {
-      return new Notification({
-        title: "requestPIP Error",
-        body: "Tab id not found",
-      }).show();
+    try {
+      if (!tab?.id) throw new Error(`Tab id not found`);
+      const currentTab = this.tabController.getTabById(tab.id);
+      return currentTab.onRequestPIP();
+    } catch (error) {
+      return new ErrorServices(error);
     }
-    const tabMetadata = this.tabCoordinator.getActiveTab(tab.id);
-
-    if (!tabMetadata) {
-      return new Notification({
-        title: "Error",
-        body: "Tab not found",
-      }).show();
-    }
-
-    if (!tabMetadata.webContentsView) return;
-    if (!tabMetadata.webContentsView.webContents?.isFocused()) {
-      tabMetadata.webContentsView.webContents?.focus();
-    }
-    tabMetadata.webContentsView.webContents
-      .executeJavaScript(`(${preloadScript.toString()})()`)
-      .then(() => {
-        log.info("requestPIP success");
-      })
-      .catch((error) => {
-        log.info("requestPIP error", error);
-      });
   }
 
   handleSearchPage(v: any) {
@@ -338,7 +328,7 @@ export class ViewController {
     // });
   }
   handleToggleBookmark({ url, id }: { url: string; id: string }) {
-    this.tabCoordinator.bookmark({ url, id });
+    this.tabController.addNewBookmark({ url, id });
   }
 
   async loadUserInterface() {
@@ -366,8 +356,7 @@ export class ViewController {
   }
   async cloudSave() {
     try {
-      log.info("cloudSave tabManager data");
-      const tabs = this.tabCoordinator.getTabs;
+      const tabs = this.getTabs();
       const cookies = session.defaultSession.cookies;
       for (let i = 0; i < tabs.length; i++) {
         tabs[i].cookies = await this.getCookieFromURL(tabs[i].url);
@@ -378,12 +367,15 @@ export class ViewController {
       ]);
       return this.window.webContents?.send("SYNC");
     } catch (error) {
-      const noti = new Notification({
-        title: "cloudSave Error",
-        body: error.message,
-      });
-      noti.show();
+      return new ErrorServices(error);
     }
+  }
+
+  attachChildView(view: WebContentsView) {
+    this.window.contentView.addChildView(view);
+  }
+  detachChildView(view: WebContentsView) {
+    this.window.contentView.removeChildView(view);
   }
 
   onCloseApp() {
@@ -415,10 +407,11 @@ export class ViewController {
   }
 
   clearCache({ tab }: { tab: ITab }) {
-    return this.tabCoordinator.clearCache({ id: tab.id });
+    return this.tabController.getTabById(tab.id)?.clearCache();
   }
   clearAllCache() {
-    return this.tabCoordinator.clearAllCache();
+    const tabs = this.getTabs();
+    tabs.forEach((tab) => this.tabController.getTabById(tab.id)?.clearCache());
   }
 
   showNotification({
@@ -434,33 +427,3 @@ export class ViewController {
     }).show();
   }
 }
-
-const preloadScript = () => {
-  // @ts-ignore
-  function enterPictureInPicture(videoElement) {
-    if (
-      document.pictureInPictureEnabled &&
-      !videoElement.disablePictureInPicture
-    ) {
-      try {
-        if (document.pictureInPictureElement) {
-          document.exitPictureInPicture();
-        }
-        videoElement
-          .requestPictureInPicture()
-          .then(() => {
-            console.log("Entered Picture-in-Picture mode.");
-          })
-          // @ts-ignore
-          .catch((error) => {
-            console.error("Failed to enter Picture-in-Picture mode:", error);
-          });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  }
-  setTimeout(() => {
-    enterPictureInPicture(document.querySelector("video"));
-  }, 500);
-};

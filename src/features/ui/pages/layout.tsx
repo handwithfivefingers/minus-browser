@@ -4,10 +4,14 @@ import { Outlet, useNavigate } from "react-router";
 import { Tab } from "~/features/browsers/classes/tab";
 import { useTabStore } from "../stores/useTabStore";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
+import { tabServices } from "../services/tab.service";
 
-const SideMenu = lazy(() => import("../components").then((module) => ({ default: module.SideMenu })));
-const Spotlight = lazy(() => import("../components").then((module) => ({ default: module.Spotlight })));
-const UPDATE_TIMEOUT = 15 * 1000;
+const SideMenu = lazy(() =>
+  import("../components").then((module) => ({ default: module.SideMenu })),
+);
+const Spotlight = lazy(() =>
+  import("../components").then((module) => ({ default: module.Spotlight })),
+);
 
 const LAYOUT_CLASS = {
   BASIC: "flex h-screen overflow-hidden bg-slate-800",
@@ -16,33 +20,52 @@ const LAYOUT_CLASS = {
 
 const Layout = () => {
   const layout = useMinusThemeStore().layout;
+  const setTabs = useTabStore((s) => s.setTabs);
+  const tabs = useTabStore((s) => s.tabs);
+  useEffect(() => {
+    getTabs();
+  }, []);
+
+  const getTabs = async () => {
+    const response = await tabServices.getTabs();
+    setTabs(response);
+  };
+
   useEffect(() => {
     window.api.LISTENER("GET_TABS", (v) => {
-      console.log("LAYOUT: getScreenData v", v);
+      console.log("LISTENERS GET_TABS", v);
+      setTabs(v);
     });
   }, []);
+  console.log("TABS >>>>>>", tabs);
   return (
     <LayoutSideEffect>
       <div className={LAYOUT_CLASS[layout]}>
-        <Suspense fallback={"Loading..."}>
-          <SideMenu />
-        </Suspense>
+        {tabs.length && (
+          <Suspense fallback={"Loading..."}>
+            <SideMenu />
+          </Suspense>
+        )}
         <div className="h-full overflow-auto w-full">
           <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
             <Outlet />
           </ErrorBoundary>
         </div>
       </div>
-      <Suspense fallback={"Loading..."}>
+      {/*SPOTLIGHT is not ready for now*/}
+      {/*<Suspense fallback={"Loading..."}>
         <SpotlightProvider />
-      </Suspense>
+      </Suspense>*/}
       <SyncSideEffect />
     </LayoutSideEffect>
   );
 };
 
-const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
-  const { addNewTab } = useTabStore();
+const LayoutSideEffect = ({
+  children,
+}: {
+  children: React.ReactElement | React.ReactNode;
+}): React.ReactElement => {
   const minus = useMinusThemeStore();
   const navigate = useNavigate();
   useLayoutEffect(() => {
@@ -59,16 +82,15 @@ const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
   }, []);
   useEffect(() => {
     window.api.LISTENER("CREATE_TAB", (tab?: Partial<Tab>) => {
-      const newTab = addNewTab(tab);
-      if (newTab.id) {
-        navigate(newTab.id);
+      if (tab.id) {
+        navigate(tab.id);
       }
     });
   }, []);
-  return children;
+  return children as React.ReactElement;
 };
 
-const SyncSideEffect = () => {
+const SyncSideEffect = (): React.ReactElement => {
   const { sync } = useTabStore();
   const dataSync = useMinusThemeStore().dataSync;
   const intervalTime =
@@ -87,17 +109,17 @@ const SyncSideEffect = () => {
 
     return () => intervalTime && interval && clearInterval(interval);
   }, [intervalTime]);
-  return "";
+  return undefined;
 };
 
 const SpotlightProvider = () => {
   const [show, setShow] = useState(false);
-  useEffect(() => {
-    window.api.LISTENER("SEARCH", (data) => {
-      setShow(data.open);
-    });
-  }, []);
-  return show ? <Spotlight /> : null;
+  // useEffect(() => {
+  //   window.api.LISTENER("SEARCH", (data) => {
+  //     setShow(data.open);
+  //   });
+  // }, []);
+  return show ? <Spotlight /> : undefined;
 };
 
 export default Layout;

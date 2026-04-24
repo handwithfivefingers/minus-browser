@@ -1,5 +1,16 @@
-import { IconPlus, IconSquare, IconSquareCheck, IconTrash } from "@tabler/icons-react";
-import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
+import {
+  IconPlus,
+  IconSquare,
+  IconSquareCheck,
+  IconTrash,
+} from "@tabler/icons-react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { v4 as uuidV4 } from "uuid";
 interface ITodoItem {
   label: string;
@@ -15,7 +26,15 @@ const Home = () => {
   );
 };
 
-const DATE_OUTPUT = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DATE_OUTPUT = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 const TodoHome = () => {
   const hourRef = useRef<HTMLSpanElement | null>(null);
   const minRef = useRef<HTMLSpanElement | null>(null);
@@ -41,12 +60,24 @@ const TodoHome = () => {
     if (JSON.parse(todo)?.length > 0) {
       setTodos(JSON.parse(todo));
     } else {
-      setTodos([{ label: "new todo", description: "new description", checked: false, id: uuidV4() }]);
+      setTodos([
+        {
+          label: "new todo",
+          description: "new description",
+          checked: false,
+          id: uuidV4(),
+        },
+      ]);
     }
   }, []);
 
   const addNewTodo = () => {
-    const newTodo = { label: "new todo", description: "new description", checked: false, id: uuidV4() };
+    const newTodo = {
+      label: "new todo",
+      description: "new description",
+      checked: false,
+      id: uuidV4(),
+    };
     const nextState = [...todos, newTodo];
     localStorage.setItem("APP_TODO", JSON.stringify(todos));
     startTransition(() => {
@@ -76,9 +107,12 @@ const TodoHome = () => {
   return (
     <div className="flex justify-center h-full items-center-safe py-20 flex-col gap-8 w-full">
       <div className="flex-1 flex-shrink-0 gap-2 flex">
-        <span className="font-medium text-3xl text-white">{DATE_OUTPUT[new Date().getDay()]}</span>
         <span className="font-medium text-3xl text-white">
-          {new Date().getDate()}/{new Date().getMonth()}/{new Date().getFullYear()}
+          {DATE_OUTPUT[new Date().getDay()]}
+        </span>
+        <span className="font-medium text-3xl text-white">
+          {new Date().getDate()}/{new Date().getMonth()}/
+          {new Date().getFullYear()}
         </span>
       </div>
       <div className="flex-1 flex-shrink-0">
@@ -89,7 +123,14 @@ const TodoHome = () => {
       <div className="h-full w-full max-w-80 flex gap-2 flex-col">
         <div className="flex gap-2 flex-col max-h-[275px] overflow-x-hidden overflow-y-auto scrollbar">
           {todos?.map((item) => {
-            return <TodoItem {...item} key={item.id} onSave={onSave} onDelete={() => onDelete(item)} />;
+            return (
+              <TodoItem
+                {...item}
+                key={item.id}
+                onSave={onSave}
+                onDelete={() => onDelete(item)}
+              />
+            );
           })}
         </div>
 
@@ -114,7 +155,7 @@ const TodoItem = ({
   const [todo, setTodo] = useState(props);
 
   useEffect(() => {
-    let timeout;
+    let timeout: ReturnType<typeof setTimeout> | undefined = undefined;
     if (timeout) clearTimeout(timeout);
     timeout = setTimeout(() => {
       onSave(todo);
@@ -135,12 +176,16 @@ const TodoItem = ({
         <input
           className="font-normal text-xl capitalize px-2 focus:outline-indigo-500/50"
           value={todo.label}
-          onChange={(e) => setTodo((prev) => ({ ...prev, label: e.target.value }))}
+          onChange={(e) =>
+            setTodo((prev) => ({ ...prev, label: e.target.value }))
+          }
         />
         <textarea
           className="text-base text-slate-500 px-2 focus:outline-indigo-500/50"
           value={todo.description}
-          onChange={(e) => setTodo((prev) => ({ ...prev, description: e.target.value }))}
+          onChange={(e) =>
+            setTodo((prev) => ({ ...prev, description: e.target.value }))
+          }
         />
       </div>
 

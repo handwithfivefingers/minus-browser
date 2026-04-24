@@ -1,18 +1,24 @@
-import { BrowserWindow, globalShortcut } from "electron";
-import log from "electron-log";
+import { BrowserWindow, globalShortcut, ipcMain } from "electron";
+import { ViewController } from "..";
 
 class CommandShortCut {
   isActive: boolean = false;
   commandName: string = "";
   callback: () => void;
-  constructor({ commandName, callback }: { commandName: string; callback: () => void }) {
+  constructor({
+    commandName,
+    callback,
+  }: {
+    commandName: string;
+    callback: () => void;
+  }) {
     this.commandName = commandName;
     this.callback = callback;
     this.initialize();
   }
 
   initialize() {
-    log.info("CommandShortCut initialized");
+    // log.info("CommandShortCut initialized");
     let isRegistered = globalShortcut.isRegistered(this.commandName);
     if (!isRegistered) {
       globalShortcut.register(this.commandName, this.callback);
@@ -22,6 +28,7 @@ class CommandShortCut {
   destroy() {
     globalShortcut.unregister(this.commandName);
     this.isActive = false;
+    // console.log(`Command ${this.commandName} deleted`);
   }
 }
 
@@ -31,13 +38,14 @@ export class CommandController {
   createTab: CommandShortCut;
   toggleDevTools: CommandShortCut;
   reloadPage: CommandShortCut;
-
-  constructor() {
+  viewController: ViewController;
+  constructor(viewController: ViewController) {
+    this.viewController = viewController;
     this.initialize();
   }
 
   initialize() {
-    log.info("CommandController initialized");
+    // log.info("CommandController initialized");
     this.search = new CommandShortCut({
       commandName: "CommandOrControl+F",
       callback: () => this.onSearchCallback(),
@@ -64,8 +72,8 @@ export class CommandController {
   }
 
   onCreateTabCallback() {
-    let view = BrowserWindow.getFocusedWindow();
-    view.webContents.send("CREATE_TAB");
+    console.log("EMIT CREATE_TAB");
+    this.viewController.createTab();
   }
   onToggleDevTools() {
     let view = BrowserWindow.getFocusedWindow();

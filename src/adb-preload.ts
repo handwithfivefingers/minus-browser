@@ -1,8 +1,25 @@
 // @ts-nocheck
-import { contextBridge, ipcRenderer } from "electron";
-const SCRIPT_ID = "cliqz-adblocker-script";
-const IGNORED_TAGS = new Set(["br", "head", "link", "meta", "script", "style", "s"]);
-function debounce(fn: any, { waitFor, maxWait }: any) {
+
+import { ipcRenderer } from "electron";
+
+/*!
+ * Copyright (c) 2017-present Ghostery GmbH. All rights reserved.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+const SCRIPT_ID = "ghostery-adblocker-script";
+const IGNORED_TAGS = new Set([
+  "br",
+  "head",
+  "link",
+  "meta",
+  "script",
+  "style",
+  "s",
+]);
+function debounce(fn, { waitFor, maxWait }) {
   let delayedTimer;
   let maxWaitTimer;
   const clear = () => {
@@ -54,9 +71,17 @@ function getElementsFromMutations(mutations) {
  * potentially be injected in content-script (e.g.: see PuppeteerBlocker for
  * more details).
  */
-function extractFeaturesFromDOM(roots) {
+function extractFeaturesFromDOM(roots = [document.documentElement]) {
   // NOTE: This cannot be global as puppeteer needs to be able to serialize this function.
-  const ignoredTags = new Set(["br", "head", "link", "meta", "script", "style", "s"]);
+  const ignoredTags = new Set([
+    "br",
+    "head",
+    "link",
+    "meta",
+    "script",
+    "style",
+    "s",
+  ]);
   const classes = new Set();
   const hrefs = new Set();
   const ids = new Set();
@@ -64,7 +89,9 @@ function extractFeaturesFromDOM(roots) {
   for (const root of roots) {
     for (const element of [
       root,
-      ...root.querySelectorAll("[id]:not(html):not(body),[class]:not(html):not(body),[href]:not(html):not(body)"),
+      ...root.querySelectorAll(
+        "[id]:not(html):not(body),[class]:not(html):not(body),[href]:not(html):not(body)",
+      ),
     ]) {
       // If one of root belongs to another root which is parent node of the one, querySelectorAll can return duplicates.
       if (seenElements.has(element)) {
@@ -117,10 +144,13 @@ class DOMMonitor {
         this.handleUpdatedNodes(Array.from(nodes));
         nodes.clear();
       };
-      const [debouncedHandleUpdatedNodes, cancelHandleUpdatedNodes] = debounce(handleUpdatedNodesCallback, {
-        waitFor: 25,
-        maxWait: 1000,
-      });
+      const [debouncedHandleUpdatedNodes, cancelHandleUpdatedNodes] = debounce(
+        handleUpdatedNodesCallback,
+        {
+          waitFor: 25,
+          maxWait: 1000,
+        },
+      );
       this.observer = new window.MutationObserver((mutations) => {
         getElementsFromMutations(mutations).forEach(nodes.add, nodes);
         // Set a threshold to prevent websites continuously
@@ -170,7 +200,11 @@ class DOMMonitor {
         this.knownHrefs.add(href);
       }
     }
-    if (newIds.length !== 0 || newClasses.length !== 0 || newHrefs.length !== 0) {
+    if (
+      newIds.length !== 0 ||
+      newClasses.length !== 0 ||
+      newHrefs.length !== 0
+    ) {
       this.cb({
         type: "features",
         classes: newClasses,
@@ -185,7 +219,9 @@ class DOMMonitor {
     if (elements.length !== 0) {
       this.cb({
         type: "elements",
-        elements: elements.filter((e) => IGNORED_TAGS.has(e.nodeName.toLowerCase()) === false),
+        elements: elements.filter(
+          (e) => IGNORED_TAGS.has(e.nodeName.toLowerCase()) === false,
+        ),
       });
       return this.handleNewFeatures(extractFeaturesFromDOM(elements));
     }
@@ -201,9 +237,16 @@ class DOMMonitor {
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 function injectCosmeticFilters(data) {
-  return ipcRenderer.invoke("@ghostery/adblocker/inject-cosmetic-filters", window.location.href, data);
+  return ipcRenderer.invoke(
+    "@ghostery/adblocker/inject-cosmetic-filters",
+    window.location.href,
+    data,
+  );
 }
-if (window === window.top && window.location.href.startsWith("devtools://") === false) {
+if (
+  window === window.top &&
+  window.location.href.startsWith("devtools://") === false
+) {
   (() => {
     let DOM_MONITOR = null;
     const unload = () => {
@@ -236,10 +279,12 @@ if (window === window.top && window.location.href.startsWith("devtools://") === 
           .then(
             (enableMutationObserver) =>
               enableMutationObserver &&
-              (DOM_MONITOR === null || DOM_MONITOR === void 0 ? void 0 : DOM_MONITOR.start(window))
+              (DOM_MONITOR === null || DOM_MONITOR === void 0
+                ? void 0
+                : DOM_MONITOR.start(window)),
           );
       },
-      { once: true, passive: true }
+      { once: true, passive: true },
     );
     window.addEventListener("unload", unload, { once: true, passive: true });
   })();

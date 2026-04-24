@@ -1,3 +1,2 @@
-export * from './tabController'
-export * from './tabCoordinator'
-export * from './webContentsViewController'
+export * from "./tabController";
+export * from "./webContentsViewController";

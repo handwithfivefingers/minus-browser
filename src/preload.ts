@@ -35,6 +35,8 @@ enum TAB_UPDATE_TYPE {
 }
 type IChannel = TabEventType | ViewEventType | TAB_UPDATE_TYPE;
 
+type ListenChannelEvent = "" | string;
+
 class IPCEvent<T = any> {
   channel: IChannel;
   data: T | null = null;
@@ -42,6 +44,7 @@ class IPCEvent<T = any> {
     Object.assign(this, props);
   }
 }
+
 contextBridge.exposeInMainWorld("api", {
   INVOKE: (channel: IChannel, data?: any) => {
     const ipcEvent = new IPCEvent({ channel, data });
@@ -51,5 +54,6 @@ contextBridge.exposeInMainWorld("api", {
     const ipcEvent = new IPCEvent({ channel, data });
     return ipcRenderer.send("send", ipcEvent);
   },
-  LISTENER: (channel: string, callback?: any) => ipcRenderer.on(channel, (_event, value) => callback(value)),
+  LISTENER: (channel: ListenChannelEvent, callback?: any) =>
+    ipcRenderer.on(channel, (_event, value) => callback(value)),
 });

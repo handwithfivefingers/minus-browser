@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  globalShortcut,
   Menu,
   Notification,
   screen,
@@ -109,23 +110,21 @@ class MinusBrowser {
       log.transports.file.resolvePathFn = () =>
         path.join(app.getPath("userData"), "logs/main.log");
 
-      new ViewController(browser);
+      const viewController = new ViewController(browser);
 
       this.registerNotification();
       this.requestPermission();
-      // this.sidebarInjection();
+      this.registerCommand(viewController);
       console.log = log.log;
     } catch (error) {
       console.log("[ERROR] Create Window Error - ", error);
     }
   };
-  registerCommand() {
+  registerCommand(viewController: ViewController) {
     let gS: CommandController;
-    this.browser.webContents.on("focus", () => {
-      gS = new CommandController();
-    });
-    this.browser.webContents.on("blur", () => {
-      gS?.destroy();
+
+    this.browser.on("focus", () => {
+      gS = new CommandController(viewController);
     });
     this.browser.on("hide", () => {
       gS?.destroy();

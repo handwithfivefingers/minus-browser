@@ -13,15 +13,4 @@ export interface ITab {
   updateUrl(url: string): void;
   onFocus(): void;
   onBlur(): void;
-  onRequestPIP(): void;
-}
-
-export interface ITabManager {
-  tabs: Map<string, ITab>;
-  index: number;
-  getTabs: ITab[];
-  getTab: (id: string) => ITab | boolean;
-  createTab: (tab: Partial<ITab>) => void;
-  updateTab: (params: Partial<ITab> & { id: string }) => void;
-  deleteTab: (id: string) => void;
 }

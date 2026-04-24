@@ -11,7 +11,6 @@ import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { isValidDomainOrIP } from "../libs";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
-import { Switch } from "./switch";
 interface IHeader {
   url?: string;
   id: string;
@@ -47,7 +46,6 @@ const Header = ({
   const ref = useRef<HTMLInputElement>(null);
   const [focus, setFocus] = useState(false);
   const { layout } = useMinusThemeStore();
-
   useEffect(() => {
     if (url && ref.current && url !== ref.current.value) {
       ref.current.value = url;
@@ -65,6 +63,8 @@ const Header = ({
   const onBookmark = () => {
     window.api.EMIT("TOGGLE_BOOKMARK", { url: ref.current.value, id: id });
   };
+  console.log("id", id);
+  if (!id) return null;
   return (
     <div className={LAYOUT_HEADER_CLASS[layout]}>
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
@@ -76,9 +76,9 @@ const Header = ({
           <IconChevronLeft size={16} />
         </button>
       </div>
-      <div className="bg-slate-200 px-4 rounded-full">
+      {/*<div className="bg-slate-200 px-4 rounded-full">
         <Switch title={"Hibernate"} />
-      </div>
+      </div>*/}
       <div
         className={[
           "flex gap-1 w-1/2 bg-white rounded-full  border-2 transition-all relative mx-auto",

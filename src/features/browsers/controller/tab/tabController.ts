@@ -4,20 +4,21 @@ import { StoreManager } from "../../stores";
 import { Tab } from "../../classes/tab";
 import { ITab } from "../../interfaces";
 import { Bookmark } from "../bookmark";
+import { AdBlocker } from "../adsBlock";
 export class TabController {
-  // tabs: Tab[] = [];
   activeTab: Tab | null;
   tabsIndex: Record<string, number> = {};
   index: number = 0;
   hibernateMapping: Map<string, View> = new Map();
   userStore: StoreManager = new StoreManager("userData");
-  bm = new Bookmark();
+  bookmark = new Bookmark();
   tabs: Map<string, Tab> = new Map();
-  constructor() {}
+  AdBlock = new AdBlocker();
   async initialize() {
     try {
       log.log("TabController initalizing...");
-      await this.bm.initialize();
+      await this.bookmark.initialize();
+      await this.AdBlock.initialize();
       // Đảm bảo readFiles luôn trả về object mặc định nếu file lỗi/rỗng
       const data = await this.userStore.readFiles<{
         tabs: ITab[];
@@ -28,20 +29,11 @@ export class TabController {
       const tabsIndex: { [key: string]: number } = {};
       let idx = 0;
       for (idx; idx < tabs?.length; idx++) {
-        // const isBookmarked = this.bm.bookmarks.has(new URL(tabs[idx].url).href) || false;
-        // const tab = tabs[idx];
-        // delete tab.id;
-        // const newTab = new Tab({
-        //   ...tab,
-        //   isBookmarked: isBookmarked,
-        //   index: idx,
-        // });
-        // newTabs.set(newTab.id, newTab);
         let isBookmarked = false;
         try {
           if (tabs[idx] && tabs[idx].url) {
             const validUrl = new URL(tabs[idx].url).href;
-            isBookmarked = this.bm.bookmarks.has(validUrl);
+            isBookmarked = this.bookmark.bookmarks.has(validUrl);
           }
         } catch (urlError) {
           console.warn(`Invalid URL at index ${idx}:`, tabs[idx].url);
@@ -56,6 +48,7 @@ export class TabController {
           ...tab,
           isBookmarked: isBookmarked,
           index: idx,
+          blocker: this.AdBlock,
         });
         newTabs.set(newTab.id, newTab);
       }
@@ -66,52 +59,57 @@ export class TabController {
       return this;
     } catch (error) {
       console.log("TabController initialize error", error);
-    } finally {
-      console.log("tabs", this.tabs);
     }
   }
-
   addNewBookmark({ id }: Partial<Tab>) {
     const tab = this.getTabById(id);
-    const isBookmarked = this.bm.bookmarks.has(tab.url);
-    console.log("isBookmarked", isBookmarked);
+    const isBookmarked = this.bookmark.bookmarks.has(tab.url);
     if (!isBookmarked) {
       tab.isBookmarked = true;
-      this.bm.bookmarks.add(tab.url);
+      this.bookmark.bookmarks.add(tab.url);
     } else {
       tab.isBookmarked = false;
-      this.bm.bookmarks.delete(tab.url);
+      this.bookmark.bookmarks.delete(tab.url);
     }
     tab.updateTab(tab);
-    this.bm.saveBookmark();
+    this.bookmark.saveBookmark();
+  }
+  getTabs() {
+    const tabs =
+      this.tabs.size > 0
+        ? [...this.tabs.values()].map((tab) => tab.toJSON())
+        : [];
+    return tabs;
   }
   getTabById(id: string) {
-    // const currentIndex = this.tabsIndex[id];
-    // if (currentIndex === undefined) return null;
-    // return this.tabs[currentIndex];
     return this.tabs.get(id) || null;
   }
   addNewTab(tab?: Partial<Tab>) {
     const tabObject = new Tab({
       isFocused: false,
       isBookmarked: false,
+      blocker: this.AdBlock,
       ...tab,
     });
-    const tabUrl = new URL(tabObject.url);
-    const isBookmarked = this.bm.bookmarks?.has(tabUrl.href);
+    const tabUrl = new URL(tabObject?.url || "https://google.com");
+    const isBookmarked = this.bookmark.bookmarks?.has(tabUrl.href);
     tabObject.isBookmarked = isBookmarked;
     tabObject.index = this.index;
     let newIndex = this.index + 1;
     this.tabs.set(tabObject.id, tabObject);
     this.index = newIndex;
     this.activeTab = tabObject;
-    return tabObject;
+    return tabObject.toJSON();
   }
   updateTab(id: string, tab: Partial<Tab>) {
     log.info("Updated Tab ${id}:", tab);
     const currentTab = this.getTabById(id);
     if (!currentTab) return;
-    const updatedTab = new Tab({ ...currentTab, ...tab });
+    const updatedTab = new Tab({
+      ...currentTab,
+      ...tab,
+      blocker: this.AdBlock,
+    });
     this.tabs.set(id, updatedTab);
     if (this.activeTab?.id === id) {
       this.activeTab = updatedTab;
@@ -147,16 +145,20 @@ export class TabController {
       1000 * 60 * 5,
     );
   }
-
   private getPreviousTab(id: string) {
     const entries = Array.from(this.tabs.entries());
-    let result: Record<any, any> = {
+    const result: {
+      nextIndex: number | undefined;
+      nextTab: Tab | undefined;
+    } = {
       nextIndex: undefined,
       nextTab: undefined,
     };
     for (let [key, value] of entries) {
       if (key === id) break;
-      result = { nextIndex: value.index, nextTab: value };
+      result.nextIndex = value.index;
+      result.nextTab = value;
+      // result = { nextIndex: value.index, nextTab: value };
     }
     return result;
   }
