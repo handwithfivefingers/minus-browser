@@ -56,7 +56,7 @@ export class Tab {
     Object.assign(this, props);
     this.webContents = this.view.webContents;
     this.view.setMaxListeners(20);
-    blocker?.setupAdvancedRequestBlocking?.(this.view);
+    blocker.setupAdvancedRequestBlocking(this.view);
     this.createContextMenu();
     this.requestPermissions();
     this.applyStyles();
@@ -122,10 +122,11 @@ export class Tab {
     });
   }
   onRequestPIP() {
-    if (this.webContents.isFocused()) {
-      this.webContents.focus();
+    if (!this.view.webContents.isFocused()) {
+      this.view.webContents.focus();
     }
-    this.webContents
+    console.log("START Request PIP");
+    this.view.webContents
       .executeJavaScript(`(${preloadScript.toString()})()`)
       .then(() => {
         console.info("requestPIP success");

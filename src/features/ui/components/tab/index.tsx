@@ -1,13 +1,12 @@
+import { IconX } from "@tabler/icons-react";
 import clsx from "clsx";
-import { memo, useEffect, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { memo } from "react";
+import { Link, useLocation } from "react-router";
+import { useTabStore } from "../../stores/useTabStore";
 // import { ITab } from "../../../browsers/interfaces";
 import { Avatar } from "../avatar";
 /** @ts-ignore */
 import styles from "./styles.module.css";
-import { IconX } from "@tabler/icons-react";
-import { tabServices } from "../../services/tab.service";
-import { useTabStore } from "../../stores/useTabStore";
 interface ITabItem
   extends Omit<any, "updateTitle" | "updateUrl" | "onFocus" | "onBlur"> {
   className?: string;

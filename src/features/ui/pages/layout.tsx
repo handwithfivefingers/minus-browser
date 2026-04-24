@@ -33,11 +33,9 @@ const Layout = () => {
 
   useEffect(() => {
     window.api.LISTENER("GET_TABS", (v) => {
-      console.log("LISTENERS GET_TABS", v);
       setTabs(v);
     });
   }, []);
-  console.log("TABS >>>>>>", tabs);
   return (
     <LayoutSideEffect>
       <div className={LAYOUT_CLASS[layout]}>

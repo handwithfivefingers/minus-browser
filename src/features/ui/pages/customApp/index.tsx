@@ -128,12 +128,9 @@ const WebViewInstance = ({ id }: { id: string }) => {
         tab: { id },
         screen: { x, y, width, height },
       });
-    }, 100);
+    }, 25);
     const resizeObserver = new ResizeObserver(autoSize);
     resizeObserver?.observe(webviewRef.current);
-    // window.api.LISTENER(`page-favicon-updated:${id}`, (value: { title: string; favicon: string }) => {
-    //   // updateTab(id, { ...value });
-    // });
     return () => {
       id && window.api.EMIT("HIDE_VIEW", { id });
       webviewRef.current &&

@@ -271,6 +271,7 @@ export class ViewController {
       this.detachChildView(currentTab.view);
       const { nextTab } = this.tabController.closeTab(props.id);
       this.attachChildView(nextTab.view);
+      this.window.webContents.send("GET_TABS", this.getTabs());
     } catch (error) {
       return new ErrorServices(error);
     }
