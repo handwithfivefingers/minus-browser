@@ -1,159 +1,47 @@
-import { IconTable, IconTableFilled } from "@tabler/icons-react";
+import {
+  IconAdjustments,
+  IconCode,
+  IconDatabase,
+  IconDeviceFloppy,
+  IconEdit,
+  IconLayoutGrid,
+  IconPlus,
+  IconSearch,
+  IconShieldLock,
+  IconTrash,
+  IconUpload,
+  IconX,
+} from "@tabler/icons-react";
 import clsx from "clsx";
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
+
+type SettingTab = "system" | "userscript" | "vault";
+type UserScriptRunAt = "document-start" | "document-idle" | "document-end";
+
 enum LayoutTemplate {
   BASIC = "BASIC",
   FLOATING = "FLOATING",
 }
 
 const CLASSES = {
-  BASIC: "bg-slate-100 w-full h-full p-8",
-  FLOATING: "bg-slate-100 w-full h-full rounded-lg p-8",
+  BASIC: "bg-slate-50 w-full h-full p-6",
+  FLOATING: "bg-slate-50 w-full h-full rounded-xl p-6",
 };
-const Setting = () => {
-  const { layout, mode, initialize } = useMinusThemeStore();
-  const tempRef = useRef(null);
-  const dataAdjRef = useRef(null);
-  const save = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const template = tempRef.current.get();
-    const dataSync = dataAdjRef.current.get();
-    const data = { layout: template, mode, dataSync: { ...dataSync } };
-    window.api.INVOKE("INTERFACE_SAVE", data);
-    initialize(data);
-  };
-
-  return (
-    <div className="relative bg-slate-800 h-full w-full">
-      <div className={CLASSES[layout]}>
-        <h1 className="font-bold text-xl py-4">Setting</h1>
-        <div className="flex gap-2">
-          <DataAdjustment ref={dataAdjRef} />
-          <FontAdjustment />
-          <Template ref={tempRef} />
-        </div>
-        <UserScriptSetting />
-        <PasswordManagementSetting />
-
-        <button
-          className="px-2 py-2 rounded-md bg-indigo-500 text-white my-2 active:translate-y-0.5 cursor-pointer"
-          onClick={save}
-        >
-          Save Setting
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const DataAdjustment = forwardRef<{ get: () => { intervalTime: string } }>((props, ref) => {
-  const [dataAdj, setDataAdj] = useState({
-    intervalTime: "15",
-    hardwareAcceleration: "0",
-  });
-  useImperativeHandle(ref, () => ({
-    get: () => dataAdj,
-  }));
-  return (
-    <div className="bg-slate-200 p-4 rounded-lg flex gap-2 flex-col">
-      <span className="font-bold text-lg">System:</span>
-      <div className="flex w-full justify-between gap-2">
-        <div>Sync data interval:</div>
-        <select
-          className="bg-slate-300 rounded px-2 w-24"
-          value={dataAdj.intervalTime}
-          onChange={(e) => setDataAdj((prev) => ({ ...prev, intervalTime: e.target.value }))}
-        >
-          <option value={"15"}>15 Sec</option>
-          <option value={"30"}>30 Sec</option>
-          <option value={"45"}>45 Sec</option>
-          <option value={"60"}>60 Sec</option>
-          <option value={"off"}>Off</option>
-        </select>
-      </div>
-      <div className="flex w-full justify-between gap-2">
-        <div>Hardware acceleration:</div>
-        <select
-          className="bg-slate-300 rounded px-2 w-24"
-          value={dataAdj.hardwareAcceleration}
-          onChange={(e) => setDataAdj((prev) => ({ ...prev, hardwareAcceleration: e.target.value }))}
-        >
-          <option value={"0"}>Off</option>
-          <option value={"1"}>On</option>
-        </select>
-      </div>
-    </div>
-  );
-});
-
-const FontAdjustment = forwardRef((props, ref) => {
-  const [fontAdj, setFontAdj] = useState({
-    fontSize: "10",
-  });
-  return (
-    <div className="bg-slate-200 p-4 rounded-lg flex gap-2 flex-col">
-      <span className="font-bold text-lg">Font Adjustment:</span>
-      <div className="flex w-full justify-between gap-2">
-        <div>Font Size:</div>
-        <select
-          className="bg-slate-300 rounded px-2 w-24"
-          value={fontAdj.fontSize}
-          onChange={(e) => setFontAdj((prev) => ({ ...prev, fontSize: e.target.value }))}
-        >
-          <option value={"8"}>8</option>
-          <option value={"12"}>12</option>
-          <option value={"16"}>16</option>
-          <option value={"20"}>20</option>
-        </select>
-      </div>
-      <div className="flex w-full justify-between gap-2">
-        <div>Font Family:</div>
-        <select className="bg-slate-300 rounded px-2 w-24">
-          <option value={"mono"}>Mono</option>
-        </select>
-      </div>
-    </div>
-  );
-});
-const Template = forwardRef<{ get: () => "BASIC" | "FLOATING" }>((props, ref) => {
-  const { layout } = useMinusThemeStore();
-  const [layoutTemplate, setLayoutTemplate] = useState<"BASIC" | "FLOATING">(layout);
-  useImperativeHandle(ref, () => ({
-    get: () => layoutTemplate,
-  }));
-  return (
-    <div className="bg-slate-200 p-4 rounded-lg flex gap-2 flex-col">
-      <span className="font-bold text-lg">Layout:</span>
-      <div className="flex gap-2 w-full justify-between flex-col">
-        <div
-          className={clsx("flex gap-2 border rounded bg-slate-100 border-slate-200 p-2 cursor-pointer", {
-            ["!bg-indigo-500 text-white"]: layoutTemplate === LayoutTemplate.BASIC,
-          })}
-          onClick={() => setLayoutTemplate(LayoutTemplate.BASIC)}
-        >
-          <IconTable />
-          <span>{LayoutTemplate.BASIC}</span>
-        </div>
-        <div
-          className={clsx("flex gap-2 border rounded bg-slate-100 border-slate-200 p-2 cursor-pointer", {
-            ["!bg-indigo-500 text-white"]: layoutTemplate === LayoutTemplate.FLOATING,
-          })}
-          onClick={() => setLayoutTemplate(LayoutTemplate.FLOATING)}
-        >
-          <IconTableFilled />
-          <span>{LayoutTemplate.FLOATING}</span>
-        </div>
-      </div>
-    </div>
-  );
-});
 
 interface IUserScript {
   id: string;
   name: string;
   source: string;
+  matches?: string[];
+  runAt?: UserScriptRunAt;
   enabled: boolean;
   updatedAt: number;
 }
@@ -168,11 +56,285 @@ interface IPasswordVaultItem {
   updatedAt: number;
 }
 
-const UserScriptSetting = () => {
+interface ISystemForm {
+  intervalTime: string;
+  hardwareAcceleration: string;
+  layout: "FLOATING" | "BASIC";
+}
+
+interface IUserScriptForm {
+  id?: string;
+  name: string;
+  source: string;
+  matches: string[];
+  runAt: UserScriptRunAt;
+  enabled: boolean;
+}
+
+interface IVaultForm {
+  id?: string;
+  site: string;
+  username: string;
+  password: string;
+  notes: string;
+}
+
+const parseUserScriptMeta = (source: string) => {
+  const lines = String(source || "").split("\n");
+  const meta = {
+    name: "New Script",
+    matches: ["*://*/*"],
+    runAt: "document-end" as UserScriptRunAt,
+  };
+
+  for (const line of lines) {
+    const nameMatch = line.match(/^\/\/\s*@name\s+(.+)$/);
+    const runAtMatch = line.match(/^\/\/\s*@run-at\s+(.+)$/);
+    const matchRule = line.match(/^\/\/\s*@match\s+(.+)$/);
+    if (nameMatch?.[1]) meta.name = nameMatch[1].trim();
+    if (runAtMatch?.[1]) {
+      const value = runAtMatch[1].trim() as UserScriptRunAt;
+      if (
+        value === "document-start" ||
+        value === "document-idle" ||
+        value === "document-end"
+      ) {
+        meta.runAt = value;
+      }
+    }
+    if (matchRule?.[1]) {
+      if (meta.matches.length === 1 && meta.matches[0] === "*://*/*") {
+        meta.matches = [];
+      }
+      meta.matches.push(matchRule[1].trim());
+    }
+  }
+
+  if (!meta.matches.length) meta.matches = ["*://*/*"];
+  return meta;
+};
+
+const buildUserScriptSource = (sourceBody: string, form: IUserScriptForm) => {
+  const src = String(sourceBody || "");
+  const blockRegex = /\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n?/m;
+  const cleanMatches = form.matches.map((m) => m.trim()).filter(Boolean);
+  const matchLines = (cleanMatches.length ? cleanMatches : ["*://*/*"])
+    .map((match) => `// @match ${match}`)
+    .join("\n");
+
+  const block =
+    "// ==UserScript==\n" +
+    `// @name ${form.name || "New Script"}\n` +
+    `${matchLines}\n` +
+    `// @run-at ${form.runAt}\n` +
+    "// ==/UserScript==\n";
+
+  if (blockRegex.test(src)) {
+    return src.replace(blockRegex, block);
+  }
+  return `${block}\n${src}`;
+};
+
+const Modal = ({
+  title,
+  open,
+  onClose,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) => {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[2000] bg-slate-900/55 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-3xl max-h-[88vh] overflow-auto rounded-xl bg-white border border-slate-200 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="sticky top-0 z-10 bg-white px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+          <div className="font-semibold text-slate-900">{title}</div>
+          <button
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
+            onClick={onClose}
+            type="button"
+          >
+            <IconX size={16} />
+          </button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>
+  );
+};
+
+const Sidebar = ({
+  active,
+  onChange,
+}: {
+  active: SettingTab;
+  onChange: (tab: SettingTab) => void;
+}) => {
+  const tabs: Array<{ id: SettingTab; label: string; icon: React.ReactNode }> =
+    [
+      { id: "system", label: "System", icon: <IconAdjustments size={16} /> },
+      { id: "userscript", label: "UserScript", icon: <IconCode size={16} /> },
+      {
+        id: "vault",
+        label: "Password Vault",
+        icon: <IconShieldLock size={16} />,
+      },
+    ];
+
+  return (
+    <aside className="w-[230px] shrink-0 bg-white rounded-xl border border-slate-200 p-3">
+      <div className="px-2 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+        Settings
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onChange(tab.id)}
+            className={clsx(
+              "w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm cursor-pointer border",
+              active === tab.id
+                ? "bg-slate-900 text-white border-slate-900"
+                : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50",
+            )}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+    </aside>
+  );
+};
+
+const SystemSection = ({
+  form,
+  setForm,
+  onSave,
+}: {
+  form: ISystemForm;
+  setForm: Dispatch<SetStateAction<ISystemForm>>;
+  onSave: () => void;
+}) => {
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <IconDatabase size={18} className="text-slate-700" />
+        <h2 className="text-lg font-semibold text-slate-900">
+          System Preferences
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm text-slate-600">Sync Data Interval</span>
+          <select
+            value={form.intervalTime}
+            onChange={(event) =>
+              setForm((prev) => ({ ...prev, intervalTime: event.target.value }))
+            }
+            className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm"
+          >
+            <option value="15">15 sec</option>
+            <option value="30">30 sec</option>
+            <option value="45">45 sec</option>
+            <option value="60">60 sec</option>
+            <option value="off">Off</option>
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm text-slate-600">Hardware Acceleration</span>
+          <select
+            value={form.hardwareAcceleration}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                hardwareAcceleration: event.target.value,
+              }))
+            }
+            className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm"
+          >
+            <option value="0">Off</option>
+            <option value="1">On</option>
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1.5 md:col-span-2">
+          <span className="text-sm text-slate-600">Layout Template</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <button
+              type="button"
+              className={clsx(
+                "h-11 px-3 rounded-lg border text-sm inline-flex items-center justify-center gap-2 cursor-pointer",
+                form.layout === LayoutTemplate.BASIC
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50",
+              )}
+              onClick={() =>
+                setForm((prev) => ({ ...prev, layout: LayoutTemplate.BASIC }))
+              }
+            >
+              <IconLayoutGrid size={16} />
+              BASIC
+            </button>
+            <button
+              type="button"
+              className={clsx(
+                "h-11 px-3 rounded-lg border text-sm inline-flex items-center justify-center gap-2 cursor-pointer",
+                form.layout === LayoutTemplate.FLOATING
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50",
+              )}
+              onClick={() =>
+                setForm((prev) => ({
+                  ...prev,
+                  layout: LayoutTemplate.FLOATING,
+                }))
+              }
+            >
+              <IconLayoutGrid size={16} />
+              FLOATING
+            </button>
+          </div>
+        </label>
+      </div>
+
+      <div className="pt-5">
+        <button
+          type="button"
+          onClick={onSave}
+          className="h-10 px-4 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-2 hover:bg-slate-700 cursor-pointer"
+        >
+          <IconDeviceFloppy size={16} />
+          Save System Settings
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const UserScriptSection = () => {
   const [scripts, setScripts] = useState<IUserScript[]>([]);
-  const [source, setSource] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [enabled, setEnabled] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<IUserScriptForm>({
+    name: "New Script",
+    source:
+      "// ==UserScript==\n// @name New Script\n// @match *://*/*\n// @run-at document-end\n// ==/UserScript==\n",
+    matches: ["*://*/*"],
+    runAt: "document-end",
+    enabled: false,
+  });
 
   const loadScripts = async () => {
     const list = await window.api.INVOKE<IUserScript[]>("GET_USERSCRIPTS");
@@ -183,17 +345,29 @@ const UserScriptSetting = () => {
     loadScripts();
   }, []);
 
-  const onSaveScript = async () => {
-    if (!source.trim()) return;
-    await window.api.INVOKE("SAVE_USERSCRIPT", {
-      id: selectedId,
-      source,
-      enabled,
+  const openCreateModal = () => {
+    setForm({
+      name: "New Script",
+      source:
+        "// ==UserScript==\n// @name New Script\n// @match *://*/*\n// @run-at document-end\n// ==/UserScript==\n",
+      matches: ["*://*/*"],
+      runAt: "document-end",
+      enabled: false,
     });
-    setSelectedId(null);
-    setSource("");
-    setEnabled(false);
-    loadScripts();
+    setModalOpen(true);
+  };
+
+  const openEditModal = (script: IUserScript) => {
+    const parsed = parseUserScriptMeta(script.source);
+    setForm({
+      id: script.id,
+      name: script.name || parsed.name,
+      source: script.source,
+      matches: script.matches?.length ? script.matches : parsed.matches,
+      runAt: script.runAt || parsed.runAt,
+      enabled: script.enabled,
+    });
+    setModalOpen(true);
   };
 
   const onImportScript = async () => {
@@ -203,98 +377,240 @@ const UserScriptSetting = () => {
 
   const onDeleteScript = async (id: string) => {
     await window.api.INVOKE("DELETE_USERSCRIPT", { id });
-    if (selectedId === id) {
-      setSelectedId(null);
-      setSource("");
-      setEnabled(false);
-    }
     loadScripts();
   };
 
-  const onToggleScript = async (id: string, nextState: boolean) => {
-    await window.api.INVOKE("TOGGLE_USERSCRIPT", {
-      id,
-      enabled: nextState,
+  const onSaveScript = async () => {
+    const normalized = {
+      ...form,
+      name: form.name.trim() || "New Script",
+      matches: form.matches.map((item) => item.trim()).filter(Boolean),
+    };
+
+    const withMeta = buildUserScriptSource(normalized.source, normalized);
+    await window.api.INVOKE("SAVE_USERSCRIPT", {
+      id: normalized.id,
+      source: withMeta,
+      enabled: normalized.enabled,
     });
+    setModalOpen(false);
     loadScripts();
-  };
-
-  const onSelectScript = (script: IUserScript) => {
-    setSelectedId(script.id);
-    setSource(script.source);
-    setEnabled(script.enabled);
   };
 
   return (
-    <div className="bg-slate-200 p-4 rounded-lg flex gap-2 flex-col mt-3">
-      <span className="font-bold text-lg">Userscripts (Tampermonkey Lite):</span>
-      <div className="flex gap-2">
-        <button
-          className="px-2 py-1 rounded bg-indigo-500 text-white cursor-pointer"
-          onClick={onImportScript}
-        >
-          Import .js/.user.js
-        </button>
-        <button
-          className="px-2 py-1 rounded bg-green-600 text-white cursor-pointer"
-          onClick={onSaveScript}
-        >
-          {selectedId ? "Update Script" : "Save Script"}
-        </button>
+    <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <IconCode size={18} className="text-slate-700" />
+          <h2 className="text-lg font-semibold text-slate-900">
+            UserScript Manager
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="h-9 px-3 rounded-lg border border-slate-300 bg-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer"
+            onClick={onImportScript}
+          >
+            <IconUpload size={15} />
+            Import
+          </button>
+          <button
+            type="button"
+            className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 cursor-pointer"
+            onClick={openCreateModal}
+          >
+            <IconPlus size={15} />
+            New Script
+          </button>
+        </div>
       </div>
-      <label className="text-sm flex gap-2 items-center">
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(event) => setEnabled(event.target.checked)}
-        />
-        Enabled
-      </label>
-      <textarea
-        className="bg-white rounded p-2 min-h-[140px] text-xs"
-        value={source}
-        placeholder="Paste custom userscript here..."
-        onChange={(event) => setSource(event.target.value)}
-      />
-      <div className="max-h-44 overflow-auto flex flex-col gap-1">
+
+      <div className="space-y-2 max-h-[460px] overflow-auto pr-1">
         {scripts.map((script) => (
           <div
             key={script.id}
-            className="bg-white rounded p-2 text-xs flex items-center justify-between gap-2"
+            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 flex items-center justify-between gap-3"
           >
-            <button
-              className="text-left flex-1 cursor-pointer"
-              onClick={() => onSelectScript(script)}
-              title={script.name}
-            >
-              <div className="font-semibold truncate">{script.name}</div>
-              <div className="text-slate-500">
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-slate-900 truncate">
+                {script.name}
+              </div>
+              <div className="text-xs text-slate-500">
+                {script.enabled ? "Enabled" : "Disabled"} • Updated{" "}
                 {new Date(script.updatedAt).toLocaleString()}
               </div>
-            </button>
-            <button
-              className="px-2 py-1 rounded bg-slate-200 cursor-pointer"
-              onClick={() => onToggleScript(script.id, !script.enabled)}
-            >
-              {script.enabled ? "Disable" : "Enable"}
-            </button>
-            <button
-              className="px-2 py-1 rounded bg-red-100 text-red-600 cursor-pointer"
-              onClick={() => onDeleteScript(script.id)}
-            >
-              Delete
-            </button>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                className="h-8 px-2.5 rounded-md border border-slate-300 text-slate-700 text-xs inline-flex items-center gap-1 hover:bg-white cursor-pointer"
+                onClick={() => openEditModal(script)}
+              >
+                <IconEdit size={14} />
+                Edit
+              </button>
+              <button
+                type="button"
+                className="h-8 px-2.5 rounded-md border border-red-200 text-red-600 bg-red-50 text-xs inline-flex items-center gap-1 hover:bg-red-100 cursor-pointer"
+                onClick={() => onDeleteScript(script.id)}
+              >
+                <IconTrash size={14} />
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>
+
+      <Modal
+        title={form.id ? "Edit Userscript" : "Create Userscript"}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+      >
+        <div className="space-y-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-slate-600">Script Name</span>
+            <input
+              className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+              value={form.name}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, name: event.target.value }))
+              }
+              placeholder="New Script"
+            />
+          </label>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Match Rules</span>
+              <button
+                type="button"
+                className="h-7 px-2 rounded-md border border-slate-300 text-xs inline-flex items-center gap-1 hover:bg-slate-50 cursor-pointer"
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    matches: [...prev.matches, ""],
+                  }))
+                }
+              >
+                <IconPlus size={13} />
+                Add Rule
+              </button>
+            </div>
+            <div className="space-y-2">
+              {form.matches.map((match, index) => (
+                <div
+                  key={`${index}-${match}`}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    className="h-9 px-3 rounded-lg border border-slate-300 text-sm flex-1"
+                    value={match}
+                    placeholder="*://*/*"
+                    onChange={(event) => {
+                      const next = [...form.matches];
+                      next[index] = event.target.value;
+                      setForm((prev) => ({ ...prev, matches: next }));
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="h-9 w-9 rounded-md border border-red-200 text-red-600 bg-red-50 inline-flex items-center justify-center hover:bg-red-100 cursor-pointer"
+                    onClick={() => {
+                      const next = form.matches.filter(
+                        (_, idx) => idx !== index,
+                      );
+                      setForm((prev) => ({
+                        ...prev,
+                        matches: next.length ? next : ["*://*/*"],
+                      }));
+                    }}
+                  >
+                    <IconTrash size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm text-slate-600">Run At</span>
+              <select
+                className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+                value={form.runAt}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    runAt: event.target.value as UserScriptRunAt,
+                  }))
+                }
+              >
+                <option value="document-start">document-start</option>
+                <option value="document-idle">document-idle</option>
+                <option value="document-end">document-end</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm text-slate-600">Status</span>
+              <button
+                type="button"
+                className={clsx(
+                  "h-10 rounded-lg border text-sm cursor-pointer",
+                  form.enabled
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-slate-100 text-slate-600 border-slate-300",
+                )}
+                onClick={() =>
+                  setForm((prev) => ({ ...prev, enabled: !prev.enabled }))
+                }
+              >
+                {form.enabled ? "ON" : "OFF"}
+              </button>
+            </label>
+          </div>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-slate-600">Script Source</span>
+            <textarea
+              className="min-h-[260px] p-3 rounded-lg border border-slate-300 text-xs font-mono"
+              value={form.source}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, source: event.target.value }))
+              }
+            />
+          </label>
+
+          <div className="pt-1 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              className="h-9 px-3 rounded-lg border border-slate-300 text-slate-700 text-sm cursor-pointer"
+              onClick={() => setModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 cursor-pointer"
+              onClick={onSaveScript}
+            >
+              <IconDeviceFloppy size={14} />
+              Save Script
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
 
-const PasswordManagementSetting = () => {
+const VaultSection = () => {
   const [items, setItems] = useState<IPasswordVaultItem[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [form, setForm] = useState({
+  const [query, setQuery] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState<IVaultForm>({
     site: "",
     username: "",
     password: "",
@@ -310,23 +626,29 @@ const PasswordManagementSetting = () => {
     loadVault();
   }, []);
 
-  const resetForm = () => {
-    setSelectedId(null);
-    setForm({
-      site: "",
-      username: "",
-      password: "",
-      notes: "",
-    });
+  const openCreateModal = () => {
+    setForm({ site: "", username: "", password: "", notes: "" });
+    setModalOpen(true);
   };
 
-  const onSave = async () => {
+  const openEditModal = (item: IPasswordVaultItem) => {
+    setForm({
+      id: item.id,
+      site: item.site,
+      username: item.username,
+      password: item.password,
+      notes: item.notes || "",
+    });
+    setModalOpen(true);
+  };
+
+  const onSaveVault = async () => {
     if (!form.site.trim() || !form.username.trim() || !form.password.trim()) {
       return;
     }
-    if (selectedId) {
+    if (form.id) {
       await window.api.INVOKE("VAULT_UPDATE", {
-        id: selectedId,
+        id: form.id,
         patch: {
           site: form.site.trim(),
           username: form.username.trim(),
@@ -342,112 +664,202 @@ const PasswordManagementSetting = () => {
         notes: form.notes,
       });
     }
-    resetForm();
+    setModalOpen(false);
     loadVault();
   };
 
-  const onEdit = (item: IPasswordVaultItem) => {
-    setSelectedId(item.id);
-    setForm({
-      site: item.site,
-      username: item.username,
-      password: item.password,
-      notes: item.notes || "",
-    });
-  };
-
-  const onDelete = async (id: string) => {
+  const onDeleteVault = async (id: string) => {
     await window.api.INVOKE("VAULT_DELETE", { id });
-    if (selectedId === id) {
-      resetForm();
-    }
     loadVault();
+  };
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((item) => item.site.toLowerCase().includes(q));
+  }, [items, query]);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <IconShieldLock size={18} className="text-slate-700" />
+          <h2 className="text-lg font-semibold text-slate-900">
+            Password Vault
+          </h2>
+        </div>
+        <button
+          type="button"
+          className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 cursor-pointer"
+          onClick={openCreateModal}
+        >
+          <IconPlus size={15} />
+          New Credential
+        </button>
+      </div>
+
+      <div className="relative mb-3">
+        <IconSearch
+          size={15}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+        />
+        <input
+          className="w-full h-10 pl-9 pr-3 rounded-lg border border-slate-300 text-sm"
+          placeholder="Search by domain"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </div>
+
+      <div className="space-y-2 max-h-[460px] overflow-auto pr-1">
+        {filtered.map((item) => (
+          <div
+            key={item.id}
+            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 flex items-center justify-between gap-3"
+          >
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-slate-900 truncate">
+                Domain: {item.site}
+              </div>
+              <div className="text-xs font-light text-black/80 truncate">
+                {item.username}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                className="h-8 px-2.5 rounded-md border border-slate-300 text-slate-700 text-xs inline-flex items-center gap-1 hover:bg-white cursor-pointer"
+                onClick={() => openEditModal(item)}
+              >
+                <IconEdit size={14} />
+                Edit
+              </button>
+              <button
+                type="button"
+                className="h-8 px-2.5 rounded-md border border-red-200 text-red-600 bg-red-50 text-xs inline-flex items-center gap-1 hover:bg-red-100 cursor-pointer"
+                onClick={() => onDeleteVault(item.id)}
+              >
+                <IconTrash size={14} />
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Modal
+        title={form.id ? "Edit Credential" : "Create Credential"}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-slate-600">Domain</span>
+            <input
+              className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+              placeholder="example.com"
+              value={form.site}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, site: event.target.value }))
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-slate-600">Email / Username</span>
+            <input
+              className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+              placeholder="john@company.com"
+              value={form.username}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, username: event.target.value }))
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 md:col-span-2">
+            <span className="text-sm text-slate-600">Password</span>
+            <input
+              type="password"
+              className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+              value={form.password}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, password: event.target.value }))
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 md:col-span-2">
+            <span className="text-sm text-slate-600">Notes</span>
+            <textarea
+              className="min-h-[120px] p-3 rounded-lg border border-slate-300 text-sm"
+              value={form.notes}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, notes: event.target.value }))
+              }
+            />
+          </label>
+        </div>
+
+        <div className="pt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            className="h-9 px-3 rounded-lg border border-slate-300 text-slate-700 text-sm cursor-pointer"
+            onClick={() => setModalOpen(false)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 cursor-pointer"
+            onClick={onSaveVault}
+          >
+            <IconDeviceFloppy size={14} />
+            Save Credential
+          </button>
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+const Setting = () => {
+  const { layout, mode, initialize } = useMinusThemeStore();
+  const [activeTab, setActiveTab] = useState<SettingTab>("system");
+  const [systemForm, setSystemForm] = useState<ISystemForm>({
+    intervalTime: "15",
+    hardwareAcceleration: "0",
+    layout,
+  });
+
+  const saveSystem = () => {
+    const data = {
+      layout: systemForm.layout,
+      mode,
+      dataSync: {
+        intervalTime: systemForm.intervalTime,
+        hardwareAcceleration: systemForm.hardwareAcceleration,
+      },
+    };
+    window.api.INVOKE("INTERFACE_SAVE", data);
+    initialize(data);
   };
 
   return (
-    <div className="bg-slate-200 p-4 rounded-lg flex gap-2 flex-col mt-3">
-      <span className="font-bold text-lg">Password Manager:</span>
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          className="bg-white rounded px-2 py-1 text-sm"
-          placeholder="Site (example.com)"
-          value={form.site}
-          onChange={(event) =>
-            setForm((prev) => ({ ...prev, site: event.target.value }))
-          }
-        />
-        <input
-          className="bg-white rounded px-2 py-1 text-sm"
-          placeholder="Username / Email"
-          value={form.username}
-          onChange={(event) =>
-            setForm((prev) => ({ ...prev, username: event.target.value }))
-          }
-        />
-        <input
-          className="bg-white rounded px-2 py-1 text-sm"
-          type="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={(event) =>
-            setForm((prev) => ({ ...prev, password: event.target.value }))
-          }
-        />
-        <input
-          className="bg-white rounded px-2 py-1 text-sm"
-          placeholder="Notes (optional)"
-          value={form.notes}
-          onChange={(event) =>
-            setForm((prev) => ({ ...prev, notes: event.target.value }))
-          }
-        />
-      </div>
-      <div className="flex gap-2">
-        <button
-          className="px-2 py-1 rounded bg-green-600 text-white cursor-pointer"
-          onClick={onSave}
-        >
-          {selectedId ? "Update Credential" : "Save Credential"}
-        </button>
-        <button
-          className="px-2 py-1 rounded bg-slate-400 text-white cursor-pointer"
-          onClick={resetForm}
-        >
-          Clear
-        </button>
-      </div>
-      <div className="max-h-56 overflow-auto flex flex-col gap-1">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="bg-white rounded p-2 text-xs flex items-center justify-between gap-2"
-          >
-            <button
-              className="text-left flex-1 cursor-pointer"
-              onClick={() => onEdit(item)}
-              title={`${item.site} - ${item.username}`}
-            >
-              <div className="font-semibold truncate">
-                {item.site} - {item.username}
-              </div>
-              <div className="text-slate-500">
-                Updated: {new Date(item.updatedAt).toLocaleString()}
-              </div>
-            </button>
-            <button
-              className="px-2 py-1 rounded bg-slate-200 cursor-pointer"
-              onClick={() => onEdit(item)}
-            >
-              Edit
-            </button>
-            <button
-              className="px-2 py-1 rounded bg-red-100 text-red-600 cursor-pointer"
-              onClick={() => onDelete(item.id)}
-            >
-              Delete
-            </button>
-          </div>
-        ))}
+    <div className="relative bg-slate-800 h-full w-full">
+      <div className={CLASSES[layout]}>
+        <div className="h-full rounded-xl border border-slate-200 bg-slate-100 p-3 md:p-4 flex gap-3 overflow-hidden">
+          <Sidebar active={activeTab} onChange={setActiveTab} />
+
+          <main className="flex-1 min-w-0 overflow-auto">
+            {activeTab === "system" && (
+              <SystemSection
+                form={systemForm}
+                setForm={setSystemForm}
+                onSave={saveSystem}
+              />
+            )}
+            {activeTab === "userscript" && <UserScriptSection />}
+            {activeTab === "vault" && <VaultSection />}
+          </main>
+        </div>
       </div>
     </div>
   );

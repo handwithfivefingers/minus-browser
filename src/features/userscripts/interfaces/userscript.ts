@@ -1,4 +1,9 @@
-export type UserScriptRunAt = "document-start" | "document-end" | "document-idle";
+import { UserScript } from "../class/script";
+
+export type UserScriptRunAt =
+  | "document-start"
+  | "document-end"
+  | "document-idle";
 
 export interface IUserScript {
   id: string;
@@ -13,5 +18,5 @@ export interface IUserScript {
 }
 
 export interface IUserScriptStore {
-  scripts: IUserScript[];
+  scripts: UserScript[];
 }

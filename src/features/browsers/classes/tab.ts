@@ -315,11 +315,9 @@ export class Tab {
     runAt: "document-start" | "document-end" | "document-idle",
   ) {
     try {
-      console.log("url", url);
       if (!this.userscriptController || !url) return;
       const scripts = this.userscriptController.getScriptsForURL(url);
       // .filter((script) => script.runAt === runAt);
-      console.log("this.userscriptController", scripts);
       for (const script of scripts) {
         try {
           // this.view.webContents.executeJavaScript(
@@ -359,7 +357,6 @@ export class Tab {
               }
             })();
           `;
-          log.info("wrapped", wrapped);
           await this.view.webContents.executeJavaScript(wrapped);
           log.info(
             `[UserScript:${script.name}] executed (runAt=${runAt}) on ${url}`,

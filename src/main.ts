@@ -1,7 +1,6 @@
 import {
   app,
   BrowserWindow,
-  globalShortcut,
   Menu,
   Notification,
   screen,
@@ -74,6 +73,7 @@ class MinusBrowser {
           contextIsolation: true,
           preload: preloadPath,
           session: session.defaultSession,
+          partition: "persist:minus-browser",
           sandbox: true,
         },
       });

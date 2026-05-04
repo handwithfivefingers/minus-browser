@@ -62,6 +62,14 @@ const config: ForgeConfig = {
           name: "main_window",
           config: "vite.renderer.config.ts",
         },
+        {
+          name: "vault_injection",
+          config: "vite.injection.vault.config.ts",
+        },
+        {
+          name: "userscript_injection",
+          config: "vite.injection.userscript.config.ts",
+        },
       ],
     }),
     // Fuses are used to enable/disable various Electron functionality

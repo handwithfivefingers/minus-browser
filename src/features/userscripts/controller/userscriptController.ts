@@ -1,12 +1,13 @@
 import fs from "node:fs/promises";
 import { v7 as uuid_v7 } from "uuid";
 import { StoreManager } from "../../browsers/stores";
+import { UserScript } from "../class/script";
 import { IUserScript, IUserScriptStore } from "../interfaces/userscript";
 import { isUrlMatchedByPatterns, parseUserScriptMeta } from "../utils/parser";
 
 export class UserScriptController {
   private store: StoreManager = new StoreManager("userscripts");
-  private scripts: Map<string, IUserScript> = new Map();
+  private scripts: Map<string, UserScript> = new Map();
 
   async initialize() {
     const raw = await this.store.readFiles<IUserScriptStore>();
@@ -14,7 +15,7 @@ export class UserScriptController {
     this.scripts = new Map(
       scripts
         .filter((script) => script?.id)
-        .map((script) => [script.id, script]),
+        .map((script) => [script.id, new UserScript(script)]),
     );
   }
 
@@ -23,7 +24,7 @@ export class UserScriptController {
   }
 
   listScripts() {
-    return [...this.scripts.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+    return [...this.scripts.values()].map((script) => script.toJSON());
   }
 
   async saveScript({
@@ -39,7 +40,7 @@ export class UserScriptController {
     const parsed = parseUserScriptMeta(source);
     const current = id ? this.scripts.get(id) : null;
 
-    const script: IUserScript = {
+    const script: UserScript = new UserScript({
       id: current?.id || uuid_v7(),
       name: parsed.name,
       source,
@@ -48,8 +49,7 @@ export class UserScriptController {
       runAt: parsed.runAt,
       enabled: enabled ?? current?.enabled ?? false,
       createdAt: current?.createdAt || now,
-      updatedAt: now,
-    };
+    });
 
     this.scripts.set(script.id, script);
     this.persist();
