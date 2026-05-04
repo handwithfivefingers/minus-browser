@@ -23,7 +23,7 @@ const Layout = () => {
   useEffect(() => {
     let timeout = setTimeout(async () => {
       const tabs = await tabServices.getTabs();
-      setTabs(tabs);
+      if (tabs.length) setTabs(tabs);
     }, 5000);
 
     window.api.LISTENER("GET_TABS", (v) => {

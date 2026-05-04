@@ -1232,13 +1232,13 @@ export class AdBlocker {
   }
 
   setupAdvancedRequestBlocking(view: WebContentsView) {
-    console.log("Start setupAdvancedRequestBlocking");
+    // console.log("Start setupAdvancedRequestBlocking");
     this.blocker?.enableBlockingInSession(session.defaultSession);
     this.injectYoutubeAdblockSponsor(view);
   }
 
   injectYoutubeAdblockSponsor(view: WebContentsView) {
-    console.log("Start Inject Youtube Adblock Sponsor");
+    // console.log("Start Inject Youtube Adblock Sponsor");
     /**
      * @todo: Script injection to Document
      * @idea

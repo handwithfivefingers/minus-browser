@@ -60,6 +60,7 @@ const CustomApp = () => {
       updateTab(tabId, { title: str });
     });
     window.api.LISTENER("VAULT_CREDENTIAL_DETECTED", onCredentialDetected);
+    window.api.LISTENER("FILL_PASSWORD_REQUEST", onFillPasswordRequest);
   }, [tabId]);
 
   const onTabNavigate = (isLoading: boolean) => {
@@ -152,6 +153,11 @@ const CustomApp = () => {
     } catch (error) {
       console.log("onFillPassword error", error);
     }
+  };
+
+  const onFillPasswordRequest = (payload: { tabId: string }) => {
+    if (!payload?.tabId || payload.tabId !== tabId) return;
+    onFillPassword();
   };
 
   const onOpenVaultManager = async () => {

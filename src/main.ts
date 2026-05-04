@@ -96,9 +96,9 @@ class MinusBrowser {
         );
       }
       browser.show();
-      // if (process.env.NODE_ENV === "development") {
-      browser.webContents.openDevTools();
-      // }
+      if (process.env.NODE_ENV === "development") {
+        browser.webContents.openDevTools();
+      }
       //
       browser.webContents.on(
         "did-fail-load",

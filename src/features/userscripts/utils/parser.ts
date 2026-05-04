@@ -8,16 +8,19 @@ const escapeRegex = (input: string) =>
   input.replace(WILDCARD_TO_REGEX, "\\$&").replace(/\*/g, ".*");
 
 export const parseUserScriptMeta = (source: string) => {
-  const block = source.match(/\/\/\s*==UserScript==([\s\S]*?)\/\/\s*==\/UserScript==/m);
+  const block = source.match(
+    /\/\/\s*==UserScript==([\s\S]*?)\/\/\s*==\/UserScript==/m,
+  );
   const lines = block?.[1]?.split("\n") || [];
   const meta: {
     name?: string;
     match: string[];
     exclude: string[];
-    runAt?: UserScriptRunAt;
+    runAt: UserScriptRunAt;
   } = {
     match: [],
     exclude: [],
+    runAt: "document-start",
   };
 
   for (const rawLine of lines) {
@@ -43,7 +46,7 @@ export const parseUserScriptMeta = (source: string) => {
         value.trim() === "document-end" ||
         value.trim() === "document-idle")
     ) {
-      meta.runAt = value.trim();
+      meta.runAt = (value.trim() as UserScriptRunAt) || "document-start";
     }
   }
 

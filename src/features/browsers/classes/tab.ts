@@ -55,6 +55,9 @@ export class Tab {
   webContents: Electron.WebContents & IDestroy;
   userscriptController: UserScriptController;
   credentialDetectionRegistered = false;
+  credentialAssistRegistered = false;
+  credentialAssistActionRegistered = false;
+  tabEventsRegistered = false;
 
   constructor({
     blocker,
@@ -137,7 +140,6 @@ export class Tab {
     if (!this.view.webContents.isFocused()) {
       this.view.webContents.focus();
     }
-    console.log("START Request PIP");
     this.view.webContents
       .executeJavaScript(`(${preloadScript.toString()})()`)
       .then(() => {
@@ -167,12 +169,15 @@ export class Tab {
   }
 
   registerTabEvents() {
+    if (this.tabEventsRegistered) return;
+    this.tabEventsRegistered = true;
     this.faviconChanged();
     this.urlChanged();
     this.didStartLoad();
     this.didStopLoad();
     this.pageTitleUpdated();
     this.registerCredentialDetection();
+    this.registerCredentialAssistAction();
   }
 
   unregisterTabEvents() {
@@ -211,6 +216,13 @@ export class Tab {
         this.updateURL.bind(this),
       );
       this.view.webContents.on("did-navigate", this.updateURL.bind(this));
+      this.view.webContents.on(
+        "did-navigate",
+        (_event, url, _isInPlace, isMainFrame) => {
+          if (!isMainFrame || !url) return;
+          this.runMatchedUserScripts(url, "document-start");
+        },
+      );
     } catch (error) {
       log.info("URL change error");
     }
@@ -231,12 +243,12 @@ export class Tab {
     this.url = url;
     const browser = BrowserWindow.getFocusedWindow();
     browser?.webContents?.send(`URL_CHANGED:${this.id}`, url);
-    this.runMatchedUserScripts(url);
   }
 
   private updateNavigate(data: { isLoading: boolean }) {
     const browser = BrowserWindow.getFocusedWindow();
     browser?.webContents?.send(`LOADING:${this.id}`, data.isLoading);
+    // this.runMatchedUserScripts(this.url, "document-start");
   }
 
   private didStartLoad() {
@@ -251,7 +263,11 @@ export class Tab {
       this.updateNavigate.bind(this, { isLoading: false }),
     );
     this.view.webContents.on("did-stop-loading", () => {
-      this.runMatchedUserScripts(this.view.webContents.getURL());
+      this.runMatchedUserScripts(
+        this.view.webContents.getURL(),
+        "document-start",
+      );
+      this.installCredentialFocusAssist();
     });
   }
 
@@ -294,13 +310,60 @@ export class Tab {
     };
   }
 
-  private async runMatchedUserScripts(url: string) {
+  private async runMatchedUserScripts(
+    url: string,
+    runAt: "document-start" | "document-end" | "document-idle",
+  ) {
     try {
+      console.log("url", url);
       if (!this.userscriptController || !url) return;
       const scripts = this.userscriptController.getScriptsForURL(url);
+      // .filter((script) => script.runAt === runAt);
+      console.log("this.userscriptController", scripts);
       for (const script of scripts) {
         try {
-          await this.view.webContents.executeJavaScript(script.source, true);
+          // this.view.webContents.executeJavaScript(
+          //   `(${JSON.stringify(script.source)})();`,
+          // );
+          const wrapped = `
+            (() => {
+              const __scriptSource = ${JSON.stringify(script.source)};
+              const __runAt = ${JSON.stringify(runAt)};
+              const __executeNow = () => {
+                const fn = new Function(
+                  "window",
+                  "document",
+                  "unsafeWindow",
+                  __scriptSource,
+                );
+                fn(window, document, window);
+              };
+              if (__runAt === "document-start") {
+                __executeNow();
+                return;
+              }
+              if (__runAt === "document-end") {
+                if (document.readyState === "loading") {
+                  document.addEventListener("DOMContentLoaded", __executeNow, {
+                    once: true,
+                  });
+                } else {
+                  __executeNow();
+                }
+                return;
+              }
+              if (document.readyState === "complete") {
+                __executeNow();
+              } else {
+                window.addEventListener("load", __executeNow, { once: true });
+              }
+            })();
+          `;
+          log.info("wrapped", wrapped);
+          await this.view.webContents.executeJavaScript(wrapped);
+          log.info(
+            `[UserScript:${script.name}] executed (runAt=${runAt}) on ${url}`,
+          );
         } catch (error) {
           log.error(`[UserScript:${script.name}] execution failed`, error);
         }
@@ -344,9 +407,7 @@ export class Tab {
         true,
       );
       if (!payload?.password) return;
-      const browser =
-        this.webContents?.getOwnerBrowserWindow?.() ||
-        BrowserWindow.getFocusedWindow();
+      const browser = BrowserWindow.getFocusedWindow();
       browser?.webContents?.send(IPC_RENDERER_EVENT.VAULT_CREDENTIAL_DETECTED, {
         tabId: this.id,
         ...payload,
@@ -354,5 +415,138 @@ export class Tab {
     } catch (error) {
       // Ignore capture errors because this is a best-effort detection hook.
     }
+  }
+
+  private async installCredentialFocusAssist() {
+    if (this.credentialAssistRegistered) return;
+    this.credentialAssistRegistered = true;
+    try {
+      await this.view.webContents.executeJavaScript(
+        `(() => {
+          if (window.__minusCredentialAssistMounted) return;
+          window.__minusCredentialAssistMounted = true;
+          const ICON_ID = "__minus_credential_assist_icon";
+
+          const isTargetInput = (el) => {
+            if (!el || el.tagName !== "INPUT") return false;
+            const type = String(el.getAttribute("type") || "text").toLowerCase();
+            const name = String(el.getAttribute("name") || "").toLowerCase();
+            const id = String(el.getAttribute("id") || "").toLowerCase();
+            const placeholder = String(el.getAttribute("placeholder") || "").toLowerCase();
+            const joined = [type, name, id, placeholder].join(" ");
+            return (
+              joined.includes("email") ||
+              joined.includes("user") ||
+              joined.includes("name") ||
+              joined.includes("pass")
+            );
+          };
+
+          const ensureIcon = () => {
+            let icon = document.getElementById(ICON_ID);
+            if (icon) return icon;
+            icon = document.createElement("button");
+            icon.id = ICON_ID;
+            icon.type = "button";
+            icon.setAttribute("aria-label", "Credential assist");
+            icon.style.position = "fixed";
+            icon.style.zIndex = "2147483646";
+            icon.style.width = "24px";
+            icon.style.height = "24px";
+            icon.style.display = "none";
+            icon.style.alignItems = "center";
+            icon.style.justifyContent = "center";
+            icon.style.border = "0";
+            icon.style.borderRadius = "50%";
+            icon.style.background = "#334155";
+            icon.style.color = "#fff";
+            icon.style.boxShadow = "0 6px 18px rgba(15, 23, 42, .26)";
+            icon.style.cursor = "pointer";
+            icon.style.padding = "0";
+            icon.style.fontSize = "13px";
+            icon.textContent = "🔑";
+            icon.title = "Credential assist: use Vault button on browser header";
+            icon.addEventListener("mouseenter", () => { icon.style.background = "#0f172a"; });
+            icon.addEventListener("mouseleave", () => { icon.style.background = "#334155"; });
+            icon.addEventListener("mousedown", (event) => {
+              // Keep current input focus so focusout handler does not hide icon.
+              event.preventDefault();
+              event.stopPropagation();
+            });
+            icon.addEventListener("click", () => {
+              console.log("__MINUS_FILL_PASSWORD_REQUEST__");
+            });
+            document.documentElement.appendChild(icon);
+            return icon;
+          };
+
+          const hideIcon = () => {
+            const icon = document.getElementById(ICON_ID);
+            if (icon) icon.style.display = "none";
+          };
+
+          const moveIcon = (target) => {
+            const icon = ensureIcon();
+            if (!target) {
+              icon.style.display = "none";
+              return;
+            }
+            const rect = target.getBoundingClientRect();
+            const top = Math.max(8, rect.top + (rect.height - 24) / 2);
+            const left = Math.min(window.innerWidth - 32, rect.right + 8);
+            icon.style.top = top + "px";
+            icon.style.left = left + "px";
+            icon.style.display = "inline-flex";
+          };
+
+          document.addEventListener("focusin", (event) => {
+            const target = event.target;
+            if (!isTargetInput(target)) {
+              hideIcon();
+              window.__minusCredentialAssistTarget = null;
+              return;
+            }
+            window.__minusCredentialAssistTarget = target;
+            moveIcon(target);
+          }, true);
+
+          document.addEventListener("focusout", () => {
+            setTimeout(() => {
+              const active = document.activeElement;
+              const icon = document.getElementById(ICON_ID);
+              const isIconActive =
+                active === icon || icon?.contains?.(active);
+              if (!isTargetInput(active)) {
+                if (isIconActive) return;
+                hideIcon();
+                window.__minusCredentialAssistTarget = null;
+              }
+            }, 60);
+          }, true);
+
+          window.addEventListener("scroll", () => {
+            const target = window.__minusCredentialAssistTarget;
+            if (target && isTargetInput(target)) moveIcon(target);
+          }, true);
+          window.addEventListener("resize", () => {
+            const target = window.__minusCredentialAssistTarget;
+            if (target && isTargetInput(target)) moveIcon(target);
+          });
+        })();`,
+        true,
+      );
+    } catch (error) {}
+  }
+
+  private registerCredentialAssistAction() {
+    if (this.credentialAssistActionRegistered) return;
+    this.credentialAssistActionRegistered = true;
+    this.view.webContents.on("console-message", (_event, _level, message) => {
+      if (message !== "__MINUS_FILL_PASSWORD_REQUEST__") return;
+      const browser = BrowserWindow.getFocusedWindow();
+      browser?.webContents?.send(IPC_RENDERER_EVENT.FILL_PASSWORD_REQUEST, {
+        tabId: this.id,
+      });
+    });
   }
 }

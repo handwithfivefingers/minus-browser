@@ -11,7 +11,11 @@ export class UserScriptController {
   async initialize() {
     const raw = await this.store.readFiles<IUserScriptStore>();
     const scripts = Array.isArray(raw?.scripts) ? raw.scripts : [];
-    this.scripts = new Map(scripts.filter((script) => script?.id).map((script) => [script.id, script]));
+    this.scripts = new Map(
+      scripts
+        .filter((script) => script?.id)
+        .map((script) => [script.id, script]),
+    );
   }
 
   private persist() {
@@ -48,7 +52,7 @@ export class UserScriptController {
     };
 
     this.scripts.set(script.id, script);
-    await this.persist();
+    this.persist();
     return script;
   }
 
@@ -59,7 +63,7 @@ export class UserScriptController {
 
   async deleteScript(id: string) {
     this.scripts.delete(id);
-    await this.persist();
+    this.persist();
     return true;
   }
 
@@ -69,7 +73,7 @@ export class UserScriptController {
     script.enabled = typeof enabled === "boolean" ? enabled : !script.enabled;
     script.updatedAt = Date.now();
     this.scripts.set(id, script);
-    await this.persist();
+    this.persist();
     return script;
   }
 
@@ -77,9 +81,11 @@ export class UserScriptController {
     return this.listScripts().filter((script) => {
       if (!script.enabled) return false;
       const isMatched = isUrlMatchedByPatterns(url, script.matches);
-      if (!isMatched) return false;
-      const isExcluded = isUrlMatchedByPatterns(url, script.excludes);
-      return !isExcluded;
+      // if (!isMatched) return false;
+      // const isExcluded = isUrlMatchedByPatterns(url, script.excludes);
+      // console.log("isExcluded", isExcluded);
+      // return !isExcluded;
+      return isMatched;
     });
   }
 }
