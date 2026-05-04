@@ -1,17 +1,13 @@
-name: Build Browser
+name: Build and Release Browser
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    tags:
+      - "v*" # Triggers when you push a tag like v1.0.0
 
 jobs:
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
@@ -21,13 +17,56 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - run: npm install
       - run: npm run make
-      - name: Upload Artifact
+
+      # WINDOWS: Self-Sign with PFX Secret
+      - name: Sign Windows Binary
+        if: matrix.os == 'windows-latest'
+        uses: skisans/sign-action@v1
+        with:
+          certificate: ${{ secrets.WINDOWS_PFX_BASE64 }}
+          password: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+          cert-type: pfx
+          path: out/make/**/*.exe
+      # MACOS: Ad-hoc Signing (Identity '-')
+      - name: Ad-hoc Sign macOS App
+        if: matrix.os == 'macos-latest'
+        run: |
+          # Finds the .app inside the build folder and signs it
+          find out/make -name "*.app" -exec codesign --force --deep --sign - {} \;
+          # Note: Forge/Electron-maker usually handles ad-hoc by default,
+          # but this ensures the final DMG contents are signed.
+
+      - name: Upload for Release
         uses: actions/upload-artifact@v4
         with:
-          name: output-${{ matrix.os }}
+          name: artifacts-${{ matrix.os }}
           path: |
             out/make/**/*.exe
             out/make/**/*.dmg
             out/make/**/*.zip
+
+  publish:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./dist
+          pattern: artifacts-*
+          merge-multiple: true
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./dist/**/*.exe
+            ./dist/**/*.dmg
+            ./dist/**/*.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
