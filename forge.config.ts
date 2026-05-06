@@ -27,8 +27,8 @@ const config: ForgeConfig = {
   rebuildConfig: {},
   // makers: [new MakerSquirrel({}), new MakerZIP({}, ["darwin"]), new MakerRpm({}), new MakerDeb({}), new MakerDMG({})],
   makers: [
-    // new MakerSquirrel({}),
-    // new MakerZIP({}, ["darwin", "win32"]),
+    new MakerSquirrel({}),
+    new MakerZIP({}, ["darwin", "win32"]),
     new MakerDMG({
       name: "MinusBrowser",
       format: "ULFO",
