@@ -2,9 +2,11 @@ import {
   IconChevronLeft,
   IconCloudUp,
   IconCode,
+  IconKey,
   IconPictureInPicture,
   IconReload,
   IconSearch,
+  IconStarFilled,
 } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
@@ -12,13 +14,18 @@ import { isValidDomainOrIP } from "../libs";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
 interface IHeader {
   url?: string;
+  id: string;
   onSearch: (v: string) => void;
   onBackWard: () => void;
   onToggleDevTools: () => void;
   onReload: () => void;
   onRequestPIP: () => void;
+  onFillPassword: () => void;
+  onOpenVaultManager: () => void;
+  onOpenUserscriptManager: () => void;
   title?: string;
   isLoading: boolean;
+  isBookmarked?: boolean;
 }
 
 const LAYOUT_HEADER_CLASS = {
@@ -26,11 +33,24 @@ const LAYOUT_HEADER_CLASS = {
   FLOATING: "flex gap-2 border-b border-slate-200 px-2 py-1 justify-between bg-slate-100 w-full rounded-lg",
 };
 
-const Header = ({ title, isLoading, url, onSearch, onBackWard, onToggleDevTools, onReload, onRequestPIP }: IHeader) => {
+const Header = ({
+  title,
+  id,
+  isLoading,
+  url,
+  isBookmarked,
+  onSearch,
+  onBackWard,
+  onToggleDevTools,
+  onReload,
+  onRequestPIP,
+  onFillPassword,
+  onOpenVaultManager,
+  onOpenUserscriptManager,
+}: IHeader) => {
   const ref = useRef<HTMLInputElement>(null);
   const [focus, setFocus] = useState(false);
   const { layout } = useMinusThemeStore();
-
   useEffect(() => {
     if (url && ref.current && url !== ref.current.value) {
       ref.current.value = url;
@@ -43,9 +63,13 @@ const Header = ({ title, isLoading, url, onSearch, onBackWard, onToggleDevTools,
   const handleSearch = () => {
     if (!ref.current) return;
     let v = ref.current.value;
-    console.log("v", v);
     onSearch(v);
   };
+  const onBookmark = () => {
+    window.api.EMIT("TOGGLE_BOOKMARK", { url: ref.current?.value, id: id });
+  };
+  console.log("id", id);
+  if (!id) return null;
   return (
     <div className={LAYOUT_HEADER_CLASS[layout]}>
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
@@ -57,20 +81,22 @@ const Header = ({ title, isLoading, url, onSearch, onBackWard, onToggleDevTools,
           <IconChevronLeft size={16} />
         </button>
       </div>
+      {/*<div className="bg-slate-200 px-4 rounded-full">
+        <Switch title={"Hibernate"} />
+      </div>*/}
       <div
         className={[
           "flex gap-1 w-1/2 bg-white rounded-full  border-2 transition-all relative mx-auto",
           (focus && "border-indigo-500/50") || "border-transparent",
         ].join(" ")}
       >
-        {" "}
         <button
           onClick={onReload}
           className={clsx(
             "hover:text-white transition-all px-1 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute left-0.5 top-0.5 rounded-full",
             {
               "animate-spin": isLoading,
-            }
+            },
           )}
         >
           <IconReload size={12} />
@@ -99,7 +125,7 @@ const Header = ({ title, isLoading, url, onSearch, onBackWard, onToggleDevTools,
             onFocus={() => {
               setFocus(true);
               setTimeout(() => {
-                ref.current.focus();
+                ref.current?.focus();
               }, 50);
             }}
             placeholder="Ctrl + K"
@@ -115,21 +141,54 @@ const Header = ({ title, isLoading, url, onSearch, onBackWard, onToggleDevTools,
           <IconSearch size={12} />
         </button>
       </div>
-      <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
+
+      <div className="text-sm text-slate-500 border-slate-300 px-2 rounded-full flex gap-2 items-center bg-slate-200">
         <Sync />
+
         <button
-          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1"
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
           onClick={onRequestPIP}
           title="Picture in picture"
         >
           <IconPictureInPicture size={16} />
         </button>
         <button
-          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1"
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
           onClick={onToggleDevTools}
           title="Dev tools"
         >
           <IconCode size={16} />
+        </button>
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
+          onClick={onFillPassword}
+          title="Fill password"
+        >
+          <IconKey size={16} />
+        </button>
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
+          onClick={onOpenVaultManager}
+          title="Open Vault Manager"
+        >
+          Vault
+        </button>
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
+          onClick={onOpenUserscriptManager}
+          title="Open Tampermonkey Manager"
+        >
+          Script
+        </button>
+
+        <button
+          className={clsx("hover:text-yellow-500 rounded cursor-pointer p-1 transition-all", {
+            ["text-yellow-500"]: isBookmarked,
+          })}
+          title="Bookmark"
+          onClick={onBookmark}
+        >
+          <IconStarFilled size={16} />
         </button>
       </div>
     </div>

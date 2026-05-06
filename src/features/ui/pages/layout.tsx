@@ -4,49 +4,68 @@ import { Outlet, useNavigate } from "react-router";
 import { Tab } from "~/features/browsers/classes/tab";
 import { useTabStore } from "../stores/useTabStore";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
-
-const SideMenu = lazy(() => import("../components").then((module) => ({ default: module.SideMenu })));
-const Spotlight = lazy(() => import("../components").then((module) => ({ default: module.Spotlight })));
-const UPDATE_TIMEOUT = 15 * 1000;
+import { tabServices } from "../services/tab.service";
+import { SideMenu } from "../components";
+// const SideMenu = lazy(() =>
+//   import("../components").then((module) => ({ default: module.SideMenu })),
+// );
+const Spotlight = lazy(() =>
+  import("../components").then((module) => ({ default: module.Spotlight })),
+);
 
 const LAYOUT_CLASS = {
   BASIC: "flex h-screen overflow-hidden bg-slate-800",
   FLOATING: "flex h-screen overflow-hidden bg-slate-800 p-1 gap-1",
 };
-
 const Layout = () => {
   const layout = useMinusThemeStore().layout;
+  const setTabs = useTabStore((s) => s.setTabs);
+  useEffect(() => {
+    let timeout = setTimeout(async () => {
+      const tabs = await tabServices.getTabs();
+      if (tabs.length) setTabs(tabs);
+    }, 5000);
+
+    window.api.LISTENER("GET_TABS", (v) => {
+      if (timeout) clearTimeout(timeout);
+      setTabs(v);
+    });
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, []);
   return (
     <LayoutSideEffect>
       <div className={LAYOUT_CLASS[layout]}>
-        <Suspense fallback={"Loading..."}>
-          <SideMenu />
-        </Suspense>
+        <SideMenu />
         <div className="h-full overflow-auto w-full">
           <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
             <Outlet />
           </ErrorBoundary>
         </div>
       </div>
-      <Suspense fallback={"Loading..."}>
+      {/*SPOTLIGHT is not ready for now*/}
+      {/*<Suspense fallback={"Loading..."}>
         <SpotlightProvider />
-      </Suspense>
+      </Suspense>*/}
       <SyncSideEffect />
     </LayoutSideEffect>
   );
 };
 
-const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
-  const { initialize, addNewTab } = useTabStore();
+const LayoutSideEffect = ({
+  children,
+}: {
+  children: React.ReactElement | React.ReactNode;
+}): React.ReactElement => {
   const minus = useMinusThemeStore();
   const navigate = useNavigate();
   useLayoutEffect(() => {
     const getScreenData = async () => {
       try {
-        const data = await window.api.INVOKE<{ tabs: Tab[]; index: number }>("GET_TABS");
+        // const data = await window.api.INVOKE<{ tabs: Tab[]; index: number }>("GET_TABS");
         const userI = await window.api.INVOKE("GET_USER_INTERFACE");
-        console.log("userI", userI);
-        initialize(data);
         minus.initialize(userI);
       } catch (error) {
         console.error("Error getting tabs:", error);
@@ -56,16 +75,15 @@ const LayoutSideEffect = ({ children }: { children: React.ReactNode }) => {
   }, []);
   useEffect(() => {
     window.api.LISTENER("CREATE_TAB", (tab?: Partial<Tab>) => {
-      const newTab = addNewTab(tab);
-      if (newTab.id) {
-        navigate(newTab.id);
+      if (tab.id) {
+        navigate(tab.id);
       }
     });
   }, []);
-  return children;
+  return children as React.ReactElement;
 };
 
-const SyncSideEffect = () => {
+const SyncSideEffect = (): React.ReactElement => {
   const { sync } = useTabStore();
   const dataSync = useMinusThemeStore().dataSync;
   const intervalTime =
@@ -74,29 +92,27 @@ const SyncSideEffect = () => {
       : isNaN(Number(dataSync.intervalTime))
         ? 15
         : Number(dataSync.intervalTime) * 1000;
-  console.log("intervalTime", intervalTime);
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (intervalTime) {
       interval = setInterval(() => {
-        console.log("sync", intervalTime);
         sync();
       }, intervalTime);
     }
 
     return () => intervalTime && interval && clearInterval(interval);
   }, [intervalTime]);
-  return "";
+  return undefined;
 };
 
 const SpotlightProvider = () => {
   const [show, setShow] = useState(false);
-  useEffect(() => {
-    window.api.LISTENER("SEARCH", (data) => {
-      setShow(data.open);
-    });
-  }, []);
-  return show ? <Spotlight /> : null;
+  // useEffect(() => {
+  //   window.api.LISTENER("SEARCH", (data) => {
+  //     setShow(data.open);
+  //   });
+  // }, []);
+  return show ? <Spotlight /> : undefined;
 };
 
 export default Layout;

@@ -7,11 +7,20 @@ import { MakerDMG } from "@electron-forge/maker-dmg";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
-
+import { appBundleId } from "./package.json";
 const config: ForgeConfig = {
   packagerConfig: {
-    name: "TruyenApp",
-    appBundleId: "com.truyenmai.localdev.plist",
+    name: "MinusBrowser",
+    appBundleId: appBundleId,
+    osxSign: {
+      identity: "LocalMinusBrowser",
+      optionsForFile: (filePath) => {
+        return {
+          hardenedRuntime: true,
+          entitlements: "./entitlements.mac.plist", // Xem bước 3 bên dưới
+        };
+      },
+    },
     icon: "./images/icon.icns",
     asar: true,
   },
@@ -19,9 +28,9 @@ const config: ForgeConfig = {
   // makers: [new MakerSquirrel({}), new MakerZIP({}, ["darwin"]), new MakerRpm({}), new MakerDeb({}), new MakerDMG({})],
   makers: [
     new MakerSquirrel({}),
-    // new MakerZIP({}, ["darwin"]),
+    new MakerZIP({}, ["darwin", "win32"]),
     new MakerDMG({
-      name: "TruyenApp",
+      name: "MinusBrowser",
       format: "ULFO",
       overwrite: true,
     }),
@@ -53,6 +62,14 @@ const config: ForgeConfig = {
           name: "main_window",
           config: "vite.renderer.config.ts",
         },
+        {
+          name: "vault_injection",
+          config: "vite.injection.vault.config.ts",
+        },
+        {
+          name: "userscript_injection",
+          config: "vite.injection.userscript.config.ts",
+        },
       ],
     }),
     // Fuses are used to enable/disable various Electron functionality
@@ -74,7 +91,7 @@ export default config;
 /**
  * CUSTOM APP SIGN
  * WAY 1: sudo codesign --force --deep --sign - /Applications/TruyenApp.app
- * WAY 2: sudo codesign --force --deep --sign "Developer ID Application" /Applications/TruyenApp.app --deep
+ * WAY 2: sudo codesign --force --deep --sign LocalMinusBrowser /Applications/MinusBrowser.app
  *
  * Resign:
  * sudo codesign -fs - /Applications/TruyenApp.app --deep

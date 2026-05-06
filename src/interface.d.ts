@@ -1,8 +1,29 @@
+import type {
+  IPCEmitChannel,
+  IPCInvokeChannel,
+  IPCRendererEventChannel,
+} from "./features/browsers/constants/ipc";
+
+type LISTENER_CHANNEL =
+  | "LOADING"
+  | "ON_RELOAD"
+  | "TITLE_UPDATED"
+  | "URL_CHANGED"
+  | "SYNC"
+  | "TOGGLE_DEV_TOOLS"
+  | "GET_TABS"
+  | "CREATE_TAB"
+  | "FAVICON_UPDATED";
+
 export interface IElectronAPI {
-  INVOKE: <T>(channel: string, data?: any) => Promise<T> | T;
-  EMIT: <T>(channel: string, data?: any) => Promise<T> | T;
-  LISTENER: <T>(channel: string, func: (...args: any[]) => void) => Promise<T> | T;
+  INVOKE: <T>(channel: IPCInvokeChannel, data?: any) => Promise<T> | T;
+  EMIT: <T>(channel: IPCEmitChannel, data?: any) => Promise<T> | T;
+  LISTENER: <C extends LISTENER_CHANNEL, T>(
+    channel: `${C}:${string}` | `${C}` | IPCRendererEventChannel | string,
+    func: (...args: any[]) => void,
+  ) => Promise<T> | T;
 }
+
 declare global {
   interface Window {
     api: IElectronAPI;

@@ -1,39 +1,18 @@
 // @ts-nocheck
 import { contextBridge, ipcRenderer } from "electron";
 import log from "electron-log";
+import {
+  IPC_EMIT_CHANNEL,
+  IPC_INVOKE_CHANNEL,
+  IPCRendererEventChannel,
+} from "./features/browsers/constants/ipc";
+
 log.initialize();
-enum TabEventType {
-  CREATE_TAB = "CREATE_TAB",
-  UPDATE_TAB = "UPDATE_TAB",
-  DELETE_TAB = "DELETE_TAB",
-  SELECT_TAB = "SELECT_TAB",
-  FOCUS_TAB = "FOCUS_TAB",
-  BLUR_TAB = "BLUR_TAB",
-  BACKWARD_TAB = "BACKWARD_TAB",
-  FORWARD_TAB = "FORWARD_TAB",
-  GET_TABS = "GET_TABS",
-  GET_TAB = "GET_TAB",
-  TOGGLE_DEV_TOOLS = "TOGGLE_DEV_TOOLS",
-  ON_RELOAD = "ON_RELOAD",
-  ON_CLOSE_TAB = "ON_CLOSE_TAB",
-}
+type IChannel =
+  | (typeof IPC_INVOKE_CHANNEL)[keyof typeof IPC_INVOKE_CHANNEL]
+  | (typeof IPC_EMIT_CHANNEL)[keyof typeof IPC_EMIT_CHANNEL];
 
-enum ViewEventType {
-  SHOW_VIEW_BY_ID = "SHOW_VIEW_BY_ID",
-  VIEW_RESPONSIVE = "VIEW_RESPONSIVE",
-  SHOW_VIEW = "SHOW_VIEW",
-  HIDE_VIEW = "HIDE_VIEW",
-  UPDATE_VIEW_SIZE = "UPDATE_VIEW_SIZE",
-  VIEW_CHANGE_URL = "VIEW_CHANGE_URL",
-}
-
-enum TAB_UPDATE_TYPE {
-  TAB_UPDATED_TITLE = "TAB_UPDATED_TITLE",
-  TAB_UPDATED_URL = "TAB_UPDATED_URL",
-  TAB_UPDATED_FAVICON = "TAB_UPDATED_FAVICON",
-  TAB_UPDATED = "TAB_UPDATED",
-}
-type IChannel = TabEventType | ViewEventType | TAB_UPDATE_TYPE;
+type ListenChannelEvent = IPCRendererEventChannel | "" | string;
 
 class IPCEvent<T = any> {
   channel: IChannel;
@@ -42,6 +21,7 @@ class IPCEvent<T = any> {
     Object.assign(this, props);
   }
 }
+
 contextBridge.exposeInMainWorld("api", {
   INVOKE: (channel: IChannel, data?: any) => {
     const ipcEvent = new IPCEvent({ channel, data });
@@ -51,5 +31,6 @@ contextBridge.exposeInMainWorld("api", {
     const ipcEvent = new IPCEvent({ channel, data });
     return ipcRenderer.send("send", ipcEvent);
   },
-  LISTENER: (channel: string, callback?: any) => ipcRenderer.on(channel, (_event, value) => callback(value)),
+  LISTENER: (channel: ListenChannelEvent, callback?: any) =>
+    ipcRenderer.on(channel, (_event, value) => callback(value)),
 });

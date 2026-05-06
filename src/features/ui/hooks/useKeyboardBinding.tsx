@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { LISTENER_CHANNEL } from "~/interface";
 
 interface IEventModel<T> {
   channel: string;
@@ -17,7 +18,10 @@ class KeyboardBinding {
 
   onSearchPage() {
     this.isSearchPage = !this.isSearchPage;
-    const event = new EventModel({ channel: "SEARCH", data: { open: this.isSearchPage } });
+    const event = new EventModel({
+      channel: "SEARCH",
+      data: { open: this.isSearchPage },
+    });
     return this.onEmit(event);
   }
 
@@ -25,7 +29,7 @@ class KeyboardBinding {
     return window.api.INVOKE(e.channel, e.data);
   }
   onListen<T>(e: EventModel<T>) {
-    return window.api.LISTENER(e.channel, (value: T) => {
+    return window.api.LISTENER(e.channel as LISTENER_CHANNEL, (value: T) => {
       return value;
     });
   }

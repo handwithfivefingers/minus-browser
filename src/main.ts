@@ -2,20 +2,14 @@ import { app, BrowserWindow, Menu, Notification, screen, session } from "electro
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
-import { CommandController, ViewController } from "./features/browsers/controller";
-import { StoreManager } from "./features/browsers";
-// import { ExtensionController } from "./features/extensions";
-// const disableGpu = process.env.ELECTRON_DISABLE_GPU || process.argv.includes("--disable-gpu");
-// if (disableGpu) {
-  // app.disableHardwareAcceleration();
-  // console.log("App running with Hardware acceleration disabled.");
-// }
+import { CommandController, ViewController } from "./features/system/controller";
+import { StoreManager } from "./features/system";
+
+Object.assign(console, log.functions);
 
 if (started) {
   app.quit();
 }
-// app.disableHardwareAcceleration();
-
 const preloadPath = path.join(__dirname, "/preload.js");
 
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -26,19 +20,18 @@ if (process.platform !== "darwin") {
 class MinusBrowser {
   browser: BrowserWindow | null = null;
   interfaceStore: StoreManager = new StoreManager("interface");
+  minusSession: Electron.Session | undefined = undefined;
   constructor() {
     this.initialize();
   }
 
   async initialize() {
-    // const userInterface = await this.interfaceStore.readFiles<IUserInterface>();
-    // if (userInterface.dataSync.hardwareAcceleration === "0") {
-    //   app.disableHardwareAcceleration();
-    // }
     app.on("ready", () => {
       log.initialize();
     });
     app.on("quit", async () => {
+      await this.browser?.webContents.session.flushStorageData();
+      await this.minusSession?.cookies.flushStore();
       if (process.platform !== "darwin") {
         app.quit();
       }
@@ -47,10 +40,6 @@ class MinusBrowser {
       if (BrowserWindow.getAllWindows().length === 0) {
         this.createWindow();
       }
-    });
-    app.on("before-quit", () => {
-      console.log("sync data before quit");
-      this.browser.webContents.session.flushStorageData();
     });
     app.on("render-process-gone", function (event, detailed) {
       app.quit();
@@ -61,52 +50,68 @@ class MinusBrowser {
     });
   }
   createWindow = async () => {
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.workAreaSize;
+    try {
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { width, height } = primaryDisplay.workAreaSize;
+      this.minusSession = session.fromPartition("persist:minus-browser");
+      const browser = new BrowserWindow({
+        width,
+        height,
+        show: false,
+        frame: false,
+        transparent: false,
+        webPreferences: {
+          nodeIntegration: true,
+          contextIsolation: true,
+          preload: preloadPath,
+          session: this.minusSession,
+          // sandbox: true,
+        },
+      });
 
-    const browser = new BrowserWindow({
-      width,
-      height,
-      show: false,
-      frame: false,
-      transparent: false,
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: true,
-        preload: preloadPath,
-        session: session.defaultSession,
-        enableDeprecatedPaste: true,
-        sandbox: true,
-      },
-    });
+      this.browser = browser;
 
-    this.browser = browser;
-
-    /**@ts-ignore */
-    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       /**@ts-ignore */
-      browser.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    } else {
-      /**@ts-ignore */
-      browser.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
-    }
-    browser.show();
-    if (process.env.NODE_ENV === "development") {
-      browser.webContents.openDevTools();
-    }
-    log.transports.console.format = "[LOGGER] - {h}:{i}:{s} > {text}";
-    log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
-    new ViewController(browser);
+      if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+        /**@ts-ignore */
+        browser.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+      } else {
+        /**@ts-ignore */
+        browser.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+      }
+      browser.show();
+      if (process.env.NODE_ENV === "development") {
+        browser.webContents.openDevTools();
+      }
 
-    this.registerCommand();
-    this.registerNotification();
-    this.requestPermission();
-    log.info = console.log;
+      browser.webContents?.on("render-process-gone", function (event, detailed) {
+        log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
+        if (detailed.reason == "crashed") {
+          browser.webContents?.reload();
+        } else {
+          app.relaunch({ args: process.argv.slice(1).concat(["--relaunch"]) });
+          app.exit(0);
+        }
+      });
+
+      browser.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
+        console.log("Failed to load:", errorCode, errorDescription);
+      });
+      log.transports.console.format = "[LOGGER] - {h}:{i}:{s} > {text}";
+      log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
+
+      const viewController = new ViewController(browser);
+      this.registerNotification();
+      this.registerCommand(viewController);
+    } catch (error) {
+      console.log("[ERROR] Create Window Error - ", error);
+    }
   };
-  registerCommand() {
+  registerCommand(viewController: ViewController) {
     let gS: CommandController;
-    this.browser.webContents.on("focus", () => {
-      gS = new CommandController();
+    if (!this.browser) return;
+    this.browser.on("focus", () => {
+      gS = new CommandController(viewController);
     });
     this.browser.on("hide", () => {
       gS?.destroy();
@@ -127,31 +132,6 @@ class MinusBrowser {
       title: "Minus Browser",
       body: "Welcome to Minus Browser!",
     }).show();
-  }
-
-  requestPermission() {
-    // session.defaultSession.setDisplayMediaRequestHandler(
-    //   (request, callback) => {
-    //     console.log("request", request);
-    //     return desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
-    //       callback({ video: sources[0], audio: "loopback" });
-    //     });
-    //   },
-    //   {
-    //     useSystemPicker: true,
-    //   }
-    // );
-    // this.browser.webContents.session.setDisplayMediaRequestHandler((request, callback) => {
-    //   callback({ video: request.frame });
-    // });
-    // this.browser.webContents.session.setPermissionCheckHandler((webContents, permission, request) => {
-    //   console.log("permission", webContents, permission, request);
-    //   return true;
-    // });
-    // this.browser.webContents.session.setPermissionRequestHandler((webContents, permission, request) => {
-    //   console.log("permission", webContents, permission, request);
-    //   return true;
-    // });
   }
 }
 new MinusBrowser();

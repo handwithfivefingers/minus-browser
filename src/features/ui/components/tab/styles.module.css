@@ -9,6 +9,7 @@
   white-space: normal;
   display: -webkit-box;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
   color: #000;
   text-shadow: none;
