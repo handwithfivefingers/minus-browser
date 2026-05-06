@@ -21,15 +21,6 @@ jobs:
       - run: npm install
       - run: npm run make
 
-      # WINDOWS: Self-Sign with PFX Secret
-      - name: Sign Windows Binary
-        if: matrix.os == 'windows-latest'
-        uses: lando/code-sign-action@v3
-        with:
-          certificate: ${{ secrets.WINDOWS_PFX_BASE64 }}
-          password: ${{ secrets.WINDOWS_PFX_PASSWORD }}
-          cert-type: pfx
-          path: out/make/**/*.exe
       # MACOS: Ad-hoc Signing (Identity '-')
       - name: Ad-hoc Sign macOS App
         if: matrix.os == 'macos-latest'
