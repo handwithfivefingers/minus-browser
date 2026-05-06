@@ -24,7 +24,7 @@ jobs:
       # WINDOWS: Self-Sign with PFX Secret
       - name: Sign Windows Binary
         if: matrix.os == 'windows-latest'
-        uses: skisans/sign-action@v1
+        uses: lando/code-sign-action@v3
         with:
           certificate: ${{ secrets.WINDOWS_PFX_BASE64 }}
           password: ${{ secrets.WINDOWS_PFX_PASSWORD }}
