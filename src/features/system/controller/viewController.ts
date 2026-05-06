@@ -10,7 +10,7 @@ import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL } from "../constants/ipc";
 import { UserScriptDialogController, UserScriptManagerController } from "../../userscripts";
 import { TabController } from "./tab";
 import { Tab } from "../classes/tab";
-import { IUserScript, UserScript } from "~/features/userscripts/class/script";
+import { IUserScript } from "~/features/userscripts/class/script";
 interface IUserInterface {
   layout: string;
   mode: string;
@@ -24,7 +24,6 @@ export class ViewController {
   wc: Electron.WebContents | undefined;
   userStore: StoreManager = new StoreManager("userData");
   interfaceStore: StoreManager = new StoreManager("interface");
-  // sessionStore: StoreManager = new StoreManager("session");
   minusSession: Electron.Session | undefined = session.fromPartition("persist:minus-browser");
   tabController = new TabController();
   vaultController = new VaultController();
@@ -520,7 +519,6 @@ export class ViewController {
       vaultItems,
     );
     if (!Array.isArray(result)) return false;
-    console.log("save result", result);
     const existing = this.vaultController.getVaults();
     const existingIds = new Set(existing.map((item) => item.id));
     const nextIds = new Set(result.filter((item) => item.id && existingIds.has(item.id)).map((item) => item.id));
