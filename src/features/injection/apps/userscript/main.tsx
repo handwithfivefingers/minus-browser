@@ -1,6 +1,20 @@
-import React, { useMemo, useState } from "react";
+// import { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+interface Props {
+  values: ScriptItem;
+}
+
+interface FormRef {
+  getValues: () => ScriptItem;
+}
+
+interface ButtonProps {
+  onClick: () => void;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}
 type ScriptItem = {
   id: string;
   name: string;
@@ -9,145 +23,308 @@ type ScriptItem = {
   runAt?: "document-start" | "document-end" | "document-idle";
   enabled?: boolean;
 };
-
-type OpenPayload = { requestId: string; items: ScriptItem[] };
-
-const parseMeta = (source: string) => {
-  const lines = String(source || "").split("\n");
-  let name = "Unnamed Script";
-  let runAt: ScriptItem["runAt"] = "document-end";
-  const matches: string[] = [];
-  for (const line of lines) {
-    const n = line.match(/^\/\/\s*@name\s+(.+)$/);
-    const r = line.match(/^\/\/\s*@run-at\s+(.+)$/);
-    const m = line.match(/^\/\/\s*@match\s+(.+)$/);
-    if (n?.[1]) name = n[1].trim();
-    if (r?.[1]) {
-      const v = r[1].trim() as ScriptItem["runAt"];
-      if (
-        v === "document-start" ||
-        v === "document-end" ||
-        v === "document-idle"
-      )
-        runAt = v;
-    }
-    if (m?.[1]) matches.push(m[1].trim());
+declare global {
+  interface Window {
+    __userScriptReady?: boolean;
+    __userScriptClose?: () => void;
   }
-  return { name, runAt, matches: matches.length ? matches : ["*://*/*"] };
-};
+}
+type OpenPayload = { requestId: string; items: ScriptItem[] };
+const RESOLVE_SENTINEL = "__USER_SCRIPT_RESOLVE__:";
 
-const withMeta = (source: string, item: ScriptItem) => {
-  const blockRegex = /\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n?/m;
-  const matches = (item.matches || ["*://*/*"])
-    .map((m) => m.trim())
-    .filter(Boolean);
-  const block =
-    "// ==UserScript==\n" +
-    `// @name ${item.name || "New Script"}\n` +
-    `${(matches.length ? matches : ["*://*/*"]).map((m) => `// @match ${m}`).join("\n")}\n` +
-    `// @run-at ${item.runAt || "document-end"}\n` +
-    "// ==/UserScript==\n";
-  return blockRegex.test(source)
-    ? source.replace(blockRegex, block)
-    : `${block}\n${source}`;
-};
+export const Form = forwardRef<FormRef, Props>((props, ref) => {
+  const formData = useRef<ScriptItem>({ ...props.values });
+  const [, setTick] = useState(0);
+  const forceUpdate = () => setTick((t) => t + 1);
+  const patchSelected = <K extends keyof ScriptItem>({ field, value }: { field: K; value: ScriptItem[K] }) => {
+    formData.current[field] = value;
+    forceUpdate();
+  };
 
-const resolveToParent = (requestId: string, payload: ScriptItem[] | null) => {
-  window.parent.postMessage(
-    {
-      source: "minus-userscript-injection",
-      type: "RESOLVE",
-      requestId,
-      payload,
-    },
-    "*",
+  useEffect(() => {
+    if (props.values.id) {
+      formData.current = props.values;
+      forceUpdate();
+    }
+  }, [props.values.id]);
+
+  useImperativeHandle(ref, () => {
+    return {
+      getValues: () => formData.current,
+    };
+  }, []);
+
+  return (
+    <form
+      name="user-script"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.5rem",
+      }}
+    >
+      <input
+        defaultValue={formData.current.name}
+        onChange={(e) => patchSelected({ field: "name", value: e.target.value })}
+        placeholder="Script name"
+        style={{
+          border: "1px solid #cbd5e1",
+          borderRadius: "8px",
+          padding: "8px",
+          fontSize: "12px",
+        }}
+      />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+        <FormArray values={formData.current.matches || ["*"]} onUpdate={(v) => (formData.current.matches = v)} />
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr auto",
+          gap: "8px",
+        }}
+      >
+        <select
+          value={formData.current.runAt}
+          onChange={(e) =>
+            patchSelected({
+              field: "runAt",
+              value: e.target.value as ScriptItem["runAt"],
+            })
+          }
+          style={{
+            border: "1px solid #cbd5e1",
+            borderRadius: "8px",
+            padding: "8px",
+            fontSize: "12px",
+          }}
+        >
+          <option value="document-start">On Start</option>
+          <option value="document-idle">On Idle</option>
+          <option value="document-end">On Loaded</option>
+        </select>
+        <button
+          type="button"
+          onClick={() => patchSelected({ field: "enabled", value: !formData.current.enabled })}
+          style={{
+            minWidth: "66px",
+            border: "1px solid transparent",
+            borderRadius: "8px",
+            padding: "0 10px",
+            background: formData.current.enabled ? "#16a34a" : "#334155",
+            color: "#fff",
+            cursor: "pointer",
+          }}
+        >
+          {formData.current.enabled ? "ON" : "OFF"}
+        </button>
+      </div>
+
+      <textarea
+        value={formData.current.source || ""}
+        onChange={(e) => patchSelected({ field: "source", value: e.target.value })}
+        style={{
+          flex: 1,
+          minHeight: "330px",
+          border: "1px solid #cbd5e1",
+          borderRadius: "8px",
+          padding: "8px",
+          fontSize: "12px",
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+        }}
+      />
+    </form>
   );
+});
+
+export const Button = ({ onClick, children, style }: ButtonProps) => {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        height: "30px",
+        padding: "0 10px",
+        borderRadius: "8px",
+        border: "1px solid transparent",
+        background: "#0f172a",
+        color: "#fff",
+        cursor: "pointer",
+        marginBottom: "8px",
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+};
+
+const FormArray = ({ values, onUpdate }: { values: string[]; onUpdate?: (v: string[]) => void }) => {
+  // const [formArrayValues, setFormArrayValues] = useState(values);
+
+  const formArrayValues = useRef<string[]>(values);
+  const [, setTick] = useState(0);
+  const inputRef = useRef<HTMLInputElement[]>([]);
+  const forceUpdate = () => setTick((p) => (p += 1));
+  const onAddNewField = () => {
+    const next = [...formArrayValues.current, ""];
+    formArrayValues.current = next;
+    inputRef.current[next.length - 1].focus();
+    forceUpdate();
+  };
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const next = [...formArrayValues.current];
+    next[idx] = e.target.value;
+    formArrayValues.current = next;
+    onUpdate?.(next);
+  };
+
+  const onRemoveField = (idx: number) => {
+    const next = [...formArrayValues.current];
+    next.splice(idx, 1);
+    formArrayValues.current = next;
+    onUpdate?.(next);
+    forceUpdate();
+  };
+
+  return (
+    <>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <span>Match Rules</span>
+        <button
+          type="button"
+          onClick={onAddNewField}
+          style={{
+            height: "26px",
+            padding: "0 8px",
+            border: "1px solid #cbd5e1",
+            borderRadius: "8px",
+            background: "#fff",
+            cursor: "pointer",
+          }}
+        >
+          New Rules
+        </button>
+      </div>
+      {formArrayValues.current?.map((field, idx) => (
+        <div key={`${idx}-${field}`} style={{ display: "flex", gap: "6px" }}>
+          <input
+            defaultValue={field}
+            onChange={(e) => onChange(e, idx)}
+            ref={(r: HTMLInputElement) => {
+              if (r) {
+                inputRef.current[idx] = r;
+              }
+            }}
+            style={{
+              flex: 1,
+              border: "1px solid #cbd5e1",
+              borderRadius: "8px",
+              padding: "7px",
+              fontSize: "12px",
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => onRemoveField(idx)}
+            style={{
+              width: "30px",
+              border: "1px solid #fecaca",
+              borderRadius: "8px",
+              background: "#fee2e2",
+              color: "#b91c1c",
+              cursor: "pointer",
+            }}
+          >
+            -
+          </button>
+        </div>
+      ))}
+    </>
+  );
+};
+
+const sendResolve = (requestId: string, payload: ScriptItem[] | null) => {
+  // Signal to the main process via console-message bridge.
+  console.log(RESOLVE_SENTINEL + JSON.stringify({ requestId, payload }));
 };
 
 const App = () => {
   const [openState, setOpenState] = useState<OpenPayload | null>(null);
   const [items, setItems] = useState<ScriptItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  React.useEffect(() => {
-    window.parent.postMessage(
-      { source: "minus-userscript-injection", type: "READY" },
-      "*",
-    );
-  }, []);
-
-  React.useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      const data = event?.data;
-      if (!data || data.source !== "minus-parent" || data.type !== "OPEN")
-        return;
-      const nextItems: ScriptItem[] = (
-        Array.isArray(data.payload?.items) ? data.payload.items : []
-      ).map((raw: ScriptItem) => {
-        const parsed = parseMeta(raw.source || "");
-        return {
-          ...raw,
-          name: raw.name || parsed.name,
-          runAt: raw.runAt || parsed.runAt,
-          matches: raw.matches?.length ? raw.matches : parsed.matches,
-          enabled: Boolean(raw.enabled),
-        };
-      });
-      setOpenState({
-        requestId: String(data.payload.requestId),
-        items: nextItems,
-      });
-      setItems(nextItems);
-      setSelectedId(nextItems[0]?.id || null);
+  const formRef = useRef<{ getValues: () => ScriptItem }>(null);
+  useEffect(() => {
+    window.__userScriptReady = true;
+    // __vaultClose is called by the main process (fire-and-forget
+    // executeJavaScript) when the dialog is resolving. It triggers the
+    // CSS fade-out so the view looks smooth before being removed.
+    window.__userScriptClose = () => {
+      document.documentElement.style.opacity = "0";
     };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
+    return () => {
+      window.__userScriptReady = false;
+      window.__userScriptClose = undefined;
+    };
   }, []);
 
-  const selected = useMemo(
-    () => items.find((i) => i.id === selectedId) || null,
-    [items, selectedId],
-  );
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<OpenPayload>).detail;
+      if (!detail?.requestId) return;
+      const nextItems: ScriptItem[] = Array.isArray(detail.items) ? detail.items.map((item) => ({ ...item })) : [];
+
+      setOpenState({ requestId: detail.requestId, items: nextItems });
+      setItems(nextItems);
+      setSelectedId(nextItems[0]?.id ?? null);
+      // Fade in now that we have real data to show — avoids a flash of
+      // the empty state before items are populated.
+      document.documentElement.style.opacity = "1";
+    };
+    window.addEventListener("__userScriptOpen", onOpen);
+    return () => window.removeEventListener("__userScriptOpen", onOpen);
+  }, []);
+
+  const selected = useMemo(() => items.find((i) => i.id === selectedId) || null, [items, selectedId]);
   if (!openState) return <div style={{ display: "none" }} />;
 
-  const closeSave = () => resolveToParent(openState.requestId, items);
-  const closeCancel = () => resolveToParent(openState.requestId, null);
+  const closeSave = () => sendResolve(openState.requestId, items);
+  const closeCancel = () => sendResolve(openState.requestId, null);
 
   const createNew = () => {
     const id = `new-${Math.random().toString(36).slice(2)}`;
     const item: ScriptItem = {
       id,
       name: "New Script",
-      source:
-        "// ==UserScript==\n// @name New Script\n// @match *://*/*\n// @run-at document-end\n// ==/UserScript==\n",
+      source: "",
       runAt: "document-end",
-      matches: ["*://*/*"],
+      matches: ["*"],
       enabled: false,
     };
     setItems((prev) => [item, ...prev]);
     setSelectedId(id);
   };
 
-  const patchSelected = (patch: Partial<ScriptItem>) => {
-    if (!selected) return;
-    setItems((prev) =>
-      prev.map((it) => (it.id === selected.id ? { ...it, ...patch } : it)),
-    );
-  };
-
   const applySelected = () => {
     if (!selected) return;
+    const formData = formRef.current?.getValues() as ScriptItem;
     setItems((prev) =>
       prev.map((it) => {
         if (it.id !== selected.id) return it;
-        const next = { ...it };
-        next.name = (next.name || "Unnamed Script").trim();
-        next.matches = (next.matches || ["*://*/*"])
-          .map((m) => m.trim())
-          .filter(Boolean);
-        if (!next.matches.length) next.matches = ["*://*/*"];
-        next.source = withMeta(next.source || "", next);
-        return next;
+        // const next = { ...formData };
+        // next.name = (next.name || "Unnamed Script").trim();
+        // if (!next.matches.length) next.matches = ["*://*/*"];
+        // next.source = withMeta(next.source || "", next);
+        formData.matches = (formData.matches || ["*://*/*"]).map((m) => m.trim()).filter(Boolean);
+        return formData;
       }),
     );
   };
@@ -194,25 +371,8 @@ const App = () => {
             background: "#f8fafc",
           }}
         >
-          <div style={{ fontWeight: 600, marginBottom: "8px" }}>
-            UserScript Manager
-          </div>
-          <button
-            type="button"
-            onClick={createNew}
-            style={{
-              height: "30px",
-              padding: "0 10px",
-              borderRadius: "8px",
-              border: "1px solid transparent",
-              background: "#0f172a",
-              color: "#fff",
-              cursor: "pointer",
-              marginBottom: "8px",
-            }}
-          >
-            New Script
-          </button>
+          <div style={{ fontWeight: 600, marginBottom: "8px" }}>UserScript Manager</div>
+          <Button onClick={createNew}>New Script</Button>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             {items.map((item) => (
               <button
@@ -262,8 +422,7 @@ const App = () => {
             }}
           >
             <div style={{ fontWeight: 600 }}>Edit Script</div>
-            <button
-              type="button"
+            <Button
               onClick={closeSave}
               style={{
                 width: "20px",
@@ -271,160 +430,13 @@ const App = () => {
                 border: "1px solid #cbd5e1",
                 background: "#f8fafc",
                 borderRadius: "4px",
-                cursor: "pointer",
               }}
             >
               ×
-            </button>
+            </Button>
           </div>
 
-          {selected ? (
-            <>
-              <input
-                value={selected.name || ""}
-                onChange={(e) => patchSelected({ name: e.target.value })}
-                placeholder="Script name"
-                style={{
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "8px",
-                  padding: "8px",
-                  fontSize: "12px",
-                }}
-              />
-
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: "6px" }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <span>Match Rules</span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      patchSelected({
-                        matches: [...(selected.matches || ["*://*/*"]), ""],
-                      })
-                    }
-                    style={{
-                      height: "26px",
-                      padding: "0 8px",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "8px",
-                      background: "#fff",
-                      cursor: "pointer",
-                    }}
-                  >
-                    + Rule
-                  </button>
-                </div>
-                {(selected.matches || ["*://*/*"]).map((rule, idx) => (
-                  <div
-                    key={`${idx}-${rule}`}
-                    style={{ display: "flex", gap: "6px" }}
-                  >
-                    <input
-                      value={rule}
-                      onChange={(e) => {
-                        const next = [...(selected.matches || ["*://*/*"])];
-                        next[idx] = e.target.value;
-                        patchSelected({ matches: next });
-                      }}
-                      style={{
-                        flex: 1,
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "8px",
-                        padding: "7px",
-                        fontSize: "12px",
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = (selected.matches || ["*://*/*"]).filter(
-                          (_, i) => i !== idx,
-                        );
-                        patchSelected({
-                          matches: next.length ? next : ["*://*/*"],
-                        });
-                      }}
-                      style={{
-                        width: "30px",
-                        border: "1px solid #fecaca",
-                        borderRadius: "8px",
-                        background: "#fee2e2",
-                        color: "#b91c1c",
-                        cursor: "pointer",
-                      }}
-                    >
-                      -
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr auto",
-                  gap: "8px",
-                }}
-              >
-                <select
-                  value={selected.runAt || "document-end"}
-                  onChange={(e) =>
-                    patchSelected({
-                      runAt: e.target.value as ScriptItem["runAt"],
-                    })
-                  }
-                  style={{
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "8px",
-                    padding: "8px",
-                    fontSize: "12px",
-                  }}
-                >
-                  <option value="document-start">document-start</option>
-                  <option value="document-idle">document-idle</option>
-                  <option value="document-end">document-end</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => patchSelected({ enabled: !selected.enabled })}
-                  style={{
-                    minWidth: "66px",
-                    border: "1px solid transparent",
-                    borderRadius: "8px",
-                    padding: "0 10px",
-                    background: selected.enabled ? "#16a34a" : "#334155",
-                    color: "#fff",
-                    cursor: "pointer",
-                  }}
-                >
-                  {selected.enabled ? "ON" : "OFF"}
-                </button>
-              </div>
-
-              <textarea
-                value={selected.source || ""}
-                onChange={(e) => patchSelected({ source: e.target.value })}
-                style={{
-                  flex: 1,
-                  minHeight: "330px",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "8px",
-                  padding: "8px",
-                  fontSize: "12px",
-                  fontFamily:
-                    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                }}
-              />
-            </>
-          ) : null}
+          {selected ? <Form values={selected} ref={formRef} /> : null}
 
           <div
             style={{
@@ -507,7 +519,6 @@ const App = () => {
   );
 };
 
-// createRoot(document.getElementById("root") as HTMLElement).render(<App />);
 const host = document.getElementById("root") as HTMLElement;
 const shadowRoot = host.attachShadow({ mode: "open" });
 

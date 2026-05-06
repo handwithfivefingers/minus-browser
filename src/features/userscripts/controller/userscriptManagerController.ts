@@ -1,12 +1,11 @@
 import { UserScriptController } from "./userscriptController";
-import { IUserScript } from "../interfaces/userscript";
+import { IUserScript } from "../class/script";
 
 export class UserScriptManagerController {
   private userScriptController: UserScriptController;
 
   constructor(userScriptController?: UserScriptController) {
-    this.userScriptController =
-      userScriptController || new UserScriptController();
+    this.userScriptController = userScriptController || new UserScriptController();
   }
 
   async initialize() {
@@ -17,7 +16,7 @@ export class UserScriptManagerController {
     return this.userScriptController.listScripts();
   }
 
-  async saveUserScript(data: { id?: string; source: string; enabled?: boolean }) {
+  async saveUserScript(data: IUserScript) {
     return this.userScriptController.saveScript(data);
   }
 

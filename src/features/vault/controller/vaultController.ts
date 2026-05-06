@@ -20,21 +20,11 @@ export class VaultController {
     return this.passwordController.getById(id);
   }
 
-  async addVault(data: {
-    site: string;
-    username: string;
-    password: string;
-    notes?: string;
-  }) {
+  async addVault(data: { site: string; username: string; password: string; notes?: string }) {
     return this.passwordController.add(data);
   }
 
-  async updateVault(
-    id: string,
-    patch: Partial<
-      Pick<IPasswordItem, "site" | "username" | "password" | "notes">
-    >,
-  ) {
+  async updateVault(id: string, patch: Partial<Pick<IPasswordItem, "site" | "username" | "password" | "notes">>) {
     return this.passwordController.update(id, patch);
   }
 
@@ -70,13 +60,17 @@ export class VaultController {
 
       if (userInput) {
         userInput.focus();
-        userInput.value = creds.username;
+        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set?.call(userInput, creds.username);
+        const event = new Event('change', { bubbles: true });
+        userInput.dispatchEvent(event);
         emit(userInput);
       }
       if (passwordInputs.length > 0) {
         const target = passwordInputs[0];
         target.focus();
-        target.value = creds.password;
+        Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set?.call(target, creds.password);
+        const event = new Event('change', { bubbles: true });
+        target.dispatchEvent(event);
         emit(target);
       }
       return {

@@ -1,9 +1,5 @@
 // @ts-nocheck
-import {
-  ElectronBlocker,
-  fullLists,
-  Request,
-} from "@ghostery/adblocker-electron";
+import { ElectronBlocker, fullLists, Request } from "@ghostery/adblocker-electron";
 import fetch from "cross-fetch";
 import { session, WebContentsView } from "electron";
 import log from "electron-log";
@@ -21,7 +17,63 @@ export const ALL_LISTS = new Set([
   "https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/filters-2025.txt",
   ...fullLists,
 ]);
+
+// const skipAds = () => {
+//   const script = function () {
+//     function skipAds() {
+//       const pipMode = document.querySelector("ytd-pip-container, ytd-miniplayer-player-container");
+//       const adVideo = document.querySelector(".ad-showing video");
+
+//       /**@ts-ignore */
+//       if (adVideo && adVideo.duration) {
+//         /**@ts-ignore */
+//         adVideo.currentTime = adVideo.duration;
+//         /**@ts-ignore */
+//         adVideo.muted = true;
+//       }
+//       const skipBtn = document.querySelector(".ytp-ad-skip-button, .ytp-ad-skip-button-modern");
+//       if (skipBtn) {
+//         /**@ts-ignore */
+//         skipBtn.click();
+//       }
+
+//       if (document.querySelector(".ad-showing")) {
+//         setTimeout(skipAds, 500);
+//       }
+//     }
+//     function keepVideoPlayingEarly() {}
+//     /**@ts-ignore */
+//     let debounceTimeout;
+//     const observer = new MutationObserver(() => {
+//       /**@ts-ignore */
+//       clearTimeout(debounceTimeout);
+//       debounceTimeout = setTimeout(() => {
+//         skipAds();
+//         keepVideoPlayingEarly();
+//       }, 100);
+//     });
+//     observer.observe(document.body, { childList: true, subtree: true });
+//   };
+//   return `(${script.toString()})();`;
+// };
+
 const SponsorBlock = () => {
+  const GM_getValue = (key) => {
+    try {
+      return JSON.parse(localStorage.getItem(key)) || null;
+    } catch {
+      return null;
+    }
+  };
+  const GM_setValue = (key, value) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  };
+  const GM_addStyle = (css) => {
+    const style = document.createElement("style");
+    style.appendChild(document.createTextNode(css));
+    document.head.appendChild(style);
+  };
+
   console.log("AdBlock start initializing ...");
   // ==UserScript==
   // @name               EasyTube V4.0 — Ad Skip & SponsorBlock & HD Download⬇️🚀 (No Lag)
@@ -122,8 +174,7 @@ const SponsorBlock = () => {
             if (v.adPlacements) v.adPlacements = [];
             if (v.auxiliaryUi?.messageRenderers) {
               try {
-                v.auxiliaryUi.messageRenderers.enforcementMessageViewModel =
-                  undefined;
+                v.auxiliaryUi.messageRenderers.enforcementMessageViewModel = undefined;
               } catch {}
             }
           }
@@ -183,9 +234,9 @@ const SponsorBlock = () => {
   // STATE
   // ═══════════════════════════════════════════════════════════════════════════
   const S = {
-    adEnabled: GM_getValue("et4_ad", false),
-    sbEnabled: GM_getValue("et4_sb", false),
-    qualityEnabled: GM_getValue("et4_quality", false),
+    adEnabled: GM_getValue("et4_ad", true),
+    sbEnabled: GM_getValue("et4_sb", true),
+    qualityEnabled: GM_getValue("et4_quality", true),
 
     adCount: 0,
     sbCount: 0,
@@ -230,11 +281,7 @@ const SponsorBlock = () => {
     const p = getPlayer();
     if (!p) return false;
     // Check player class (fastest)
-    if (
-      p.classList.contains("ad-showing") ||
-      p.classList.contains("ad-interrupting")
-    )
-      return true;
+    if (p.classList.contains("ad-showing") || p.classList.contains("ad-interrupting")) return true;
     // Check countdown badge (reliable indicator)
     return !!(
       p.querySelector(".ytp-ad-countdown") ||
@@ -331,9 +378,7 @@ const SponsorBlock = () => {
     // 4. Overlay close buttons
     const p = getPlayer();
     if (p) {
-      p.querySelectorAll(
-        ".ytp-ad-overlay-close-button, .ytp-ad-overlay-slot-close-button",
-      ).forEach((b) => {
+      p.querySelectorAll(".ytp-ad-overlay-close-button, .ytp-ad-overlay-slot-close-button").forEach((b) => {
         try {
           b.click();
         } catch {}
@@ -373,8 +418,7 @@ const SponsorBlock = () => {
     // Patch yt config flags
     try {
       const popup = window.yt?.config_?.openPopupConfig?.supportedPopups;
-      if (popup?.adBlockMessageViewModel !== undefined)
-        popup.adBlockMessageViewModel = false;
+      if (popup?.adBlockMessageViewModel !== undefined) popup.adBlockMessageViewModel = false;
     } catch {}
     try {
       const d = window.ytcfg?.data_?.PLAYER_VARS;
@@ -458,10 +502,7 @@ const SponsorBlock = () => {
   // ═══════════════════════════════════════════════════════════════════════════
   async function sha256Prefix(str) {
     try {
-      const buf = await crypto.subtle.digest(
-        "SHA-256",
-        new TextEncoder().encode(str),
-      );
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
       return Array.from(new Uint8Array(buf))
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("")
@@ -502,9 +543,7 @@ const SponsorBlock = () => {
     }
 
     sha256Prefix(videoId).then((prefix) => {
-      const hashUrl = prefix
-        ? `https://sponsor.ajay.app/api/skipSegments/${prefix}?${cats.slice(1)}${types}`
-        : null;
+      const hashUrl = prefix ? `https://sponsor.ajay.app/api/skipSegments/${prefix}?${cats.slice(1)}${types}` : null;
       const directUrl = `${CFG.sbApi}?videoID=${videoId}${cats}${types}`;
 
       GM_xmlhttpRequest({
@@ -643,9 +682,7 @@ const SponsorBlock = () => {
       const t = document.querySelector(s)?.textContent?.trim();
       if (t?.length > 1) return t;
     }
-    return (
-      document.title?.replace(/\s*[-|]\s*YouTube\s*$/i, "").trim() || "EasyTube"
-    );
+    return document.title?.replace(/\s*[-|]\s*YouTube\s*$/i, "").trim() || "EasyTube";
   }
 
   let _navTimer = null;
@@ -713,19 +750,14 @@ const SponsorBlock = () => {
     _uiRaf = true;
     requestAnimationFrame(() => {
       _uiRaf = false;
-      document
-        .getElementById("et4_ad_n")
-        ?.replaceChildren(document.createTextNode(S.adCount));
-      document
-        .getElementById("et4_sb_n")
-        ?.replaceChildren(document.createTextNode(S.sbCount));
+      document.getElementById("et4_ad_n")?.replaceChildren(document.createTextNode(S.adCount));
+      document.getElementById("et4_sb_n")?.replaceChildren(document.createTextNode(S.sbCount));
       syncToggle("et4_sw_ad", S.adEnabled);
       syncToggle("et4_sw_sb", S.sbEnabled);
       syncToggle("et4_sw_q", S.qualityEnabled);
       const vid = getVideoId();
       const titleEl = document.getElementById("et4_title");
-      if (titleEl)
-        titleEl.textContent = vid ? getTitle() : "Open a video to start";
+      if (titleEl) titleEl.textContent = vid ? getTitle() : "Open a video to start";
       const idEl = document.getElementById("et4_vid_id");
       if (idEl) idEl.textContent = vid || "N/A";
       // Update download button state
@@ -807,9 +839,7 @@ const SponsorBlock = () => {
     hdrL.appendChild(mk("div", "e4-logo", "▶"));
     const hdrTxt = mk("div");
     hdrTxt.appendChild(mk("div", "e4-hdr-title", "EasyTube V4.0"));
-    hdrTxt.appendChild(
-      mk("div", "e4-hdr-sub", "Ad Skip · SponsorBlock · 4K · HD Download"),
-    );
+    hdrTxt.appendChild(mk("div", "e4-hdr-sub", "Ad Skip · SponsorBlock · 4K · HD Download"));
     hdrL.appendChild(hdrTxt);
     hdr.appendChild(hdrL);
     hdr.appendChild(mk("div", "e4-drag-dot", "⋮"));
@@ -836,9 +866,7 @@ const SponsorBlock = () => {
     const badge = mk("span", "e4-badge", `● v${CFG.version}`);
     cardRow.appendChild(badge);
     card.appendChild(cardRow);
-    card.appendChild(
-      mk("div", "e4-card-title", "Open a video to start", { id: "et4_title" }),
-    );
+    card.appendChild(mk("div", "e4-card-title", "Open a video to start", { id: "et4_title" }));
     const cardId = mk("div", "e4-card-id", "ID: ");
     cardId.appendChild(mk("code", null, "N/A", { id: "et4_vid_id" }));
     card.appendChild(cardId);
@@ -855,26 +883,16 @@ const SponsorBlock = () => {
 
     // Toggle grid
     const grid = mk("div", "e4-grid");
-    grid.appendChild(
-      makeToggleCard("🚫", "et4_sw_ad", "Ad Skip", "et4_sw_ad_st"),
-    );
-    grid.appendChild(
-      makeToggleCard("⏭", "et4_sw_sb", "SponsorBlock", "et4_sw_sb_st"),
-    );
-    grid.appendChild(
-      makeToggleCard("✨", "et4_sw_q", "Auto 4K", "et4_sw_q_st"),
-    );
+    grid.appendChild(makeToggleCard("🚫", "et4_sw_ad", "Ad Skip", "et4_sw_ad_st"));
+    grid.appendChild(makeToggleCard("⏭", "et4_sw_sb", "SponsorBlock", "et4_sw_sb_st"));
+    grid.appendChild(makeToggleCard("✨", "et4_sw_q", "Auto 4K", "et4_sw_q_st"));
     body.appendChild(grid);
 
     // Info box
     const info = mk("div", "e4-info-box");
     info.appendChild(mk("span", "e4-info-icon", "⚡"));
     info.appendChild(
-      mk(
-        "span",
-        null,
-        "V4.0: Rewritten for performance — lower CPU, faster skip, no Cobalt timeout lag.",
-      ),
+      mk("span", null, "V4.0: Rewritten for performance — lower CPU, faster skip, no Cobalt timeout lag."),
     );
     body.appendChild(info);
 
@@ -927,14 +945,8 @@ const SponsorBlock = () => {
         if (!dragging || e.pointerId !== pid || raf) return;
         raf = true;
         requestAnimationFrame(() => {
-          ox = Math.max(
-            8,
-            Math.min(window.innerWidth - pw - 8, e.clientX - ix),
-          );
-          oy = Math.max(
-            8,
-            Math.min(window.innerHeight - ph - 8, e.clientY - iy),
-          );
+          ox = Math.max(8, Math.min(window.innerWidth - pw - 8, e.clientX - ix));
+          oy = Math.max(8, Math.min(window.innerHeight - ph - 8, e.clientY - iy));
           panel.style.transform = `translate3d(${ox}px,${oy}px,0)`;
           raf = false;
         });
@@ -982,10 +994,7 @@ const SponsorBlock = () => {
         S.adSpeedActive = false;
       }
       uiSync();
-      toast(
-        S.adEnabled ? "🚫 Ad Skip ON" : "🚫 Ad Skip OFF",
-        S.adEnabled ? "#2e7d32" : "#b71c1c",
-      );
+      toast(S.adEnabled ? "🚫 Ad Skip ON" : "🚫 Ad Skip OFF", S.adEnabled ? "#2e7d32" : "#b71c1c");
     });
 
     document.getElementById("et4_sw_sb").addEventListener("click", () => {
@@ -996,10 +1005,7 @@ const SponsorBlock = () => {
         fetchSB(getVideoId());
       }
       uiSync();
-      toast(
-        S.sbEnabled ? "⏭ SponsorBlock ON" : "⏭ SponsorBlock OFF",
-        S.sbEnabled ? "#1565c0" : "#4a148c",
-      );
+      toast(S.sbEnabled ? "⏭ SponsorBlock ON" : "⏭ SponsorBlock OFF", S.sbEnabled ? "#1565c0" : "#4a148c");
     });
 
     document.getElementById("et4_sw_q").addEventListener("click", () => {
@@ -1007,10 +1013,7 @@ const SponsorBlock = () => {
       save("et4_quality", S.qualityEnabled);
       if (S.qualityEnabled) setQuality();
       uiSync();
-      toast(
-        S.qualityEnabled ? "✨ Auto 4K ON" : "✨ Auto 4K OFF",
-        S.qualityEnabled ? "#e53935" : "#616161",
-      );
+      toast(S.qualityEnabled ? "✨ Auto 4K ON" : "✨ Auto 4K OFF", S.qualityEnabled ? "#e53935" : "#616161");
     });
   }
 
@@ -1226,10 +1229,7 @@ export class AdBlocker {
   // blocker: CustomAds;
   blocker: ElectronBlocker;
   async initialize() {
-    this.blocker = await ElectronBlocker.fromLists(
-      fetch,
-      Array.from(ALL_LISTS.values()),
-    );
+    this.blocker = await ElectronBlocker.fromLists(fetch, Array.from(ALL_LISTS.values()));
   }
 
   setupAdvancedRequestBlocking(view: WebContentsView) {
@@ -1257,7 +1257,7 @@ export class AdBlocker {
     const script = [
       this.youtubePatchPlayer(),
       this.youtubeRemovePopups(),
-      this.skipAds(),
+      // this.skipAds(),
       `(${SponsorBlock.toString()})();`,
     ];
 
@@ -1290,11 +1290,7 @@ export class AdBlocker {
       const observer = new MutationObserver(() => {
         const player: any = document.querySelector("ytd-player");
         /** @ts-ignore */
-        if (
-          player &&
-          player.player_ &&
-          typeof player.player_.getAdState === "function"
-        ) {
+        if (player && player.player_ && typeof player.player_.getAdState === "function") {
           /** @ts-ignore */
           player.player_.getAdState = () => 0; // luôn không có ad
           console.log("[YT Adblock] Patched mid-roll ads!");
@@ -1311,9 +1307,7 @@ export class AdBlocker {
       "use strict";
       const removeElements = () => {
         const popupContainer = document.querySelector("ytd-popup-container");
-        const overlayBackdrop = document.querySelector(
-          "tp-yt-iron-overlay-backdrop",
-        );
+        const overlayBackdrop = document.querySelector("tp-yt-iron-overlay-backdrop");
 
         if (popupContainer) {
           popupContainer.remove();
@@ -1340,9 +1334,7 @@ export class AdBlocker {
   skipAds() {
     const script = function () {
       function skipAds() {
-        const pipMode = document.querySelector(
-          "ytd-pip-container, ytd-miniplayer-player-container",
-        );
+        const pipMode = document.querySelector("ytd-pip-container, ytd-miniplayer-player-container");
         const adVideo = document.querySelector(".ad-showing video");
 
         /**@ts-ignore */
@@ -1352,9 +1344,7 @@ export class AdBlocker {
           /**@ts-ignore */
           adVideo.muted = true;
         }
-        const skipBtn = document.querySelector(
-          ".ytp-ad-skip-button, .ytp-ad-skip-button-modern",
-        );
+        const skipBtn = document.querySelector(".ytp-ad-skip-button, .ytp-ad-skip-button-modern");
         if (skipBtn) {
           /**@ts-ignore */
           skipBtn.click();
@@ -1405,20 +1395,10 @@ export class AdBlocker {
       log.info("%crequest-blocked", request.tabId, request.url, "color: red");
     });
     this.blocker.on("request-redirected", (request: Request) => {
-      log.info(
-        "%crequest-redirected",
-        request.tabId,
-        request.url,
-        "color: red",
-      );
+      log.info("%crequest-redirected", request.tabId, request.url, "color: red");
     });
     this.blocker.on("request-whitelisted", (request: Request) => {
-      log.info(
-        "%crequest-whitelisted",
-        request.tabId,
-        request.url,
-        "color: red",
-      );
+      log.info("%crequest-whitelisted", request.tabId, request.url, "color: red");
     });
     this.blocker.on("csp-injected", (request: Request, csps: string) => {
       log.info("%ccsp-injected", request.url, csps, "color: red");
@@ -1429,9 +1409,6 @@ export class AdBlocker {
     this.blocker.on("style-injected", (style: string, url: string) => {
       log.info("%cRed style-injected", style.length, url, "color: red");
     });
-    this.blocker.on(
-      "filter-matched",
-      console.log.bind(console, "%cfilter-matched"),
-    );
+    this.blocker.on("filter-matched", console.log.bind(console, "%cfilter-matched"));
   }
 }

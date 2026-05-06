@@ -1,110 +1,174 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { openUserScriptManagerDialog } from "../../injection/ui/userscriptManagerDialog";
+import { BrowserWindow, WebContentsView } from "electron";
+import { Tab } from "~/features/system/classes/tab";
 
+function getSafeDirname(): string {
+  if (typeof __dirname !== "undefined") return __dirname;
+  // @ts-ignore
+  if (typeof import.meta?.dirname !== "undefined") return import.meta.dirname;
+  // @ts-ignore
+  if (typeof import.meta?.url !== "undefined") {
+    // @ts-ignore
+    return path.dirname(new URL(import.meta.url).pathname);
+  }
+  throw new Error("Cannot resolve __dirname in current module context");
+}
+
+function resolveUserScriptUrl(): string {
+  if (
+    // @ts-ignore
+    typeof USERSCRIPT_INJECTION_VITE_DEV_SERVER_URL !== "undefined" &&
+    // @ts-ignore
+    USERSCRIPT_INJECTION_VITE_DEV_SERVER_URL
+  ) {
+    return (
+      // @ts-ignore
+      `${USERSCRIPT_INJECTION_VITE_DEV_SERVER_URL}`.replace(/\/$/, "") + "/"
+    );
+  }
+  const basePath = path.join(
+    getSafeDirname(),
+    // @ts-ignore
+    `../renderer/main_window/src/features/injection/apps/userscript/index.html`,
+  );
+  return pathToFileURL(basePath).toString();
+}
+const SENTINEL = "__USER_SCRIPT_RESOLVE__:";
 export class UserScriptDialogController {
-  async openManager(webContents: Electron.WebContents, scripts: any[]) {
+  async openManager(win: BrowserWindow, tab: Tab, scripts: any[]) {
     try {
       const requestId = `userscript-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      let iframeSrc = "";
-      if (
-        // @ts-ignore
-        typeof USERSCRIPT_INJECTION_VITE_DEV_SERVER_URL !== "undefined" &&
-        // @ts-ignore
-        USERSCRIPT_INJECTION_VITE_DEV_SERVER_URL
-      ) {
-        iframeSrc =
-          // @ts-ignore
-          `${USERSCRIPT_INJECTION_VITE_DEV_SERVER_URL}`.replace(/\/$/, "") +
-          "/";
-      } else {
-        // @ts-ignore
-        const basePath = path.join(
-          __dirname,
-          // @ts-ignore
-          `../renderer/${USERSCRIPT_INJECTION_VITE_NAME}/index.html`,
-        );
-        iframeSrc = pathToFileURL(basePath).toString();
-      }
+      const userScriptUrl = resolveUserScriptUrl();
+      const tabBounds = tab.view.getBounds();
+      const userScriptView = new WebContentsView({
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: false,
+        },
+      });
+      userScriptView.setBounds(tabBounds);
+      userScriptView.setBackgroundColor("#00000000");
+      win.contentView.addChildView(userScriptView);
 
-      const script = `(() => {
-        const requestId = ${JSON.stringify(requestId)};
-        const payload = ${JSON.stringify(scripts || [])};
-        const iframeSrc = ${JSON.stringify(iframeSrc)};
-        return new Promise((resolve, reject) => {
-          const containerId = "__minus_userscript_react_overlay";
-          const old = document.getElementById(containerId);
-          if (old) old.remove();
+      return new Promise<any[] | null>((resolve, reject) => {
+        let isReady = false;
+        const onConsoleMessage = (_event: any, _level: any, message: string) => {
+          // console.log("onConsoleMessage level", _level);
+          // console.log("onConsoleMessage message", message);
+          if (!message.startsWith(SENTINEL)) return;
+          try {
+            const json = message.slice(SENTINEL.length);
+            const data = JSON.parse(json);
+            if (data?.requestId !== requestId) return;
+            settle(Array.isArray(data.payload) ? data.payload : null);
+          } catch {
+            // Malformed — ignore, do NOT reject here.
+          }
+        };
 
-          const host = document.createElement("div");
-          host.id = containerId;
-          host.style.position = "fixed";
-          host.style.inset = "0";
-          host.style.zIndex = "2147483647";
-          host.style.opacity = "0";
-          host.style.transition = "opacity 90ms ease";
+        const onRenderProcessGone = () => {
+          if (!isReady) {
+            isReady = true;
+            teardown(0);
+            reject(new Error("user-script-view-render-process-gone"));
+          }
+        };
 
-          const iframe = document.createElement("iframe");
-          iframe.src = iframeSrc;
-          iframe.style.width = "100%";
-          iframe.style.height = "100%";
-          iframe.style.border = "0";
-          iframe.style.background = "transparent";
+        const teardown = (delayMs: number) => {
+          // Detach named listeners only — never removeAllListeners().
+          userScriptView.webContents.off("console-message", onConsoleMessage);
+          userScriptView.webContents.off("render-process-gone", onRenderProcessGone);
+          clearTimeout(readyTimer);
 
-          let ready = false;
-          const cleanup = () => {
-            window.removeEventListener("message", onMessage);
-            host.remove();
-            // clearTimeout(resolveTimer);
-            clearTimeout(readyTimer);
-          };
-
-          const readyTimer = setTimeout(() => {
-            if (ready) return;
-            cleanup();
-            // reject(new Error("userscript injection not ready"));
-          }, 700);
-
-          // const resolveTimer = setTimeout(() => {
-          //   cleanup();
-          //   reject(new Error("userscript injection bridge timeout"));
-          // }, 1200);
-
-          const onMessage = (event) => {
-            const data = event?.data;
-            if (!data || data.source !== "minus-userscript-injection") return;
-            if (data.type === "READY") {
-              ready = true;
-              host.style.opacity = "1";
-              iframe.contentWindow?.postMessage(
-                {
-                  source: "minus-parent",
-                  type: "OPEN",
-                  payload: { requestId, items: payload },
-                },
-                "*",
-              );
-              return;
+          // Wait for the renderer's CSS fade-out to finish, then remove the view.
+          // No executeJavaScript here — the view may already be closing.
+          setTimeout(() => {
+            try {
+              win.contentView.removeChildView(userScriptView);
+            } catch (_) {
+              // View may already be removed if the window closed — safe to ignore.
             }
-            if (data.type === "RESOLVE" && data.requestId === requestId) {
-              cleanup();
-              resolve(data.payload ?? null);
-            }
-          };
+          }, delayMs);
+        };
 
-          window.addEventListener("message", onMessage);
-          iframe.addEventListener("error", () => {
-            cleanup();
-            reject(new Error("userscript iframe failed to load"));
+        const settle = (value: any[] | null) => {
+          if (!isReady) return;
+          // Signal the renderer to fade out (it handles its own CSS transition).
+          // Fire-and-forget — we do NOT await or chain off this promise.
+          if (!userScriptView.webContents.isDestroyed()) {
+            userScriptView.webContents
+              .executeJavaScript(`window.__userScriptClose && window.__userScriptClose();`)
+              .catch(() => {});
+          }
+          // Tear down after the renderer's 120ms fade-out transition completes.
+          teardown(150);
+          resolve(value);
+        };
+
+        /**
+         * Check and fallback Legacy Dialog on Time
+         */
+        const readyTimer = setTimeout(() => {
+          if (!isReady) {
+            isReady = true;
+            teardown(0);
+            reject(new Error("user-script-view-ready-timeout"));
+          }
+        }, 8000);
+
+        userScriptView.webContents.on("console-message", onConsoleMessage);
+        userScriptView.webContents.on("render-process-gone", onRenderProcessGone);
+        userScriptView.webContents.once("did-finish-load", () => {
+          if (isReady) return; // timeout already fired — do nothing
+          isReady = true;
+
+          const openPayload = JSON.stringify({
+            requestId,
+            items: scripts || [],
           });
-          host.appendChild(iframe);
-          document.documentElement.appendChild(host);
+
+          // This is a fire-and-forget executeJavaScript. We intentionally do
+          // NOT attach a .catch() that calls reject() — delivery failure is
+          // already covered by the readyTimer timeout path.
+          const scriptToInject = `(async (data) => {
+            const deliver = () => window.dispatchEvent(new CustomEvent("__userScriptOpen", { detail: data }));
+
+            // Check immediately
+            if (window.__userScriptReady) return deliver();
+
+            // Wait for the 'ready' state using a MutationObserver or Polling
+            // Polling is often more reliable for custom global flags
+            const poll = setInterval(() => {
+              if (window.__userScriptReady) {
+                deliver();
+                clearInterval(poll);
+              }
+            }, 50);
+
+            // Auto-cleanup after 5 seconds to prevent memory leaks
+            setTimeout(() => clearInterval(poll), 5000);
+          })(${openPayload})`;
+
+          userScriptView.webContents.executeJavaScript(scriptToInject).catch((err) => {
+            console.log("error", err);
+          });
         });
-      })();`;
-      return (await webContents.executeJavaScript(script, true)) as any[];
+
+        userScriptView.webContents.loadURL(userScriptUrl).catch((err) => {
+          if (!isReady) {
+            isReady = true;
+            teardown(0);
+            reject(err);
+          }
+        });
+      });
     } catch (error) {
+      console.log("user script error", error);
       const fallback = `(${openUserScriptManagerDialog.toString()})(${JSON.stringify(scripts || [])});`;
-      return (await webContents.executeJavaScript(fallback, true)) as any[];
+      return (await tab.webContents.executeJavaScript(fallback, true)) as any[];
     }
   }
 }

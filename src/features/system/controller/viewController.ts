@@ -1,12 +1,4 @@
-import {
-  app,
-  BrowserWindow,
-  dialog,
-  ipcMain,
-  Notification,
-  session,
-  WebContentsView,
-} from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Notification, session, WebContentsView } from "electron";
 import log from "electron-log";
 import { IHandleResizeView, IPC, ITab } from "../interfaces";
 import { IPasswordItem } from "../../password";
@@ -15,11 +7,10 @@ import { ErrorServices } from "../services/error.services";
 import { StoreManager } from "../stores";
 import { isSameURl } from "../utils";
 import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL } from "../constants/ipc";
-import {
-  UserScriptDialogController,
-  UserScriptManagerController,
-} from "../../userscripts";
+import { UserScriptDialogController, UserScriptManagerController } from "../../userscripts";
 import { TabController } from "./tab";
+import { Tab } from "../classes/tab";
+import { IUserScript, UserScript } from "~/features/userscripts/class/script";
 interface IUserInterface {
   layout: string;
   mode: string;
@@ -30,95 +21,63 @@ interface IUserInterface {
 }
 export class ViewController {
   window: BrowserWindow;
-  wc: Electron.WebContents;
+  wc: Electron.WebContents | undefined;
   userStore: StoreManager = new StoreManager("userData");
   interfaceStore: StoreManager = new StoreManager("interface");
-  sessionStore: StoreManager = new StoreManager("session");
+  // sessionStore: StoreManager = new StoreManager("session");
+  minusSession: Electron.Session | undefined = session.fromPartition("persist:minus-browser");
   tabController = new TabController();
   vaultController = new VaultController();
   vaultDialogController = new VaultDialogController();
-  userScriptManagerController = new UserScriptManagerController(
-    this.tabController.userScripts,
-  );
+  userScriptManagerController = new UserScriptManagerController(this.tabController.userScripts);
   userScriptDialogController = new UserScriptDialogController();
 
-  private invokeHandlers: Record<string, (data?: any) => any>;
-  private listenerHandlers: Record<string, (data?: any) => void>;
+  private invokeHandlers: Record<string, (data?: any) => any> | undefined;
+  private listenerHandlers: Record<string, (data?: any) => void> | undefined;
 
   constructor(window: BrowserWindow) {
     this.window = window;
     this.init();
-    this.window.webContents?.on(
-      "render-process-gone",
-      function (event, detailed) {
-        log.info(
-          "!crashed, reason: " +
-            detailed.reason +
-            ", exitCode = " +
-            detailed.exitCode,
-        );
-        if (detailed.reason == "crashed") {
-          window.webContents?.reload();
-        } else {
-          app.relaunch({ args: process.argv.slice(1).concat(["--relaunch"]) });
-          app.exit(0);
-        }
-      },
-    );
   }
 
   private async initializeHandlers() {
     try {
       this.invokeHandlers = {
         [IPC_INVOKE_CHANNEL.GET_TABS]: () => this.getTabs(),
-        [IPC_INVOKE_CHANNEL.CREATE_TAB]: (tab?: Partial<ITab>) =>
-          this.createTab(tab),
-        [IPC_INVOKE_CHANNEL.GET_TAB]: (tab?: Partial<ITab>) =>
-          this.getTab({ id: tab.id }),
+        [IPC_INVOKE_CHANNEL.CREATE_TAB]: (tab?: Partial<ITab>) => this.createTab(tab),
+        [IPC_INVOKE_CHANNEL.GET_TAB]: (tab?: Partial<ITab>) => this.getTab({ id: tab?.id as string }),
         [IPC_INVOKE_CHANNEL.GET_USER_INTERFACE]: () => this.loadUserInterface(),
         [IPC_INVOKE_CHANNEL.CLOUD_SAVE]: () => this.cloudSave(),
         [IPC_INVOKE_CHANNEL.SEARCH_PAGE]: (data) => this.handleSearchPage(data),
         [IPC_INVOKE_CHANNEL.INTERFACE_SAVE]: (data) => this.interfaceSave(data),
         [IPC_INVOKE_CHANNEL.GET_USERSCRIPTS]: () => this.getUserScripts(),
-        [IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT]: (data) =>
-          this.saveUserScript(data),
+        [IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT]: (data) => this.saveUserScript(data),
         [IPC_INVOKE_CHANNEL.IMPORT_USERSCRIPT]: () => this.importUserScript(),
-        [IPC_INVOKE_CHANNEL.DELETE_USERSCRIPT]: (data) =>
-          this.deleteUserScript(data),
-        [IPC_INVOKE_CHANNEL.TOGGLE_USERSCRIPT]: (data) =>
-          this.toggleUserScript(data),
+        [IPC_INVOKE_CHANNEL.DELETE_USERSCRIPT]: (data) => this.deleteUserScript(data),
+        [IPC_INVOKE_CHANNEL.TOGGLE_USERSCRIPT]: (data) => this.toggleUserScript(data),
         [IPC_INVOKE_CHANNEL.VAULT_LIST]: () => this.vaultList(),
         [IPC_INVOKE_CHANNEL.VAULT_ADD]: (data) => this.vaultAdd(data),
         [IPC_INVOKE_CHANNEL.VAULT_UPDATE]: (data) => this.vaultUpdate(data),
         [IPC_INVOKE_CHANNEL.VAULT_DELETE]: (data) => this.vaultDelete(data),
         [IPC_INVOKE_CHANNEL.VAULT_FILL]: (data) => this.vaultFill(data),
-        [IPC_INVOKE_CHANNEL.VAULT_SELECT_CREDENTIAL]: (data) =>
-          this.vaultSelectCredential(data),
-        [IPC_INVOKE_CHANNEL.VAULT_CONFIRM_SAVE]: (data) =>
-          this.vaultConfirmSave(data),
-        [IPC_INVOKE_CHANNEL.VAULT_OPEN_MANAGER]: (data) =>
-          this.vaultOpenManager(data),
-        [IPC_INVOKE_CHANNEL.USERSCRIPT_OPEN_MANAGER]: (data) =>
-          this.userscriptOpenManager(data),
+        [IPC_INVOKE_CHANNEL.VAULT_SELECT_CREDENTIAL]: (data) => this.vaultSelectCredential(data),
+        [IPC_INVOKE_CHANNEL.VAULT_CONFIRM_SAVE]: (data) => this.vaultConfirmSave(data),
+        [IPC_INVOKE_CHANNEL.VAULT_OPEN_MANAGER]: (data) => this.vaultOpenManager(data),
+        [IPC_INVOKE_CHANNEL.USERSCRIPT_OPEN_MANAGER]: (data) => this.userscriptOpenManager(data),
       };
 
       this.listenerHandlers = {
-        [IPC_EMIT_CHANNEL.SHOW_VIEW_BY_ID]: (data) =>
-          this.handleShowViewById(data),
-        [IPC_EMIT_CHANNEL.VIEW_CHANGE_URL]: (data) =>
-          this.handleURLChange(data),
-        [IPC_EMIT_CHANNEL.VIEW_RESPONSIVE]: (data) =>
-          this.handleResizeView(data),
+        [IPC_EMIT_CHANNEL.SHOW_VIEW_BY_ID]: (data) => this.handleShowViewById(data),
+        [IPC_EMIT_CHANNEL.VIEW_CHANGE_URL]: (data) => this.handleURLChange(data),
+        [IPC_EMIT_CHANNEL.VIEW_RESPONSIVE]: (data) => this.handleResizeView(data),
         [IPC_EMIT_CHANNEL.HIDE_VIEW]: (data) => this.handleHideView(data),
         [IPC_EMIT_CHANNEL.ON_BACKWARD]: (data) => this.onGoBack(data),
         [IPC_EMIT_CHANNEL.ON_CLOSE_TAB]: (data) => this.onCloseTab(data),
-        [IPC_EMIT_CHANNEL.TOGGLE_DEV_TOOLS]: (data) =>
-          this.handleToggleDevTools(data),
+        [IPC_EMIT_CHANNEL.TOGGLE_DEV_TOOLS]: (data) => this.handleToggleDevTools(data),
         [IPC_EMIT_CHANNEL.ON_RELOAD]: (data) => this.handleReloadTab(data),
         [IPC_EMIT_CHANNEL.CLOSE_APP]: () => this.onCloseApp(),
         [IPC_EMIT_CHANNEL.REQUEST_PIP]: (data) => this.requestPIP(data),
-        [IPC_EMIT_CHANNEL.TOGGLE_BOOKMARK]: (data) =>
-          this.handleToggleBookmark(data),
+        [IPC_EMIT_CHANNEL.TOGGLE_BOOKMARK]: (data) => this.handleToggleBookmark(data),
       };
       console.log("initializeHandlers Completed");
     } catch (err) {
@@ -128,10 +87,7 @@ export class ViewController {
 
   async init() {
     try {
-      await Promise.all([
-        this.tabController.initialize(),
-        this.vaultController.initialize(),
-      ]);
+      await Promise.all([this.tabController.initialize(), this.vaultController.initialize()]);
       await this.initializeHandlers();
       ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
       ipcMain.on("send", (event, args: IPC) => this.onListener(args));
@@ -147,14 +103,14 @@ export class ViewController {
   }
   async getTab({ id }: { id: string }) {
     const tab = this.tabController.getTabById(id);
-    return tab.toJSON();
+    return tab?.toJSON();
   }
 
   private onInvoke(args: IPC) {
     try {
       const { channel, data } = args;
       log.info(`[IPC Invoke] channel: ${channel}`);
-      const handler = this.invokeHandlers[channel];
+      const handler = this.invokeHandlers?.[channel];
       if (handler) {
         return handler(data);
       }
@@ -167,7 +123,7 @@ export class ViewController {
   private onListener(args: IPC) {
     const { channel, data } = args;
     // log.info(`[IPC Listen] channel: ${channel}`);
-    const handler = this.listenerHandlers[channel];
+    const handler = this.listenerHandlers?.[channel];
     if (handler) {
       handler(data);
     } else {
@@ -184,9 +140,8 @@ export class ViewController {
   async handleShowViewById(props: IHandleResizeView) {
     try {
       if (!props?.tab.id) throw new Error("Tab id not found");
-      const currentTab = this.tabController.getTabById(props.tab?.id);
+      const currentTab = this.tabController.getTabById(props.tab?.id) as Tab;
       this.attachChildView(currentTab.view);
-      // currentTab.view.webContents.loadURL(currentTab.url);
       const url1 = currentTab.url;
       const url2 = currentTab.webContents.getURL();
       if (!isSameURl(url1, url2)) {
@@ -195,7 +150,6 @@ export class ViewController {
       currentTab.show();
       currentTab.view.setBounds(props.screen);
       this.tabController.setActiveTab(currentTab.id);
-      // currentTab.registerTabEvents();
     } catch (error) {
       return new ErrorServices(error);
     }
@@ -207,10 +161,10 @@ export class ViewController {
       if (!id || !url) throw new Error("Tab id or url not found");
       const currentTab = this.tabController.getTabById(id);
       if (!currentTab) throw new Error("Tab not found");
-      await this.loadSessionByURL({
-        url,
-        view: currentTab.view,
-      });
+      // await this.loadSessionByURL({
+      //   url,
+      //   view: currentTab.view,
+      // });
       currentTab.webContents.loadURL(url);
       currentTab.updateUrl(url);
       this.window.webContents.send("GET_TABS", this.getTabs());
@@ -219,38 +173,32 @@ export class ViewController {
     }
   }
 
-  async loadSessionByURL({
-    url,
-    view,
-  }: {
-    url: string;
-    view: WebContentsView;
-  }) {
-    const { origin } = new URL(url);
-    if (!origin) return;
-    const viewCookie = await session.defaultSession.cookies.get({
-      url: origin,
-    });
-    if (viewCookie.length) {
-      viewCookie?.forEach((item) => {
-        view.webContents?.session.cookies.set({
-          url: origin,
-          name: item.name,
-          domain: item.domain,
-          value: item.value,
-          path: item.path,
-          httpOnly: item.httpOnly,
-          secure: item.secure,
-          expirationDate: item.expirationDate,
-          sameSite: item.sameSite,
-        });
-      });
-    }
-  }
+  // async loadSessionByURL({ url, view }: { url: string; view: WebContentsView }) {
+  //   const { origin } = new URL(url);
+  //   if (!origin) return;
+  //   const viewCookie = await session.defaultSession.cookies.get({
+  //     url: origin,
+  //   });
+  //   if (viewCookie.length) {
+  //     viewCookie?.forEach((item) => {
+  //       view.webContents?.session.cookies.set({
+  //         url: origin,
+  //         name: item.name,
+  //         domain: item.domain,
+  //         value: item.value,
+  //         path: item.path,
+  //         httpOnly: item.httpOnly,
+  //         secure: item.secure,
+  //         expirationDate: item.expirationDate,
+  //         sameSite: item.sameSite,
+  //       });
+  //     });
+  //   }
+  // }
 
   handleResizeView(props: IHandleResizeView) {
     const { tab, screen } = props;
-    const currentTab = this.tabController.getTabById(tab.id);
+    const currentTab = this.tabController.getTabById(tab?.id as string);
     if (!currentTab) return;
     currentTab.view.setBounds(screen);
   }
@@ -283,11 +231,11 @@ export class ViewController {
   async onCloseTab(props: { id: string }) {
     try {
       if (!props || !props.id) throw new Error("Tab not found");
-      const currentTab = this.tabController.getTabById(props.id);
+      const currentTab = this.tabController.getTabById(props.id) as Tab;
       currentTab.hide();
       this.detachChildView(currentTab.view);
       const { nextTab } = this.tabController.closeTab(props.id);
-      this.attachChildView(nextTab.view);
+      if (nextTab?.view) this.attachChildView(nextTab?.view);
       this.window.webContents.send("GET_TABS", this.getTabs());
     } catch (error) {
       return new ErrorServices(error);
@@ -324,7 +272,7 @@ export class ViewController {
     try {
       if (!tab?.id) throw new Error(`Tab id not found`);
       const currentTab = this.tabController.getTabById(tab.id);
-      return currentTab.onRequestPIP();
+      return currentTab?.onRequestPIP();
     } catch (error) {
       return new ErrorServices(error);
     }
@@ -378,12 +326,13 @@ export class ViewController {
   async cloudSave() {
     try {
       const tabs = this.getTabs();
-      const cookies = session.defaultSession.cookies;
-      for (let i = 0; i < tabs.length; i++) {
-        tabs[i].cookies = await this.getCookieFromURL(tabs[i].url);
-      }
+      // const cookies = session.defaultSession.cookies;
+      // for (let i = 0; i < tabs.length; i++) {
+      //   tabs[i].cookies = await this.getCookieFromURL(tabs[i].url);
+      // }
       await Promise.all([
-        cookies.flushStore(),
+        this.minusSession?.cookies.flushStore(),
+        this.minusSession?.flushStorageData(),
         this.userStore.saveFiles({ tabs: tabs || [], index: 0 }),
       ]);
       return this.window.webContents?.send("SYNC");
@@ -409,8 +358,7 @@ export class ViewController {
       dialog
         .showMessageBox({
           title: "Warning",
-          message:
-            "Hardware acceleration is disabled. This may cause some issues. Do you want to continue? ",
+          message: "Hardware acceleration is disabled. This may cause some issues. Do you want to continue? ",
           buttons: ["Yes", "No"],
         })
         .then((res) => {
@@ -428,20 +376,14 @@ export class ViewController {
   }
 
   clearCache({ tab }: { tab: ITab }) {
-    return this.tabController.getTabById(tab.id)?.clearCache();
+    return this.tabController.getTabById(tab?.id as string)?.clearCache();
   }
   clearAllCache() {
     const tabs = this.getTabs();
     tabs.forEach((tab) => this.tabController.getTabById(tab.id)?.clearCache());
   }
 
-  showNotification({
-    title,
-    description,
-  }: {
-    title: string;
-    description: string;
-  }) {
+  showNotification({ title, description }: { title: string; description: string }) {
     return new Notification({
       title: title,
       body: description,
@@ -452,23 +394,12 @@ export class ViewController {
     return this.userScriptManagerController.getUserScripts();
   }
 
-  async saveUserScript({
-    id,
-    source,
-    enabled,
-  }: {
-    id?: string;
-    source: string;
-    enabled?: boolean;
-  }) {
-    if (!source?.trim()) {
+  async saveUserScript(data: IUserScript) {
+    console.log("save user Script");
+    if (!data?.source?.trim()) {
       throw new Error("Script source is required");
     }
-    return this.userScriptManagerController.saveUserScript({
-      id,
-      source,
-      enabled,
-    });
+    return this.userScriptManagerController.saveUserScript(data);
   }
 
   async importUserScript() {
@@ -480,9 +411,7 @@ export class ViewController {
       ],
     });
     if (result.canceled || !result.filePaths?.length) return null;
-    const imported = await this.userScriptManagerController.importUserScript(
-      result.filePaths[0],
-    );
+    const imported = await this.userScriptManagerController.importUserScript(result.filePaths[0]);
     return imported;
   }
 
@@ -504,12 +433,7 @@ export class ViewController {
     return this.vaultController.getVaults();
   }
 
-  async vaultAdd(data: {
-    site: string;
-    username: string;
-    password: string;
-    notes?: string;
-  }) {
+  async vaultAdd(data: { site: string; username: string; password: string; notes?: string }) {
     if (!data?.site?.trim()) {
       throw new Error("Site is required");
     }
@@ -529,9 +453,7 @@ export class ViewController {
 
   async vaultUpdate(data: {
     id: string;
-    patch: Partial<
-      Pick<IPasswordItem, "site" | "username" | "password" | "notes">
-    >;
+    patch: Partial<Pick<IPasswordItem, "site" | "username" | "password" | "notes">>;
   }) {
     if (!data?.id) {
       throw new Error("Vault item id is required");
@@ -567,27 +489,17 @@ export class ViewController {
     return result;
   }
 
-  async vaultSelectCredential(data: {
-    tabId: string;
-    candidates: { id: string; username: string; site: string }[];
-  }) {
+  async vaultSelectCredential(data: { tabId: string; candidates: { id: string; username: string; site: string }[] }) {
     if (!data?.tabId) throw new Error("Tab id is required");
     if (!Array.isArray(data?.candidates) || data.candidates.length === 0) {
       return null;
     }
     const tab = this.tabController.getTabById(data.tabId);
     if (!tab) throw new Error("Tab not found");
-    return this.vaultDialogController.selectCredential(
-      tab.webContents,
-      data.candidates,
-    );
+    return this.vaultDialogController.selectCredential(tab.webContents, data.candidates);
   }
 
-  async vaultConfirmSave(data: {
-    tabId: string;
-    username: string;
-    site: string;
-  }) {
+  async vaultConfirmSave(data: { tabId: string; username: string; site: string }) {
     if (!data?.tabId) throw new Error("Tab id is required");
     const tab = this.tabController.getTabById(data.tabId);
     if (!tab) throw new Error("Tab not found");
@@ -603,28 +515,22 @@ export class ViewController {
     if (!tab) throw new Error("Tab not found");
     const vaultItems = this.vaultController.getVaults();
     const result = await this.vaultDialogController.openManager(
-      tab.webContents,
+      this.window, // BrowserWindow — needed to addChildView the vault overlay
+      tab, // full Tab — needed for tab.view.getBounds() and fallback webContents
       vaultItems,
     );
     if (!Array.isArray(result)) return false;
+    console.log("save result", result);
     const existing = this.vaultController.getVaults();
     const existingIds = new Set(existing.map((item) => item.id));
-    const nextIds = new Set(
-      result
-        .filter((item) => item.id && existingIds.has(item.id))
-        .map((item) => item.id),
-    );
+    const nextIds = new Set(result.filter((item) => item.id && existingIds.has(item.id)).map((item) => item.id));
     for (const current of existing) {
       if (!nextIds.has(current.id)) {
         await this.vaultController.removeVault(current.id);
       }
     }
     for (const item of result) {
-      if (
-        !item?.site?.trim() ||
-        !item?.username?.trim() ||
-        !item?.password?.trim()
-      ) {
+      if (!item?.site?.trim() || !item?.username?.trim() || !item?.password?.trim()) {
         continue;
       }
       if (existingIds.has(item.id)) {
@@ -648,24 +554,15 @@ export class ViewController {
 
   async userscriptOpenManager(data: { tabId: string }) {
     try {
-      log.log("userscriptOpenManager", data);
       if (!data?.tabId) throw new Error("Tab id is required");
       const tab = this.tabController.getTabById(data.tabId);
       if (!tab) throw new Error("Tab not found");
       const scripts = this.userScriptManagerController.getUserScripts();
-      log.log("userscriptOpenManager scripts", scripts);
-      const result = await this.userScriptDialogController.openManager(
-        tab.webContents,
-        scripts,
-      );
+      const result = await this.userScriptDialogController.openManager(this.window, tab, scripts);
       if (!Array.isArray(result)) return false;
       const existing = this.userScriptManagerController.getUserScripts();
       const existingIds = new Set(existing.map((item) => item.id));
-      const nextIds = new Set(
-        result
-          .filter((item) => item.id && existingIds.has(item.id))
-          .map((item) => item.id),
-      );
+      const nextIds = new Set(result.filter((item) => item.id && existingIds.has(item.id)).map((item) => item.id));
       for (const current of existing) {
         if (!nextIds.has(current.id)) {
           await this.userScriptManagerController.deleteUserScript(current.id);
@@ -674,16 +571,9 @@ export class ViewController {
       for (const item of result) {
         if (!item?.source?.trim()) continue;
         if (existingIds.has(item.id)) {
-          await this.userScriptManagerController.saveUserScript({
-            id: item.id,
-            source: item.source,
-            enabled: Boolean(item.enabled),
-          });
+          await this.userScriptManagerController.saveUserScript(item);
         } else {
-          await this.userScriptManagerController.saveUserScript({
-            source: item.source,
-            enabled: Boolean(item.enabled),
-          });
+          await this.userScriptManagerController.saveUserScript(item);
         }
       }
       return true;

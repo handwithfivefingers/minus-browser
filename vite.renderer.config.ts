@@ -24,14 +24,14 @@ export default defineConfig({
     //   fileName: () => "sidebar.js",
     //   formats: ["umd"], // makes it accessible as <script>
     // },
-    // rollupOptions: {
-    //   external: ["react", "react-dom"],
-    //   output: {
-    //     globals: {
-    //       react: "React",
-    //       "react-dom": "ReactDOM",
-    //     },
-    //   },
-    // },
+    rollupOptions: {
+      input: {
+        main_window: "./index.html", // path to your main html
+        userscript: "./src/features/injection/apps/userscript/index.html", // ADD THIS
+        vault: "./src/features/injection/apps/vault/index.html", // ADD THIS
+      },
+    },
   },
 });
+
+// debug: npx asar list ./out/MinusBrowser-darwin-arm64/MinusBrowser.app/Contents/Resources/app.asar

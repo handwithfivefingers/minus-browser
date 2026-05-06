@@ -10,11 +10,11 @@ export interface IUserScript {
   name: string;
   source: string;
   matches: string[];
-  excludes: string[];
+  excludes?: string[];
   runAt: UserScriptRunAt;
   enabled: boolean;
-  createdAt: number;
-  updatedAt: number;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface IUserScriptStore {

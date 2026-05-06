@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import { v7 as uuid_v7 } from "uuid";
-import { StoreManager } from "../../browsers/stores";
-import { UserScript } from "../class/script";
-import { IUserScript, IUserScriptStore } from "../interfaces/userscript";
-import { isUrlMatchedByPatterns, parseUserScriptMeta } from "../utils/parser";
+import { StoreManager } from "../../system/stores";
+import { IUserScript, UserScript } from "../class/script";
+import { IUserScriptStore } from "../interfaces/userscript";
+import { isUrlMatchedByPatterns } from "../utils/parser";
 
 export class UserScriptController {
   private store: StoreManager = new StoreManager("userscripts");
@@ -12,11 +12,7 @@ export class UserScriptController {
   async initialize() {
     const raw = await this.store.readFiles<IUserScriptStore>();
     const scripts = Array.isArray(raw?.scripts) ? raw.scripts : [];
-    this.scripts = new Map(
-      scripts
-        .filter((script) => script?.id)
-        .map((script) => [script.id, new UserScript(script)]),
-    );
+    this.scripts = new Map(scripts.filter((script) => script?.id).map((script) => [script.id, new UserScript(script)]));
   }
 
   private persist() {
@@ -27,27 +23,12 @@ export class UserScriptController {
     return [...this.scripts.values()].map((script) => script.toJSON());
   }
 
-  async saveScript({
-    id,
-    source,
-    enabled,
-  }: {
-    id?: string;
-    source: string;
-    enabled?: boolean;
-  }) {
+  async saveScript({ id, ...data }: IUserScript) {
     const now = Date.now();
-    const parsed = parseUserScriptMeta(source);
-    const current = id ? this.scripts.get(id) : null;
-
+    const current = id ? this.scripts.get(id) : undefined;
     const script: UserScript = new UserScript({
       id: current?.id || uuid_v7(),
-      name: parsed.name,
-      source,
-      matches: parsed.matches,
-      excludes: parsed.excludes,
-      runAt: parsed.runAt,
-      enabled: enabled ?? current?.enabled ?? false,
+      ...data,
       createdAt: current?.createdAt || now,
     });
 
@@ -58,7 +39,16 @@ export class UserScriptController {
 
   async importScriptFromFile(filePath: string) {
     const source = await fs.readFile(filePath, "utf-8");
-    return this.saveScript({ source, enabled: false });
+    return this.saveScript(
+      new UserScript({
+        source,
+        enabled: false,
+        name: `ImportScript-${Date.now()}`,
+        id: uuid_v7(),
+        matches: ["*"],
+        runAt: "document-start",
+      }),
+    );
   }
 
   async deleteScript(id: string) {

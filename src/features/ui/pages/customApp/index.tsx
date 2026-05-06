@@ -9,10 +9,10 @@ import { useMinusThemeStore } from "../../stores/useMinusTheme";
 import { useTabStore } from "../../stores/useTabStore";
 
 const Header = lazy(() => import("~/features/ui/components/header"));
+
 const LAYOUT_HEADER_CLASS = {
   BASIC: "h-screen relative overflow-hidden w-full flex flex-col",
-  FLOATING:
-    "h-[calc(100svh-8px)] rounded-md relative overflow-hidden w-full flex flex-col gap-1",
+  FLOATING: "h-[calc(100svh-8px)] rounded-md relative overflow-hidden w-full flex flex-col gap-1",
 };
 const WEBVIEW_CLASSES = {
   BASIC: "h-[calc(100vh-34px)] rounded-md relative overflow-hidden",
@@ -41,7 +41,7 @@ interface IPendingCredentialSave {
 }
 
 const CustomApp = () => {
-  const { customApp: tabId } = useParams<{ customApp: string }>();
+  const { customApp: tabId = "" } = useParams<{ customApp: string }>();
   const { layout } = useMinusThemeStore();
   const [isLoading, setIsLoading] = useState(false);
   const handledCredentialRef = useRef<Set<string>>(new Set());
@@ -51,7 +51,7 @@ const CustomApp = () => {
   useEffect(() => {
     setActiveTab(tabId);
     getScreenData();
-    tabServices.subscribeTab(tabId, ({ favicon, title, url }) => {
+    tabServices.subscribeTab<{ favicon: string; title: string; url: string }>(tabId, ({ favicon, title, url }) => {
       updateTab(tabId, { favicon, title, url });
     });
     window.api.LISTENER("ON_RELOAD", onReload);
@@ -112,9 +112,7 @@ const CustomApp = () => {
 
   const onFillPassword = async () => {
     try {
-      const credentials = await window.api.INVOKE<IPasswordVaultItem[]>(
-        "VAULT_LIST",
-      );
+      const credentials = await window.api.INVOKE<IPasswordVaultItem[]>("VAULT_LIST");
       if (!credentials?.length) return;
       const currentUrl = tab?.url || "";
       const host = (() => {
@@ -128,25 +126,19 @@ const CustomApp = () => {
         const site = (item.site || "").toLowerCase();
         return site && host && (host.includes(site) || site.includes(host));
       });
-      const candidateList = matchedCredentials.length
-        ? matchedCredentials
-        : credentials;
+      if (!matchedCredentials.length) return;
+      const candidateList = matchedCredentials;
       let selected = candidateList[0];
       if (candidateList.length > 1) {
-        const selectedId = await window.api.INVOKE<string | null>(
-          "VAULT_SELECT_CREDENTIAL",
-          {
-            tabId,
-            candidates: candidateList.map((item) => ({
-              id: item.id,
-              username: item.username,
-              site: item.site,
-            })),
-          },
-        );
-        selected =
-          candidateList.find((item) => item.id === selectedId) ||
-          candidateList[0];
+        const selectedId = await window.api.INVOKE<string | null>("VAULT_SELECT_CREDENTIAL", {
+          tabId,
+          candidates: candidateList.map((item) => ({
+            id: item.id,
+            username: item.username,
+            site: item.site,
+          })),
+        });
+        selected = candidateList.find((item) => item.id === selectedId) || candidateList[0];
       }
       if (!selected) return;
       await fillByCredential(selected);
@@ -210,14 +202,11 @@ const CustomApp = () => {
         site: pendingCredentialSave.site,
       });
       if (!shouldSave) return;
-      const existingVault = await window.api.INVOKE<IPasswordVaultItem[]>(
-        "VAULT_LIST",
-      );
+      const existingVault = await window.api.INVOKE<IPasswordVaultItem[]>("VAULT_LIST");
       const existing = existingVault.find(
         (item) =>
           item.site.toLowerCase() === pendingCredentialSave.site &&
-          item.username.trim().toLowerCase() ===
-            pendingCredentialSave.username.trim().toLowerCase(),
+          item.username.trim().toLowerCase() === pendingCredentialSave.username.trim().toLowerCase(),
       );
       if (existing) {
         await window.api.INVOKE("VAULT_UPDATE", {
@@ -277,8 +266,7 @@ const WebViewInstance = ({ id }: { id: string }) => {
     getContentView({ id });
     const autoSize = debounce(() => {
       if (!webviewRef.current) return;
-      const { x, y, width, height } =
-        webviewRef.current.getBoundingClientRect();
+      const { x, y, width, height } = webviewRef.current.getBoundingClientRect();
       window.api.EMIT("VIEW_RESPONSIVE", {
         tab: { id },
         screen: { x, y, width, height },
@@ -288,16 +276,14 @@ const WebViewInstance = ({ id }: { id: string }) => {
     resizeObserver?.observe(webviewRef.current);
     return () => {
       id && window.api.EMIT("HIDE_VIEW", { id });
-      webviewRef.current &&
-        resizeObserver?.unobserve(webviewRef.current as Element);
+      webviewRef.current && resizeObserver?.unobserve(webviewRef.current as Element);
     };
   }, [id]);
 
   const getContentView = async (tab: Partial<Tab>) => {
     try {
       if (!webviewRef.current) return;
-      const { x, y, width, height } =
-        webviewRef.current.getBoundingClientRect();
+      const { x, y, width, height } = webviewRef.current.getBoundingClientRect();
       const screen = { x, y, width, height };
       const data = { screen, tab: tab };
       await showViewByID(data);

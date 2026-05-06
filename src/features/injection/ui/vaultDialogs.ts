@@ -1,6 +1,12 @@
 export const openVaultCredentialPickerDialog = (
   candidates: { id: string; username: string; site: string }[],
 ) => {
+  const trustPolicy = (window as any)?.trustedTypes?.createPolicy(
+    "forceInner",
+    {
+      createHTML: (to_escape: string) => to_escape,
+    },
+  );
   return new Promise((resolve) => {
     const old = document.getElementById("__minus_vault_picker");
     if (old) old.remove();
@@ -23,7 +29,8 @@ export const openVaultCredentialPickerDialog = (
     panel.style.background = "#fff";
     panel.style.borderRadius = "14px";
     panel.style.padding = "12px";
-    panel.style.fontFamily = "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    panel.style.fontFamily =
+      "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
     panel.style.fontSize = "12px";
     panel.style.color = "#0f172a";
     panel.style.border = "1px solid #e2e8f0";
@@ -78,9 +85,10 @@ export const openVaultCredentialPickerDialog = (
       btn.style.borderRadius = "8px";
       btn.style.background = "#f8fafc";
       btn.style.cursor = "pointer";
-      btn.innerHTML =
+      btn.innerHTML = trustPolicy.createHTML(
         `<div style="font-weight:500;">Domain: ${item.site || "unknown"}</div>` +
-        `<div style="font-weight:300;color:rgba(0,0,0,.8);margin-top:2px;">${item.username || "unknown"}</div>`;
+          `<div style="font-weight:300;color:rgba(0,0,0,.8);margin-top:2px;">${item.username || "unknown"}</div>`,
+      );
       btn.onclick = () => close(item.id);
       panel.appendChild(btn);
     });
@@ -111,6 +119,12 @@ export const openVaultSaveConfirmDialog = (data: {
   username: string;
   site: string;
 }) => {
+  const trustPolicy = (window as any)?.trustedTypes?.createPolicy(
+    "forceInner",
+    {
+      createHTML: (to_escape: string) => to_escape,
+    },
+  );
   return new Promise((resolve) => {
     const old = document.getElementById("__minus_vault_save_confirm");
     if (old) old.remove();
@@ -134,7 +148,8 @@ export const openVaultSaveConfirmDialog = (data: {
     panel.style.background = "#fff";
     panel.style.borderRadius = "14px";
     panel.style.padding = "12px";
-    panel.style.fontFamily = "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    panel.style.fontFamily =
+      "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
     panel.style.fontSize = "12px";
     panel.style.color = "#0f172a";
     panel.style.border = "1px solid #e2e8f0";
@@ -182,8 +197,9 @@ export const openVaultSaveConfirmDialog = (data: {
     const desc = document.createElement("div");
     desc.style.fontSize = "13px";
     desc.style.marginBottom = "12px";
-    desc.innerHTML =
-      "Save credential for <b>" + username + "</b> on <b>" + site + "</b>?";
+    desc.innerHTML = trustPolicy.createHTML(
+      "Save credential for <b>" + username + "</b> on <b>" + site + "</b>?",
+    );
     panel.appendChild(desc);
 
     const actions = document.createElement("div");
@@ -221,6 +237,12 @@ export const openVaultSaveConfirmDialog = (data: {
 };
 
 export const openVaultManagerDialog = (input: any[]) => {
+  const trustPolicy = (window as any)?.trustedTypes?.createPolicy(
+    "forceInner",
+    {
+      createHTML: (to_escape: string) => to_escape,
+    },
+  );
   return new Promise((resolve) => {
     const old = document.getElementById("__minus_vault_manager");
     if (old) old.remove();
@@ -246,7 +268,8 @@ export const openVaultManagerDialog = (input: any[]) => {
     panel.style.display = "grid";
     panel.style.gridTemplateColumns = "320px 1fr";
     panel.style.overflow = "hidden";
-    panel.style.fontFamily = "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    panel.style.fontFamily =
+      "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
     panel.style.fontSize = "12px";
 
     let items = (input || []).map((item) => ({ ...item }));
@@ -279,8 +302,10 @@ export const openVaultManagerDialog = (input: any[]) => {
 
     const icon = {
       plus: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',
-      trash: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>',
-      check: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L20 7"/></svg>',
+      trash:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>',
+      check:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 5 5L20 7"/></svg>',
       x: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
       disk: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>',
     };
@@ -320,7 +345,7 @@ export const openVaultManagerDialog = (input: any[]) => {
     const uid = () => "new-" + Math.random().toString(36).slice(2);
 
     const renderList = () => {
-      left.innerHTML = "";
+      left.innerHTML = trustPolicy.createHTML("");
       const title = document.createElement("div");
       title.textContent = "Vault";
       title.style.fontWeight = "600";
@@ -328,12 +353,18 @@ export const openVaultManagerDialog = (input: any[]) => {
       left.appendChild(title);
 
       const addBtn = document.createElement("button");
-      addBtn.innerHTML = icon.plus + "<span>New</span>";
+      addBtn.innerHTML = trustPolicy.createHTML(icon.plus + "<span>New</span>");
       applyButtonBase(addBtn);
       styleButton(addBtn, "#0f172a", "#1e293b", "#fff");
       addBtn.style.marginBottom = "8px";
       addBtn.onclick = () => {
-        const item = { id: uid(), site: "", username: "", password: "", notes: "" };
+        const item = {
+          id: uid(),
+          site: "",
+          username: "",
+          password: "",
+          notes: "",
+        };
         items.unshift(item);
         selectedId = item.id;
         renderList();
@@ -352,9 +383,10 @@ export const openVaultManagerDialog = (input: any[]) => {
         btn.style.borderRadius = "8px";
         btn.style.cursor = "pointer";
         btn.style.background = selectedId === item.id ? "#e2e8f0" : "#fff";
-        btn.innerHTML =
+        btn.innerHTML = trustPolicy.createHTML(
           `<div style="font-weight:500;">Domain: ${item.site || "new site"}</div>` +
-          `<div style="font-weight:300;color:rgba(0,0,0,.8);margin-top:2px;">${item.username || "unknown"}</div>`;
+            `<div style="font-weight:300;color:rgba(0,0,0,.8);margin-top:2px;">${item.username || "unknown"}</div>`,
+        );
         btn.onclick = () => {
           selectedId = item.id;
           renderList();
@@ -365,7 +397,7 @@ export const openVaultManagerDialog = (input: any[]) => {
     };
 
     const renderForm = () => {
-      right.innerHTML = "";
+      right.innerHTML = trustPolicy.createHTML("");
       const selected = getSelected();
       const title = document.createElement("div");
       title.textContent = selected ? "Edit Credential" : "Select Credential";
@@ -427,7 +459,9 @@ export const openVaultManagerDialog = (input: any[]) => {
       actions.style.marginTop = "auto";
 
       const del = document.createElement("button");
-      del.innerHTML = icon.trash + "<span>Delete</span>";
+      del.innerHTML = trustPolicy.createHTML(
+        icon.trash + "<span>Delete</span>",
+      );
       applyButtonBase(del);
       styleButton(del, "#fee2e2", "#fecaca", "#b91c1c", "#fecaca");
       del.onclick = () => {
@@ -449,13 +483,15 @@ export const openVaultManagerDialog = (input: any[]) => {
       };
 
       const cancel = document.createElement("button");
-      cancel.innerHTML = icon.x + "<span>Cancel</span>";
+      cancel.innerHTML = trustPolicy.createHTML(icon.x + "<span>Cancel</span>");
       applyButtonBase(cancel);
       styleButton(cancel, "#e2e8f0", "#cbd5e1", "#334155");
       cancel.onclick = () => close(null);
 
       const apply = document.createElement("button");
-      apply.innerHTML = icon.check + "<span>Apply</span>";
+      apply.innerHTML = trustPolicy.createHTML(
+        icon.check + "<span>Apply</span>",
+      );
       applyButtonBase(apply);
       styleButton(apply, "#0f172a", "#1e293b", "#fff");
       apply.onclick = () => {
