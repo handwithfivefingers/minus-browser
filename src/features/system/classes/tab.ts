@@ -4,9 +4,10 @@ import { AdBlocker } from "../controller/adsBlock";
 import { ContextMenuController } from "../controller/context";
 import { ITab } from "../interfaces";
 import log from "electron-log";
-import { UserScriptController } from "../../userscripts";
 import { IPC_RENDERER_EVENT } from "../constants/ipc";
-import { VaultController } from "~/features/vault/controller/vaultController";
+import { VaultController } from "../controller/vault";
+import { UserScriptController } from "../controller/userScript";
+// import { VaultController } from "~/features/vault/controller/vaultController";
 interface IDestroy {
   destroy?: () => void;
 }
@@ -362,8 +363,8 @@ export class Tab {
     this.credentialAssistRegistered = true;
     try {
       const credentials = new VaultController().getVaults();
-      const matchedCredentials = credentials.length ? credentials.filter(item => this.url.includes(item.site)) : [];
-      if(!matchedCredentials?.length) return
+      const matchedCredentials = credentials.length ? credentials.filter((item) => this.url.includes(item.site)) : [];
+      if (!matchedCredentials?.length) return;
       await this.view.webContents.executeJavaScript(
         `(() => {
           if (window.__minusCredentialAssistMounted) return;

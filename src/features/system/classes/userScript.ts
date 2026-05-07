@@ -1,5 +1,5 @@
 import { v7 as uuid_v7 } from "uuid";
-import { UserScriptRunAt } from "..";
+import { UserScriptRunAt } from "../interfaces/userscript";
 
 export interface IUserScript {
   id: string;

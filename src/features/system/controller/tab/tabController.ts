@@ -5,9 +5,9 @@ import { Tab } from "../../classes/tab";
 import { ITab } from "../../interfaces";
 import { Bookmark } from "../bookmark";
 import { AdBlocker } from "../adsBlock";
-import { UserScriptController } from "../../../userscripts";
+import { UserScriptController } from "../userScript";
 export class TabController {
-  activeTab: Tab | null;
+  activeTab: Tab | null = null;
   tabsIndex: Record<string, number> = {};
   index: number = 0;
   hibernateMapping: Map<string, View> = new Map();
@@ -66,8 +66,9 @@ export class TabController {
     }
   }
   addNewBookmark({ id }: Partial<Tab>) {
-    const tab = this.getTabById(id);
-    const isBookmarked = this.bookmark.bookmarks.has(tab.url);
+    const tab = this.getTabById(id as string);
+    const isBookmarked = this.bookmark.bookmarks.has(tab?.url as string);
+    if (!tab) return;
     if (!isBookmarked) {
       tab.isBookmarked = true;
       this.bookmark.bookmarks.add(tab.url);
@@ -79,10 +80,7 @@ export class TabController {
     this.bookmark.saveBookmark();
   }
   getTabs() {
-    const tabs =
-      this.tabs.size > 0
-        ? [...this.tabs.values()].map((tab) => tab.toJSON())
-        : [];
+    const tabs = this.tabs.size > 0 ? [...this.tabs.values()].map((tab) => tab.toJSON()) : [];
     return tabs;
   }
   getTabById(id: string) {
@@ -130,6 +128,7 @@ export class TabController {
   }
   setActiveTab(id: string) {
     const currentTab = this.getTabById(id);
+    if (!currentTab) return;
     currentTab.timestamp = Date.now();
     this.activeTab = currentTab;
   }

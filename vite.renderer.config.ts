@@ -28,7 +28,7 @@ export default defineConfig({
       input: {
         main_window: "./index.html", // path to your main html
         userscript: "./src/features/injection/apps/userscript/index.html", // ADD THIS
-        vault: "./src/features/injection/apps/vault/index.html", // ADD THIS
+        // vault: "./src/features/injection/apps/vault/index.html", // ADD THIS
       },
     },
   },

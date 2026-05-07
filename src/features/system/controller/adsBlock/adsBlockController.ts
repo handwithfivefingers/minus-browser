@@ -3,64 +3,64 @@ import { ElectronBlocker, fullLists, Request } from "@ghostery/adblocker-electro
 import fetch from "cross-fetch";
 import { session, WebContentsView } from "electron";
 import log from "electron-log";
-export const ALL_LISTS = new Set([
-  "https://easylist.to/easylist/easylist.txt",
-  "https://easylist.to/easylist/easyprivacy.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/badware.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/unbreak.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/annoyances.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/resource-abuse.txt",
-  "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/yt-annoyances.txt",
-  "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
-  "https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/filters-2025.txt",
-  ...fullLists,
-]);
+import fs, { readFileSync, writeFileSync } from "node:fs";
+// export const ALL_LISTS = new Set([
+//   "https://easylist.to/easylist/easylist.txt",
+//   "https://easylist.to/easylist/easyprivacy.txt",
+//   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt",
+//   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/badware.txt",
+//   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt",
+//   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/unbreak.txt",
+//   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/annoyances.txt",
+//   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/resource-abuse.txt",
+//   "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/yt-annoyances.txt",
+//   "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt",
+//   "https://raw.githubusercontent.com/ghostery/adblocker/master/packages/adblocker/assets/ublock-origin/filters-2025.txt",
+//   ...fullLists,
+// ]);
 
-// const skipAds = () => {
-//   const script = function () {
-//     function skipAds() {
-//       const pipMode = document.querySelector("ytd-pip-container, ytd-miniplayer-player-container");
-//       const adVideo = document.querySelector(".ad-showing video");
+const SkipADSBlock = () => {
+  console.log("SkipADSBlock start initializing ...");
 
-//       /**@ts-ignore */
-//       if (adVideo && adVideo.duration) {
-//         /**@ts-ignore */
-//         adVideo.currentTime = adVideo.duration;
-//         /**@ts-ignore */
-//         adVideo.muted = true;
-//       }
-//       const skipBtn = document.querySelector(".ytp-ad-skip-button, .ytp-ad-skip-button-modern");
-//       if (skipBtn) {
-//         /**@ts-ignore */
-//         skipBtn.click();
-//       }
+  function skipAds() {
+    const pipMode = document.querySelector("ytd-pip-container, ytd-miniplayer-player-container");
+    const adVideo = document.querySelector(".ad-showing video");
 
-//       if (document.querySelector(".ad-showing")) {
-//         setTimeout(skipAds, 500);
-//       }
-//     }
-//     function keepVideoPlayingEarly() {}
-//     /**@ts-ignore */
-//     let debounceTimeout;
-//     const observer = new MutationObserver(() => {
-//       /**@ts-ignore */
-//       clearTimeout(debounceTimeout);
-//       debounceTimeout = setTimeout(() => {
-//         skipAds();
-//         keepVideoPlayingEarly();
-//       }, 100);
-//     });
-//     observer.observe(document.body, { childList: true, subtree: true });
-//   };
-//   return `(${script.toString()})();`;
-// };
+    /**@ts-ignore */
+    if (adVideo && adVideo.duration) {
+      /**@ts-ignore */
+      adVideo.currentTime = adVideo.duration;
+      /**@ts-ignore */
+      adVideo.muted = true;
+    }
+    const skipBtn = document.querySelector(".ytp-ad-skip-button, .ytp-ad-skip-button-modern");
+    if (skipBtn) {
+      /**@ts-ignore */
+      skipBtn.click();
+    }
+
+    if (document.querySelector(".ad-showing")) {
+      setTimeout(skipAds, 500);
+    }
+  }
+  function keepVideoPlayingEarly() {}
+  /**@ts-ignore */
+  let debounceTimeout;
+  const observer = new MutationObserver(() => {
+    /**@ts-ignore */
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+      skipAds();
+      keepVideoPlayingEarly();
+    }, 100);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+};
 
 const SponsorBlock = () => {
-  const GM_getValue = (key) => {
+  const GM_getValue = (key, fallback) => {
     try {
-      return JSON.parse(localStorage.getItem(key)) || null;
+      return JSON.parse(localStorage.getItem(key)) || fallback;
     } catch {
       return null;
     }
@@ -74,68 +74,7 @@ const SponsorBlock = () => {
     document.head.appendChild(style);
   };
 
-  console.log("AdBlock start initializing ...");
-  // ==UserScript==
-  // @name               EasyTube V4.0 — Ad Skip & SponsorBlock & HD Download⬇️🚀 (No Lag)
-  // @name:vi            EasyTube V4.0 — Bỏ qua quảng cáo, SponsorBlock & Tải HD (Không lag)
-  // @name:zh-CN         EasyTube V4.0 — 广告跳过、SponsorBlock 和 HD 下载器（无卡顿）
-  // @name:zh-TW         EasyTube V4.0 — 廣告跳過、SponsorBlock 和 HD 下載器（無卡頓）
-  // @name:ru            EasyTube V4.0 — Пропуск рекламы, SponsorBlock и HD загрузчик (без лагов)
-  // @name:ja            EasyTube V4.0 — 広告スキップ・SponsorBlock・HDダウンローダー（ラグなし）
-  // @name:ko            EasyTube V4.0 — 광고 건너뛰기, SponsorBlock, HD 다운로더 (렉 없음)
-  // @name:es            EasyTube V4.0 — Saltar anuncios, SponsorBlock y descarga HD (sin lag)
-  // @name:pt-BR         EasyTube V4.0 — Pular anúncios, SponsorBlock e download HD (sem lag)
-  // @name:fr            EasyTube V4.0 — Ignorer pubs, SponsorBlock et téléchargeur HD (sans lag)
-  // @name:de            EasyTube V4.0 — Werbung überspringen, SponsorBlock, HD-Download (kein Lag)
-  // @name:tr            EasyTube V4.0 — Reklam Atlama, SponsorBlock ve HD İndirici (Lag Yok)
-  // @name:pl            EasyTube V4.0 — Pomijanie reklam, SponsorBlock, pobieranie HD (bez opóźnień)
-  // @name:id            EasyTube V4.0 — Lewati Iklan, SponsorBlock & Unduhan HD (Tanpa Lag)
-  // @name:th            EasyTube V4.0 — ข้ามโฆษณา, SponsorBlock และดาวน์โหลด HD (ไม่กระตุก)
-  // @name:ar            EasyTube V4.0 — تخطي الإعلانات، SponsorBlock وتنزيل HD (بدون تأخير)
-
-  // @description        V4.0 — Rewritten for performance. 🚫 Multi-layer ad skip with minimal CPU usage. ⏭ SponsorBlock (9 cats). 🎥 Force 4K. ⬇ Download via evdfrance.fr. 💾 Remembers settings. Bypass adblock detection. No Cobalt. No lag.
-  // @description:vi     V4.0 — Viết lại tối ưu hiệu năng. 🚫 Skip quảng cáo đa lớp, CPU thấp. ⏭ SponsorBlock 9 danh mục. 🎥 Ép 4K. ⬇ Tải video qua evdfrance.fr. 💾 Lưu cài đặt. Bypass popup adblock. Không lag.
-  // @description:zh-CN  V4.0 — 性能重写版。🚫 多层广告跳过，低CPU占用。⏭ SponsorBlock(9类别)。🎥 4K画质。⬇ 通过evdfrance.fr下载视频。💾 保存设置。绕过广告拦截检测。无卡顿。
-  // @description:zh-TW  V4.0 — 效能重寫版。🚫 多層廣告跳過，低CPU占用。⏭ SponsorBlock（9類別）。🎥 4K畫質。⬇ 透過evdfrance.fr下載影片。💾 儲存設定。繞過廣告攔截偵測。無卡頓。
-  // @description:ru     V4.0 — Переписано для производительности. 🚫 Мгновенный пропуск рекламы. ⏭ SponsorBlock (9 категорий). 🎥 4K качество. ⬇ Загрузка через evdfrance.fr. 💾 Сохранение настроек. Без лагов.
-  // @description:ja     V4.0 — パフォーマンス最適化版。🚫 全広告を即時スキップ。⏭ SponsorBlock（9カテゴリ）。🎥 4K画質。⬇ evdfrance.frでダウンロード。💾 設定保存。広告ブロック検出回避。ラグなし。
-  // @description:ko     V4.0 — 성능 최적화 재작성. 🚫 즉시 광고 스킵, CPU 절약. ⏭ SponsorBlock(9카테고리). 🎥 4K화질. ⬇ evdfrance.fr 다운로드. 💾 설정저장. 광고차단 감지 우회. 렉 없음.
-  // @description:es     V4.0 — Reescrito para rendimiento. 🚫 Salta anuncios al instante. ⏭ SponsorBlock. 🎥 4K. ⬇ Descarga por evdfrance.fr. 💾 Ajustes guardados. Sin lag.
-  // @description:fr     V4.0 — Réécrit pour la performance. 🚫 Ignore les pubs instantanément. ⏭ SponsorBlock. 🎥 4K. ⬇ Téléchargement via evdfrance.fr. 💾 Paramètres sauvegardés. Sans lag.
-  // @description:de     V4.0 — Für Performance neu geschrieben. 🚫 Werbung sofort überspringen. ⏭ SponsorBlock. 🎥 4K. ⬇ Download via evdfrance.fr. 💾 Einstellungen gespeichert. Kein Lag.
-  // @description:pt-BR  V4.0 — Reescrito para desempenho. 🚫 Pula anúncios instantaneamente. ⏭ SponsorBlock. 🎥 4K. ⬇ Download via evdfrance.fr. 💾 Configurações salvas. Sem lag.
-  // @description:tr     V4.0 — Performans için yeniden yazıldı. 🚫 Reklamları anında atlar. ⏭ SponsorBlock. 🎥 4K. ⬇ evdfrance.fr ile indirme. 💾 Ayarlar kaydedilir. Lag yok.
-  // @description:pl     V4.0 — Przepisane dla wydajności. 🚫 Natychmiastowe pomijanie reklam. ⏭ SponsorBlock. 🎥 4K. ⬇ Pobieranie przez evdfrance.fr. 💾 Zapamiętuje ustawienia. Bez opóźnień.
-  // @description:id     V4.0 — Ditulis ulang untuk performa. 🚫 Lewati iklan seketika. ⏭ SponsorBlock. 🎥 4K. ⬇ Unduh via evdfrance.fr. 💾 Pengaturan tersimpan. Tanpa lag.
-  // @description:ar     V4.0 — أُعيدت الكتابة لتحسين الأداء. 🚫 تخطي الإعلانات فوراً. ⏭ SponsorBlock. 🎥 4K. ⬇ تنزيل عبر evdfrance.fr. 💾 الإعدادات محفوظة. بدون تأخير.
-  // @description:th     V4.0 — เขียนใหม่เพื่อประสิทธิภาพ 🚫 ข้ามโฆษณาทันที ⏭ SponsorBlock 🎥 4K ⬇ ดาวน์โหลดผ่าน evdfrance.fr 💾 บันทึกการตั้งค่า ไม่กระตุก
-
-  // @namespace          https://greasyfork.org/users/1510019
-  // @version            4.0.0
-  // @author             2pixel (rewrite: performance-optimized)
-  // @license            MIT
-  // @icon               https://raw.githubusercontent.com/not2pixel/TampermonkeyProjects/refs/heads/main/EasyTube.png
-  // @icon64             https://raw.githubusercontent.com/not2pixel/TampermonkeyProjects/refs/heads/main/EasyTube.png
-
-  // @match              https://*.youtube.com/*
-  // @exclude            https://www.youtube.com/live_chat*
-  // @exclude            https://studio.youtube.com/*
-
-  // @grant              GM_addStyle
-  // @grant              GM_xmlhttpRequest
-  // @grant              GM_setValue
-  // @grant              GM_getValue
-  // @connect            sponsor.ajay.app
-  // @connect            evdfrance.fr
-
-  // @run-at             document-start
-  // @compatible         chrome   Tampermonkey 4+
-  // @compatible         firefox  Tampermonkey / Violentmonkey
-  // @compatible         edge     Tampermonkey 4+
-  // @compatible         opera    Supported via Tampermonkey / Violentmonkey
-  // @homepageURL        https://greasyfork.org/en/scripts/561432
-  // @supportURL         https://greasyfork.org/en/scripts/561432/feedback
-  // ==/UserScript==
+  console.log("SponsorBlock start initializing ...");
 
   ("use strict");
 
@@ -1229,12 +1168,27 @@ export class AdBlocker {
   // blocker: CustomAds;
   blocker: ElectronBlocker;
   async initialize() {
-    this.blocker = await ElectronBlocker.fromLists(fetch, Array.from(ALL_LISTS.values()));
+    // this.blocker = await ElectronBlocker.fromLists(fetch, Array.from(ALL_LISTS.values()));
+    // this.blocker = await ElectronBlocker.fromPrebuiltAdsAndTracking(fetch);
+    this.blocker = await ElectronBlocker.fromLists(
+      fetch,
+      fullLists,
+      {
+        enableCompression: true,
+      },
+      {
+        path: "engine.bin",
+        read: async (...args) => readFileSync(...args),
+        write: async (...args) => writeFileSync(...args),
+      },
+    );
   }
 
   setupAdvancedRequestBlocking(view: WebContentsView) {
     // console.log("Start setupAdvancedRequestBlocking");
-    this.blocker?.enableBlockingInSession(session.defaultSession);
+    // this.blocker?.enableBlockingInSession(session.fromPartition("persist:minus-browser"));
+    this.blocker?.enableBlockingInSession(view.webContents.session);
+    // this.onShowADBlockRequest();
     this.injectYoutubeAdblockSponsor(view);
   }
 
@@ -1249,146 +1203,148 @@ export class AdBlocker {
 
     view.webContents.on("did-navigate", () => {
       if (view.webContents.getURL().includes("youtube.com")) {
-        view.webContents.executeJavaScript(`(${SponsorBlock.toString()})();`);
+        view.webContents.executeJavaScript(`(${SponsorBlock.toString()})();(${SkipADSBlock.toString()})();`).catch((err) => {
+          console.error("[YT Adblock] Injection failed:", err);
+        });
       }
     });
 
     return;
-    const script = [
-      this.youtubePatchPlayer(),
-      this.youtubeRemovePopups(),
-      // this.skipAds(),
-      `(${SponsorBlock.toString()})();`,
-    ];
+    // const script = [
+    //   this.youtubePatchPlayer(),
+    //   this.youtubeRemovePopups(),
+    //   this.skipAds(),
+    //   `(${SponsorBlock.toString()})();`,
+    // ];
 
-    // Inject trực tiếp vào renderer
-    if (view.webContents.getURL().includes("youtube.com")) {
-      view.webContents
-        .executeJavaScript(script.join("\n"))
-        .then(() => {
-          console.error("[YT Adblock] Successfully injected patch!");
-        })
-        .catch((err) => {
-          console.error("[YT Adblock] Injection failed:", err);
-        });
-    }
+    // // Inject trực tiếp vào renderer
+    // if (view.webContents.getURL().includes("youtube.com")) {
+    //   view.webContents
+    //     .executeJavaScript(script.join("\n"))
+    //     .then(() => {
+    //       console.error("[YT Adblock] Successfully injected patch!");
+    //     })
+    //     .catch((err) => {
+    //       console.error("[YT Adblock] Injection failed:", err);
+    //     });
+    // }
   }
 
-  youtubePatchPlayer() {
-    const script = function () {
-      "use strict";
-      console.log("[YT Adblock] Injecting patch...");
-      const origDefineProperty = Object.defineProperty;
-      Object.defineProperty = function (obj, prop, desc) {
-        if (prop === "ads" || prop === "ytads") {
-          console.log("[YT Adblock] Blocked property injection:", prop);
-          return obj;
-        }
-        return origDefineProperty.apply(this, arguments);
-      };
-      // Quan sát DOM và patch player khi có
-      const observer = new MutationObserver(() => {
-        const player: any = document.querySelector("ytd-player");
-        /** @ts-ignore */
-        if (player && player.player_ && typeof player.player_.getAdState === "function") {
-          /** @ts-ignore */
-          player.player_.getAdState = () => 0; // luôn không có ad
-          console.log("[YT Adblock] Patched mid-roll ads!");
-          observer.disconnect();
-        }
-      });
-      observer.observe(document, { childList: true, subtree: true });
-    };
-    return `(${script.toString()})();`;
-  }
+  // youtubePatchPlayer() {
+  //   const script = function () {
+  //     "use strict";
+  //     console.log("[YT Adblock] Injecting patch...");
+  //     const origDefineProperty = Object.defineProperty;
+  //     Object.defineProperty = function (obj, prop, desc) {
+  //       if (prop === "ads" || prop === "ytads") {
+  //         console.log("[YT Adblock] Blocked property injection:", prop);
+  //         return obj;
+  //       }
+  //       return origDefineProperty.apply(this, arguments);
+  //     };
+  //     // Quan sát DOM và patch player khi có
+  //     const observer = new MutationObserver(() => {
+  //       const player: any = document.querySelector("ytd-player");
+  //       /** @ts-ignore */
+  //       if (player && player.player_ && typeof player.player_.getAdState === "function") {
+  //         /** @ts-ignore */
+  //         player.player_.getAdState = () => 0; // luôn không có ad
+  //         console.log("[YT Adblock] Patched mid-roll ads!");
+  //         observer.disconnect();
+  //       }
+  //     });
+  //     observer.observe(document, { childList: true, subtree: true });
+  //   };
+  //   return `(${script.toString()})();`;
+  // }
 
-  youtubeRemovePopups() {
-    const script = function () {
-      "use strict";
-      const removeElements = () => {
-        const popupContainer = document.querySelector("ytd-popup-container");
-        const overlayBackdrop = document.querySelector("tp-yt-iron-overlay-backdrop");
+  // youtubeRemovePopups() {
+  //   const script = function () {
+  //     "use strict";
+  //     const removeElements = () => {
+  //       const popupContainer = document.querySelector("ytd-popup-container");
+  //       const overlayBackdrop = document.querySelector("tp-yt-iron-overlay-backdrop");
 
-        if (popupContainer) {
-          popupContainer.remove();
-          console.log("Removed ytd-popup-container");
-        }
+  //       if (popupContainer) {
+  //         popupContainer.remove();
+  //         console.log("Removed ytd-popup-container");
+  //       }
 
-        if (overlayBackdrop) {
-          overlayBackdrop.remove();
-          console.log("Removed overlay backdrop");
-        }
-      };
-      // Run initially
-      removeElements();
-      // Observe and re-run when elements are reinserted
-      const observer = new MutationObserver(removeElements);
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-      });
-    };
-    return `(${script.toString()})();`;
-  }
+  //       if (overlayBackdrop) {
+  //         overlayBackdrop.remove();
+  //         console.log("Removed overlay backdrop");
+  //       }
+  //     };
+  //     // Run initially
+  //     removeElements();
+  //     // Observe and re-run when elements are reinserted
+  //     const observer = new MutationObserver(removeElements);
+  //     observer.observe(document.body, {
+  //       childList: true,
+  //       subtree: true,
+  //     });
+  //   };
+  //   return `(${script.toString()})();`;
+  // }
 
-  skipAds() {
-    const script = function () {
-      function skipAds() {
-        const pipMode = document.querySelector("ytd-pip-container, ytd-miniplayer-player-container");
-        const adVideo = document.querySelector(".ad-showing video");
+  // skipAds() {
+  //   const script = function () {
+  //     function skipAds() {
+  //       const pipMode = document.querySelector("ytd-pip-container, ytd-miniplayer-player-container");
+  //       const adVideo = document.querySelector(".ad-showing video");
 
-        /**@ts-ignore */
-        if (adVideo && adVideo.duration) {
-          /**@ts-ignore */
-          adVideo.currentTime = adVideo.duration;
-          /**@ts-ignore */
-          adVideo.muted = true;
-        }
-        const skipBtn = document.querySelector(".ytp-ad-skip-button, .ytp-ad-skip-button-modern");
-        if (skipBtn) {
-          /**@ts-ignore */
-          skipBtn.click();
-        }
+  //       /**@ts-ignore */
+  //       if (adVideo && adVideo.duration) {
+  //         /**@ts-ignore */
+  //         adVideo.currentTime = adVideo.duration;
+  //         /**@ts-ignore */
+  //         adVideo.muted = true;
+  //       }
+  //       const skipBtn = document.querySelector(".ytp-ad-skip-button, .ytp-ad-skip-button-modern");
+  //       if (skipBtn) {
+  //         /**@ts-ignore */
+  //         skipBtn.click();
+  //       }
 
-        if (document.querySelector(".ad-showing")) {
-          setTimeout(skipAds, 500);
-        }
-      }
-      function keepVideoPlayingEarly() {
-        const video = document.querySelector("video");
-        if (!video || video.dataset.keepPlayingEarly) return;
+  //       if (document.querySelector(".ad-showing")) {
+  //         setTimeout(skipAds, 500);
+  //       }
+  //     }
+  //     function keepVideoPlayingEarly() {
+  //       const video = document.querySelector("video");
+  //       if (!video || video.dataset.keepPlayingEarly) return;
 
-        video.dataset.keepPlayingEarly = "true";
+  //       video.dataset.keepPlayingEarly = "true";
 
-        const onPause = () => {
-          if (video.currentTime <= 3) {
-            video
-              .play()
-              .then(() => {})
-              .catch((err) => {
-                console.warn("[Userscript] Impossible de play :", err);
-              });
-          }
-          video.removeEventListener("pause", onPause);
-        };
+  //       const onPause = () => {
+  //         if (video.currentTime <= 3) {
+  //           video
+  //             .play()
+  //             .then(() => {})
+  //             .catch((err) => {
+  //               console.warn("[Userscript] Impossible de play :", err);
+  //             });
+  //         }
+  //         video.removeEventListener("pause", onPause);
+  //       };
 
-        video.addEventListener("pause", onPause);
-      }
-      /**@ts-ignore */
-      let debounceTimeout;
-      const observer = new MutationObserver(() => {
-        /**@ts-ignore */
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(() => {
-          skipAds();
-          keepVideoPlayingEarly();
-        }, 100);
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-    };
+  //       video.addEventListener("pause", onPause);
+  //     }
+  //     /**@ts-ignore */
+  //     let debounceTimeout;
+  //     const observer = new MutationObserver(() => {
+  //       /**@ts-ignore */
+  //       clearTimeout(debounceTimeout);
+  //       debounceTimeout = setTimeout(() => {
+  //         skipAds();
+  //         keepVideoPlayingEarly();
+  //       }, 100);
+  //     });
+  //     observer.observe(document.body, { childList: true, subtree: true });
+  //   };
 
-    return `(${script.toString()})();`;
-  }
+  //   return `(${script.toString()})();`;
+  // }
 
   onShowADBlockRequest() {
     this.blocker.on("request-blocked", (request: Request) => {
@@ -1404,7 +1360,7 @@ export class AdBlocker {
       log.info("%ccsp-injected", request.url, csps, "color: red");
     });
     this.blocker.on("script-injected", (script: string, url: string) => {
-      // log.info("%cRed script-injected", script.length, url, "color: red");
+      log.info("%cRed script-injected", script.length, url, "color: red");
     });
     this.blocker.on("style-injected", (style: string, url: string) => {
       log.info("%cRed style-injected", style.length, url, "color: red");
