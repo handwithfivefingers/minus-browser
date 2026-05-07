@@ -3,7 +3,7 @@
   "productName": "MinusBrowser",
   "appBundleId": "com.minusbrowser.localdev",
   "appId": "com.minusbrowser.localdev",
-  "version": "0.1.31",
+  "version": "0.1.5",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
   "scripts": {

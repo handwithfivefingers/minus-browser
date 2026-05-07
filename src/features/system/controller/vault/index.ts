@@ -1,5 +1,5 @@
-import { PasswordController } from "../../password";
-import { IPasswordItem } from "../../password";
+import { IPasswordItem } from "../../interfaces/password";
+import { PasswordController } from "../../services/password.service";
 
 export class VaultController {
   private passwordController: PasswordController;

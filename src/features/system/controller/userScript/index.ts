@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import { v7 as uuid_v7 } from "uuid";
-import { StoreManager } from "../../system/stores";
-import { IUserScript, UserScript } from "../class/script";
-import { IUserScriptStore } from "../interfaces/userscript";
-import { isUrlMatchedByPatterns } from "../utils/parser";
+import { StoreManager } from "../../stores";
+import { UserScript } from "../../classes/userScript";
+import { IUserScript, IUserScriptStore } from "../../interfaces/userscript";
+import { isUrlMatchedByPatterns } from "../../utils/parser";
 
 export class UserScriptController {
   private store: StoreManager = new StoreManager("userscripts");

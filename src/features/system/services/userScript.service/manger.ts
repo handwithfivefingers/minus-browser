@@ -1,5 +1,5 @@
-import { UserScriptController } from "./userscriptController";
-import { IUserScript } from "../class/script";
+import { UserScriptController } from "../../controller/userScript";
+import { IUserScript } from "../../interfaces/userscript";
 
 export class UserScriptManagerController {
   private userScriptController: UserScriptController;

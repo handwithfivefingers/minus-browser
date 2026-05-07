@@ -2,15 +2,17 @@ import { app, BrowserWindow, dialog, ipcMain, Notification, session, WebContents
 import log from "electron-log";
 import { IHandleResizeView, IPC, ITab } from "../interfaces";
 import { IPasswordItem } from "../../password";
-import { VaultController, VaultDialogController } from "../../vault";
 import { ErrorServices } from "../services/error.services";
 import { StoreManager } from "../stores";
 import { isSameURl } from "../utils";
 import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL } from "../constants/ipc";
-import { UserScriptDialogController, UserScriptManagerController } from "../../userscripts";
 import { TabController } from "./tab";
 import { Tab } from "../classes/tab";
-import { IUserScript } from "~/features/userscripts/class/script";
+import { VaultController } from "./vault";
+import { VaultServices } from "../services/vault.service";
+import { UserScriptManagerController } from "../services/userScript.service/manger";
+import { UserScriptDialogServices } from "../services/userScript.service/dialog";
+import { IUserScript } from "../interfaces/userscript";
 interface IUserInterface {
   layout: string;
   mode: string;
@@ -27,9 +29,9 @@ export class ViewController {
   minusSession: Electron.Session | undefined = session.fromPartition("persist:minus-browser");
   tabController = new TabController();
   vaultController = new VaultController();
-  vaultDialogController = new VaultDialogController();
+  vaultServices = new VaultServices();
   userScriptManagerController = new UserScriptManagerController(this.tabController.userScripts);
-  userScriptDialogController = new UserScriptDialogController();
+  userScriptDialogController = new UserScriptDialogServices();
 
   private invokeHandlers: Record<string, (data?: any) => any> | undefined;
   private listenerHandlers: Record<string, (data?: any) => void> | undefined;
@@ -46,7 +48,7 @@ export class ViewController {
         [IPC_INVOKE_CHANNEL.CREATE_TAB]: (tab?: Partial<ITab>) => this.createTab(tab),
         [IPC_INVOKE_CHANNEL.GET_TAB]: (tab?: Partial<ITab>) => this.getTab({ id: tab?.id as string }),
         [IPC_INVOKE_CHANNEL.GET_USER_INTERFACE]: () => this.loadUserInterface(),
-        [IPC_INVOKE_CHANNEL.CLOUD_SAVE]: () => this.cloudSave(),
+        [IPC_INVOKE_CHANNEL.CLOUD_SAVE]: () => this.persist(),
         [IPC_INVOKE_CHANNEL.SEARCH_PAGE]: (data) => this.handleSearchPage(data),
         [IPC_INVOKE_CHANNEL.INTERFACE_SAVE]: (data) => this.interfaceSave(data),
         [IPC_INVOKE_CHANNEL.GET_USERSCRIPTS]: () => this.getUserScripts(),
@@ -171,29 +173,6 @@ export class ViewController {
       console.error("❌ Error loading URL:", error);
     }
   }
-
-  // async loadSessionByURL({ url, view }: { url: string; view: WebContentsView }) {
-  //   const { origin } = new URL(url);
-  //   if (!origin) return;
-  //   const viewCookie = await session.defaultSession.cookies.get({
-  //     url: origin,
-  //   });
-  //   if (viewCookie.length) {
-  //     viewCookie?.forEach((item) => {
-  //       view.webContents?.session.cookies.set({
-  //         url: origin,
-  //         name: item.name,
-  //         domain: item.domain,
-  //         value: item.value,
-  //         path: item.path,
-  //         httpOnly: item.httpOnly,
-  //         secure: item.secure,
-  //         expirationDate: item.expirationDate,
-  //         sameSite: item.sameSite,
-  //       });
-  //     });
-  //   }
-  // }
 
   handleResizeView(props: IHandleResizeView) {
     const { tab, screen } = props;
@@ -322,7 +301,7 @@ export class ViewController {
     });
     return viewCookie;
   }
-  async cloudSave() {
+  async persist() {
     try {
       const tabs = this.getTabs();
       // const cookies = session.defaultSession.cookies;
@@ -495,14 +474,14 @@ export class ViewController {
     }
     const tab = this.tabController.getTabById(data.tabId);
     if (!tab) throw new Error("Tab not found");
-    return this.vaultDialogController.selectCredential(tab.webContents, data.candidates);
+    return this.vaultServices.selectCredential(tab.webContents, data.candidates);
   }
 
   async vaultConfirmSave(data: { tabId: string; username: string; site: string }) {
     if (!data?.tabId) throw new Error("Tab id is required");
     const tab = this.tabController.getTabById(data.tabId);
     if (!tab) throw new Error("Tab not found");
-    return this.vaultDialogController.confirmSave(tab.webContents, {
+    return this.vaultServices.confirmSave(tab.webContents, {
       username: data.username,
       site: data.site,
     });
@@ -513,7 +492,7 @@ export class ViewController {
     const tab = this.tabController.getTabById(data.tabId);
     if (!tab) throw new Error("Tab not found");
     const vaultItems = this.vaultController.getVaults();
-    const result = await this.vaultDialogController.openManager(
+    const result = await this.vaultServices.openManager(
       this.window, // BrowserWindow — needed to addChildView the vault overlay
       tab, // full Tab — needed for tab.view.getBounds() and fallback webContents
       vaultItems,

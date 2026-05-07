@@ -1,38 +1,36 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
+import { lazy, useEffect, useLayoutEffect, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet, useNavigate } from "react-router";
-import { Tab } from "~/features/browsers/classes/tab";
-import { useTabStore } from "../stores/useTabStore";
-import { useMinusThemeStore } from "../stores/useMinusTheme";
-import { tabServices } from "../services/tab.service";
 import { SideMenu } from "../components";
-// const SideMenu = lazy(() =>
-//   import("../components").then((module) => ({ default: module.SideMenu })),
-// );
-const Spotlight = lazy(() =>
-  import("../components").then((module) => ({ default: module.Spotlight })),
-);
+import { tabServices } from "../services/tab.service";
+import { useMinusThemeStore } from "../stores/useMinusTheme";
+import { useTabStore } from "../stores/useTabStore";
+import { MinusThemeState, Tab } from "../interfaces";
 
+const Spotlight = lazy(() => import("../components").then((module) => ({ default: module.Spotlight })));
 const LAYOUT_CLASS = {
   BASIC: "flex h-screen overflow-hidden bg-slate-800",
   FLOATING: "flex h-screen overflow-hidden bg-slate-800 p-1 gap-1",
 };
 const Layout = () => {
   const layout = useMinusThemeStore().layout;
-  const setTabs = useTabStore((s) => s.setTabs);
+  const { setTabs } = useTabStore();
   useEffect(() => {
-    let timeout = setTimeout(async () => {
+    let timeout = setInterval(async () => {
       const tabs = await tabServices.getTabs();
-      if (tabs.length) setTabs(tabs);
-    }, 5000);
+      if (tabs.length) {
+        setTabs?.(tabs);
+        if (timeout) clearInterval(timeout);
+      }
+    }, 1000);
 
     window.api.LISTENER("GET_TABS", (v) => {
-      if (timeout) clearTimeout(timeout);
+      if (timeout) clearInterval(timeout);
       setTabs(v);
     });
 
     return () => {
-      if (timeout) clearTimeout(timeout);
+      if (timeout) clearInterval(timeout);
     };
   }, []);
   return (
@@ -54,18 +52,14 @@ const Layout = () => {
   );
 };
 
-const LayoutSideEffect = ({
-  children,
-}: {
-  children: React.ReactElement | React.ReactNode;
-}): React.ReactElement => {
+const LayoutSideEffect = ({ children }: { children: React.ReactElement | React.ReactNode }): React.ReactElement => {
   const minus = useMinusThemeStore();
   const navigate = useNavigate();
   useLayoutEffect(() => {
     const getScreenData = async () => {
       try {
         // const data = await window.api.INVOKE<{ tabs: Tab[]; index: number }>("GET_TABS");
-        const userI = await window.api.INVOKE("GET_USER_INTERFACE");
+        const userI: MinusThemeState = await window.api.INVOKE("GET_USER_INTERFACE");
         minus.initialize(userI);
       } catch (error) {
         console.error("Error getting tabs:", error);
@@ -75,7 +69,7 @@ const LayoutSideEffect = ({
   }, []);
   useEffect(() => {
     window.api.LISTENER("CREATE_TAB", (tab?: Partial<Tab>) => {
-      if (tab.id) {
+      if (tab?.id) {
         navigate(tab.id);
       }
     });
@@ -92,6 +86,7 @@ const SyncSideEffect = (): React.ReactElement => {
       : isNaN(Number(dataSync.intervalTime))
         ? 15
         : Number(dataSync.intervalTime) * 1000;
+
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (intervalTime) {
@@ -99,10 +94,14 @@ const SyncSideEffect = (): React.ReactElement => {
         sync();
       }, intervalTime);
     }
-
-    return () => intervalTime && interval && clearInterval(interval);
+    return () => {
+      if (intervalTime && interval) {
+        clearInterval(interval);
+      }
+    };
   }, [intervalTime]);
-  return undefined;
+
+  return <></>;
 };
 
 const SpotlightProvider = () => {

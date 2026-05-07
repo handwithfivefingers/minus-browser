@@ -4,13 +4,10 @@ const DEFAULT_SCRIPT_NAME = "Custom Script";
 
 const WILDCARD_TO_REGEX = /[.+?^${}()|[\]\\]/g;
 
-const escapeRegex = (input: string) =>
-  input.replace(WILDCARD_TO_REGEX, "\\$&").replace(/\*/g, ".*");
+const escapeRegex = (input: string) => input.replace(WILDCARD_TO_REGEX, "\\$&").replace(/\*/g, ".*");
 
 export const parseUserScriptMeta = (source: string) => {
-  const block = source.match(
-    /\/\/\s*==UserScript==([\s\S]*?)\/\/\s*==\/UserScript==/m,
-  );
+  const block = source.match(/\/\/\s*==UserScript==([\s\S]*?)\/\/\s*==\/UserScript==/m);
   const lines = block?.[1]?.split("\n") || [];
   const meta: {
     name?: string;
@@ -42,9 +39,7 @@ export const parseUserScriptMeta = (source: string) => {
     }
     if (
       key === "run-at" &&
-      (value.trim() === "document-start" ||
-        value.trim() === "document-end" ||
-        value.trim() === "document-idle")
+      (value.trim() === "document-start" || value.trim() === "document-end" || value.trim() === "document-idle")
     ) {
       meta.runAt = (value.trim() as UserScriptRunAt) || "document-start";
     }
