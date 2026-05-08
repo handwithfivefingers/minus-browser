@@ -70,6 +70,10 @@ const config: ForgeConfig = {
           name: "userscript_injection",
           config: "vite.injection.userscript.config.ts",
         },
+        {
+          name: "translate_injection",
+          config: "vite.injection.translate.config.ts",
+        },
       ],
     }),
     // Fuses are used to enable/disable various Electron functionality
