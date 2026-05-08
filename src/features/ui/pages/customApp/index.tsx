@@ -40,11 +40,22 @@ interface IPendingCredentialSave {
   password: string;
 }
 
+interface ITranslatePreference {
+  sourceLanguage: string;
+  targetLanguage: string;
+  autoTranslate: boolean;
+  alwaysTranslateDomains: string[];
+  neverTranslateDomains: string[];
+  neverTranslateLanguages: string[];
+}
+
 const CustomApp = () => {
   const { customApp: tabId = "" } = useParams<{ customApp: string }>();
   const { layout } = useMinusThemeStore();
   const [isLoading, setIsLoading] = useState(false);
   const handledCredentialRef = useRef<Set<string>>(new Set());
+  const handledTranslateRef = useRef<Set<string>>(new Set());
+  const latestSelectionRef = useRef<string>("");
   const tab = useTabStore((s) => s.activeTab);
   const updateTab = useTabStore((s) => s.updateTab);
   const setActiveTab = useTabStore((s) => s.setActiveTab);
@@ -61,6 +72,8 @@ const CustomApp = () => {
     });
     window.api.LISTENER("VAULT_CREDENTIAL_DETECTED", onCredentialDetected);
     window.api.LISTENER("FILL_PASSWORD_REQUEST", onFillPasswordRequest);
+    // window.api.LISTENER("TRANSLATE_LANGUAGE_DETECTED", onTranslateLanguageDetected);
+    window.api.LISTENER("TRANSLATE_SELECTION_AVAILABLE", onTranslateSelectionAvailable);
   }, [tabId]);
 
   const onTabNavigate = (isLoading: boolean) => {
@@ -168,6 +181,34 @@ const CustomApp = () => {
     }
   };
 
+  const onTranslatePage = async () => {
+    try {
+      await window.api.INVOKE("TRANSLATE_PAGE", { tabId });
+    } catch (error) {
+      console.log("onTranslatePage error", error);
+    }
+  };
+
+  const onOpenTranslateManager = async () => {
+    try {
+      await window.api.INVOKE("TRANSLATE_OPEN_MANAGER", { tabId });
+    } catch (error) {
+      console.log("onOpenTranslateManager error", error);
+    }
+  };
+
+  const onTranslateSelection = async () => {
+    try {
+      const selectedText = latestSelectionRef.current?.trim() || undefined;
+      await window.api.INVOKE("TRANSLATE_SELECTION", {
+        tabId,
+        text: selectedText,
+      });
+    } catch (error) {
+      console.log("onTranslateSelection error", error);
+    }
+  };
+
   const fillByCredential = async (credential: IPasswordVaultItem) => {
     if (!credential) return;
     await window.api.INVOKE("VAULT_FILL", {
@@ -227,6 +268,42 @@ const CustomApp = () => {
     }
   };
 
+  // const onTranslateLanguageDetected = async (payload: { tabId: string; language?: string; url?: string }) => {
+  //   try {
+  //     if (!payload?.tabId || payload.tabId !== tabId) return;
+  //     const language = (payload.language || "").toLowerCase();
+  //     if (!language || language === "en") return;
+  //     const currentHost = (() => {
+  //       try {
+  //         return new URL(payload.url || tab?.url || "").hostname.toLowerCase();
+  //       } catch {
+  //         return "";
+  //       }
+  //     })();
+  //     const cacheKey = `${tabId}:${currentHost}:${language}`;
+  //     if (handledTranslateRef.current.has(cacheKey)) return;
+  //     handledTranslateRef.current.add(cacheKey);
+
+  //     const preference = await window.api.INVOKE<ITranslatePreference>("TRANSLATE_GET_PREFERENCE");
+  //     if (!preference?.autoTranslate) return;
+  //     if (preference?.neverTranslateLanguages?.includes(language)) return;
+  //     if (currentHost && preference?.neverTranslateDomains?.includes(currentHost)) return;
+  //     const shouldTranslate = window.confirm(
+  //       `This page appears to be in "${language}". Translate this page to ${preference?.targetLanguage || "en"}?`,
+  //     );
+  //     if (!shouldTranslate) return;
+  //     await onTranslatePage();
+  //   } catch (error) {
+  //     console.log("onTranslateLanguageDetected error", error);
+  //   }
+  // };
+
+  const onTranslateSelectionAvailable = (payload: { tabId?: string; text?: string }) => {
+    if (payload?.tabId && payload.tabId !== tabId) return;
+    latestSelectionRef.current = String(payload.text || "").trim();
+    onTranslateSelection()
+  };
+
   const getScreenData = async () => {
     const tab = await window.api.INVOKE<Tab>("GET_TAB", { id: tabId });
     updateTab(tabId, tab);
@@ -245,9 +322,12 @@ const CustomApp = () => {
         onToggleDevTools={onToggleDevTools}
         onReload={onReload}
         onRequestPIP={onRequestPIP}
-        onFillPassword={onFillPassword}
+        // onFillPassword={onFillPassword}
         onOpenVaultManager={onOpenVaultManager}
         onOpenUserscriptManager={onOpenUserscriptManager}
+        onTranslatePage={onTranslatePage}
+        // onTranslateSelection={onTranslateSelection}
+        onOpenTranslateManager={onOpenTranslateManager}
         isLoading={isLoading}
       />
       <WebViewInstance id={tabId} />

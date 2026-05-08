@@ -422,18 +422,19 @@ const App = () => {
             }}
           >
             <div style={{ fontWeight: 600 }}>Edit Script</div>
-            <Button
+            <button
               onClick={closeSave}
               style={{
-                width: "20px",
-                height: "20px",
+                width: "24px",
+                height: "24px",
                 border: "1px solid #cbd5e1",
                 background: "#f8fafc",
-                borderRadius: "4px",
+                cursor: "pointer",
+                borderRadius: "6px",
               }}
             >
               ×
-            </Button>
+            </button>
           </div>
 
           {selected ? <Form values={selected} ref={formRef} /> : null}

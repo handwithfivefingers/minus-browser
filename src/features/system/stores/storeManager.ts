@@ -3,24 +3,36 @@ import log from "electron-log";
 import fs from "node:fs";
 import path from "node:path";
 
+const devDataDir = path.resolve(process.cwd(), "appData");
+const resolveUserDataDir = () => {
+  try {
+    return app.getPath("userData");
+  } catch {
+    return devDataDir;
+  }
+};
+const baseDir = process.env.NODE_ENV === "development" ? devDataDir : resolveUserDataDir();
+
 const filesPath = {
   development: {
-    userData: path.join("appData", "userData.json"),
-    interface: path.join("appData", "interface.json"),
-    session: path.join("appData", "session.json"),
-    bookmark: path.join("appData", "bookmark.json"),
-    history: path.join("appData", "history.json"),
-    userscripts: path.join("appData", "userscripts.json"),
-    passwordVault: path.join("appData", "passwordVault.json"),
+    userData: path.join(baseDir, "userData.json"),
+    interface: path.join(baseDir, "interface.json"),
+    session: path.join(baseDir, "session.json"),
+    bookmark: path.join(baseDir, "bookmark.json"),
+    history: path.join(baseDir, "history.json"),
+    userscripts: path.join(baseDir, "userscripts.json"),
+    passwordVault: path.join(baseDir, "passwordVault.json"),
+    translate: path.join(baseDir, "translate.json"),
   },
   production: {
-    userData: path.join(app.getPath("userData"), "userData.json"),
-    interface: path.join(app.getPath("userData"), "interface.json"),
-    session: path.join(app.getPath("userData"), "session.json"),
-    bookmark: path.join(app.getPath("userData"), "bookmark.json"),
-    history: path.join(app.getPath("userData"), "history.json"),
-    userscripts: path.join(app.getPath("userData"), "userscripts.json"),
-    passwordVault: path.join(app.getPath("userData"), "passwordVault.json"),
+    userData: path.join(resolveUserDataDir(), "userData.json"),
+    interface: path.join(resolveUserDataDir(), "interface.json"),
+    session: path.join(resolveUserDataDir(), "session.json"),
+    bookmark: path.join(resolveUserDataDir(), "bookmark.json"),
+    history: path.join(resolveUserDataDir(), "history.json"),
+    userscripts: path.join(resolveUserDataDir(), "userscripts.json"),
+    passwordVault: path.join(resolveUserDataDir(), "passwordVault.json"),
+    translate: path.join(resolveUserDataDir(), "translate.json"),
   },
 };
 
@@ -31,7 +43,8 @@ type StoreName =
   | "bookmark"
   | "history"
   | "userscripts"
-  | "passwordVault";
+  | "passwordVault"
+  | "translate";
 const pathConfig =
   process.env.NODE_ENV === "development"
     ? filesPath.development
@@ -49,6 +62,7 @@ export class StoreManager {
         "history",
         "userscripts",
         "passwordVault",
+        "translate",
       ].includes(props)
     ) {
       throw new Error("Invalid props");
@@ -58,6 +72,8 @@ export class StoreManager {
   }
   initialize(fileName: StoreName) {
     try {
+      const filePath = pathConfig[fileName];
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
       const isExist = fs.existsSync(pathConfig[fileName]);
       if (!isExist) {
         fs.writeFileSync(pathConfig[fileName], JSON.stringify([]), "utf-8");
@@ -98,6 +114,7 @@ export class StoreManager {
 
   saveFiles: <T>(data: T) => void = (data) => {
     return new Promise((resolve, reject) => {
+      fs.mkdirSync(path.dirname(this.configFile), { recursive: true });
       const tmp = this.configFile.replace(/\.json$/, "-temp.json");
       fs.writeFile(tmp, JSON.stringify(data), (error) => {
         if (error) return reject(error);

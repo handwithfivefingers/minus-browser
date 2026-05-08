@@ -21,20 +21,38 @@ class MinusBrowser {
   browser: BrowserWindow | null = null;
   interfaceStore: StoreManager = new StoreManager("interface");
   minusSession: Electron.Session | undefined = undefined;
+  viewController: ViewController | null = null;
+  isPersistingBeforeQuit = false;
+  didRunBeforeQuit = false;
   constructor() {
     this.initialize();
   }
+
+  private flushPersistenceOnQuit = async () => {
+    if (this.isPersistingBeforeQuit) return;
+    this.isPersistingBeforeQuit = true;
+    try {
+      await this.viewController?.persist();
+      await this.browser?.webContents.session.flushStorageData();
+      await this.minusSession?.cookies.flushStore();
+    } catch (error) {
+      log.error("flushPersistenceOnQuit failed", error);
+    }
+  };
 
   async initialize() {
     app.on("ready", () => {
       log.initialize();
     });
-    app.on("quit", async () => {
-      await this.browser?.webContents.session.flushStorageData();
-      await this.minusSession?.cookies.flushStore();
-      if (process.platform !== "darwin") {
-        app.quit();
-      }
+    app.on("before-quit", async (event) => {
+      if (this.didRunBeforeQuit) return;
+      this.didRunBeforeQuit = true;
+      event.preventDefault();
+      await this.flushPersistenceOnQuit();
+      app.quit();
+    });
+    app.on("will-quit", async () => {
+      await this.flushPersistenceOnQuit();
     });
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -101,6 +119,7 @@ class MinusBrowser {
       log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
 
       const viewController = new ViewController(browser);
+      this.viewController = viewController;
       this.registerNotification();
       this.registerCommand(viewController);
     } catch (error) {

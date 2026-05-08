@@ -1,8 +1,7 @@
 import { BrowserWindow, clipboard, Menu, MenuItem } from "electron";
 
 export class ContextMenuController {
-  template: any[];
-
+  template: any[] | undefined;
   initialize(event: Electron.Event, params: Electron.ContextMenuParams) {
     console.log("params", params);
     const template: Partial<MenuItem>[] = [
@@ -11,6 +10,17 @@ export class ContextMenuController {
     ];
     if (params.isEditable) {
       template.push({ label: "Paste", role: "paste" });
+    }
+    if (params.selectionText?.trim()) {
+      template.push({
+        label: "Translate Selection",
+        click: () => {
+          const window = BrowserWindow.getFocusedWindow();
+          window?.webContents?.send("TRANSLATE_SELECTION_AVAILABLE", {
+            text: params.selectionText.trim(),
+          });
+        },
+      });
     }
 
     template.push({ type: "separator" });
@@ -29,7 +39,7 @@ export class ContextMenuController {
           label: "Open Link in New Window",
           click: () => {
             const window = BrowserWindow.getFocusedWindow();
-            window.webContents.send("CREATE_TAB", { url: params.linkURL });
+            window?.webContents.send("CREATE_TAB", { url: params.linkURL });
           },
         },
         {
@@ -42,6 +52,6 @@ export class ContextMenuController {
     }
 
     const menu = Menu.buildFromTemplate(template as any);
-    menu.popup({ window: BrowserWindow.getFocusedWindow() });
+    menu.popup({ window: BrowserWindow.getFocusedWindow() as BrowserWindow });
   }
 }

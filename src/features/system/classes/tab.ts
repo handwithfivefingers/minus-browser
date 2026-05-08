@@ -65,6 +65,8 @@ export class Tab {
   credentialAssistRegistered = false;
   credentialAssistActionRegistered = false;
   tabEventsRegistered = false;
+  translateSelectionCaptureRegistered = false;
+  translateSelectionActionRegistered = false;
 
   constructor({
     blocker,
@@ -183,6 +185,7 @@ export class Tab {
     this.pageTitleUpdated();
     this.registerCredentialDetection();
     this.registerCredentialAssistAction();
+    this.registerTranslateSelectionAction();
   }
 
   unregisterTabEvents() {
@@ -242,6 +245,8 @@ export class Tab {
     this.view.webContents.on("did-stop-loading", () => {
       this.runMatchedUserScripts(this.view.webContents.getURL(), "document-start");
       this.installCredentialFocusAssist();
+      this.detectPageLanguage();
+      this.installSelectionCapture();
     });
   }
 
@@ -503,6 +508,99 @@ export class Tab {
       browser?.webContents?.send(IPC_RENDERER_EVENT.FILL_PASSWORD_REQUEST, {
         tabId: this.id,
       });
+    });
+  }
+
+  private async detectPageLanguage() {
+    try {
+      const payload = await this.view.webContents.executeJavaScript(
+        `(() => {
+          const htmlLang = String(document.documentElement?.lang || "").trim().toLowerCase();
+          const title = String(document.title || "").trim();
+          const bodyText = String(document.body?.innerText || "").trim().slice(0, 2000);
+          return {
+            htmlLang,
+            textSample: [title, bodyText].filter(Boolean).join("\\n").slice(0, 2000),
+            url: window.location.href
+          };
+        })();`,
+        true,
+      );
+      const rawLanguage = String(payload?.htmlLang || "").split("-")[0];
+      if (!rawLanguage || rawLanguage === "en") return;
+      const browser = BrowserWindow.getFocusedWindow();
+      browser?.webContents?.send(IPC_RENDERER_EVENT.TRANSLATE_LANGUAGE_DETECTED, {
+        tabId: this.id,
+        language: rawLanguage,
+        url: payload?.url || this.url,
+        textSample: payload?.textSample || "",
+      });
+    } catch (error) {
+      // best effort
+    }
+  }
+
+  private async installSelectionCapture() {
+    if (this.translateSelectionCaptureRegistered) return;
+    this.translateSelectionCaptureRegistered = true;
+    try {
+      await this.view.webContents.executeJavaScript(
+        `(() => {
+          if (window.__minusSelectionCaptureMounted) return;
+          window.__minusSelectionCaptureMounted = true;
+          if (!window.__minusSelectionAnchor) {
+            window.__minusSelectionAnchor = null;
+          }
+          document.addEventListener("mousemove", (event) => {
+            window.__minusSelectionAnchor = { x: event.clientX, y: event.clientY };
+          }, true);
+          const notify = () => {
+            const text = String(window.getSelection?.()?.toString?.() || "").trim().slice(0, 4000);
+            if (!text) return;
+            try {
+              const selection = window.getSelection?.();
+              const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+              if (range) {
+                const rect = range.getBoundingClientRect();
+                window.__minusSelectionAnchor = { x: rect.left, y: rect.bottom };
+              }
+            } catch (error) {}
+            console.log("__MINUS_SELECTION_CAPTURE__:" + JSON.stringify({
+              text,
+              url: window.location.href,
+              anchor: window.__minusSelectionAnchor || null
+            }));
+          };
+          document.addEventListener("selectionchange", () => {
+            clearTimeout(window.__minusSelectionCaptureTimer);
+            window.__minusSelectionCaptureTimer = setTimeout(notify, 120);
+          });
+        })();`,
+        true,
+      );
+    } catch (error) {
+      // best effort
+    }
+  }
+
+  private registerTranslateSelectionAction() {
+    if (this.translateSelectionActionRegistered) return;
+    this.translateSelectionActionRegistered = true;
+    this.view.webContents.on("console-message", (_event, _level, message) => {
+      if (!message.startsWith("__MINUS_SELECTION_CAPTURE__:")) return;
+      try {
+        const payload = JSON.parse(message.slice("__MINUS_SELECTION_CAPTURE__:".length));
+        const text = String(payload?.text || "").trim();
+        if (!text) return;
+        const browser = BrowserWindow.getFocusedWindow();
+        browser?.webContents?.send(IPC_RENDERER_EVENT.TRANSLATE_SELECTION_AVAILABLE, {
+          tabId: this.id,
+          text,
+          url: payload?.url || this.url,
+        });
+      } catch (error) {
+        // ignore parse errors
+      }
     });
   }
 }

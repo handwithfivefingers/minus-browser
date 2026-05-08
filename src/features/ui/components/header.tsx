@@ -2,7 +2,9 @@ import {
   IconChevronLeft,
   IconCloudUp,
   IconCode,
+  IconCodeDots,
   IconKey,
+  IconLanguage,
   IconPictureInPicture,
   IconReload,
   IconSearch,
@@ -20,9 +22,12 @@ interface IHeader {
   onToggleDevTools: () => void;
   onReload: () => void;
   onRequestPIP: () => void;
-  onFillPassword: () => void;
+  // onFillPassword: () => void;
   onOpenVaultManager: () => void;
   onOpenUserscriptManager: () => void;
+  onTranslatePage: () => void;
+  // onTranslateSelection: () => void;
+  onOpenTranslateManager: () => void;
   title?: string;
   isLoading: boolean;
   isBookmarked?: boolean;
@@ -44,9 +49,12 @@ const Header = ({
   onToggleDevTools,
   onReload,
   onRequestPIP,
-  onFillPassword,
+  // onFillPassword,
   onOpenVaultManager,
   onOpenUserscriptManager,
+  onTranslatePage,
+  // onTranslateSelection,
+  onOpenTranslateManager,
 }: IHeader) => {
   const ref = useRef<HTMLInputElement>(null);
   const [focus, setFocus] = useState(false);
@@ -90,18 +98,27 @@ const Header = ({
           (focus && "border-indigo-500/50") || "border-transparent",
         ].join(" ")}
       >
-        <button
-          onClick={onReload}
-          className={clsx(
-            "hover:text-white transition-all px-1 py-1 h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute left-0.5 top-0.5 rounded-full",
-            {
-              "animate-spin": isLoading,
-            },
-          )}
-        >
-          <IconReload size={12} />
-        </button>
-        <div className="flex px-6 items-center rounded-full gap-0.5 w-full">
+        <div className="flex gap-0.5 absolute top-0.5 left-0.5">
+          <button
+            onClick={onReload}
+            className={clsx(
+              "hover:text-white transition-all px-1 py-1 h-[calc(100%-4px)] hover:bg-indigo-500 cursor-pointer active:translate-y-0.5 text-indigo-500 rounded-full",
+              {
+                "animate-spin": isLoading,
+              },
+            )}
+          >
+            <IconReload size={12} />
+          </button>
+          <button
+            className="hover:bg-indigo-500 h-[calc(100%-4px)] hover:text-white cursor-pointer p-1 active:translate-y-0.5 transition-all text-indigo-500 rounded-full"
+            onClick={onTranslatePage}
+            title="Translate page"
+          >
+            <IconLanguage size={12} />
+          </button>
+        </div>
+        <div className="flex px-12 items-center rounded-full gap-0.5 w-full">
           <input
             className={clsx("py-1 w-full transition-all outline-transparent outline bg-white text-xs", {
               ["hidden"]: !focus,
@@ -159,26 +176,47 @@ const Header = ({
         >
           <IconCode size={16} />
         </button>
-        <button
+        {/* <button
           className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
           onClick={onFillPassword}
           title="Fill password"
         >
           <IconKey size={16} />
-        </button>
+        </button> */}
         <button
           className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
           onClick={onOpenVaultManager}
           title="Open Vault Manager"
         >
-          Vault
+          <IconKey size={16} />
         </button>
         <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
+          onClick={onOpenTranslateManager}
+          title="Open Translate Manager"
+        >
+          <IconLanguage size={16} />
+        </button>
+        {/* <button
           className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
+          onClick={onTranslateSelection}
+          title="Translate selection"
+        >
+          Selection
+        </button> */}
+        {/* <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
+          onClick={onOpenTranslateManager}
+          title="Open Translate Manager"
+        >
+          Translate
+        </button> */}
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
           onClick={onOpenUserscriptManager}
           title="Open Tampermonkey Manager"
         >
-          Script
+          <IconCodeDots size={16} />
         </button>
 
         <button
@@ -213,7 +251,7 @@ const Sync = () => {
       })}
       title="Sync data"
     >
-      {isSync && <span className="text-[8px] absolute right-6 top-2">Synced</span>}
+      {/* {isSync && <span className="text-[8px] absolute right-6 top-2">Synced</span>} */}
       <IconCloudUp size={16} />
     </button>
   );

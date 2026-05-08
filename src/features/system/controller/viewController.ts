@@ -13,6 +13,7 @@ import { VaultServices } from "../services/vault.service";
 import { UserScriptManagerController } from "../services/userScript.service/manger";
 import { UserScriptDialogServices } from "../services/userScript.service/dialog";
 import { IUserScript } from "../interfaces/userscript";
+import { TranslateController } from "./translate";
 interface IUserInterface {
   layout: string;
   mode: string;
@@ -30,6 +31,7 @@ export class ViewController {
   tabController = new TabController();
   vaultController = new VaultController();
   vaultServices = new VaultServices();
+  translateController = new TranslateController();
   userScriptManagerController = new UserScriptManagerController(this.tabController.userScripts);
   userScriptDialogController = new UserScriptDialogServices();
 
@@ -65,6 +67,13 @@ export class ViewController {
         [IPC_INVOKE_CHANNEL.VAULT_CONFIRM_SAVE]: (data) => this.vaultConfirmSave(data),
         [IPC_INVOKE_CHANNEL.VAULT_OPEN_MANAGER]: (data) => this.vaultOpenManager(data),
         [IPC_INVOKE_CHANNEL.USERSCRIPT_OPEN_MANAGER]: (data) => this.userscriptOpenManager(data),
+        [IPC_INVOKE_CHANNEL.TRANSLATE_GET_PREFERENCE]: () => this.translateGetPreference(),
+        [IPC_INVOKE_CHANNEL.TRANSLATE_SAVE_PREFERENCE]: (data) => this.translateSavePreference(data),
+        [IPC_INVOKE_CHANNEL.TRANSLATE_DETECT_LANGUAGE]: (data) => this.translateDetectLanguage(data),
+        [IPC_INVOKE_CHANNEL.TRANSLATE_PAGE]: (data) => this.translatePage(data),
+        [IPC_INVOKE_CHANNEL.TRANSLATE_SELECTION]: (data) => this.translateSelection(data),
+        [IPC_INVOKE_CHANNEL.TRANSLATE_OPEN_MANAGER]: (data) => this.translateOpenManager(data),
+        [IPC_INVOKE_CHANNEL.TRANSLATE_GET_SELECTION_HISTORY]: () => this.translateGetSelectionHistory(),
       };
 
       this.listenerHandlers = {
@@ -88,7 +97,11 @@ export class ViewController {
 
   async init() {
     try {
-      await Promise.all([this.tabController.initialize(), this.vaultController.initialize()]);
+      await Promise.all([
+        this.tabController.initialize(),
+        this.vaultController.initialize(),
+        this.translateController.initialize(),
+      ]);
       await this.initializeHandlers();
       ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
       ipcMain.on("send", (event, args: IPC) => this.onListener(args));
@@ -326,8 +339,14 @@ export class ViewController {
     this.window.contentView.removeChildView(view);
   }
 
-  onCloseApp() {
-    app.quit();
+  async onCloseApp() {
+    try {
+      await this.persist();
+    } catch (error) {
+      log.error("Failed to persist before quit", error);
+    } finally {
+      app.quit();
+    }
   }
 
   interfaceSave(data: IUserInterface) {
@@ -557,5 +576,139 @@ export class ViewController {
     } catch (error) {
       log.error("error", error);
     }
+  }
+
+  async translateGetPreference() {
+    return this.translateController.getPreference();
+  }
+
+  async translateSavePreference(data: Record<string, any>) {
+    return this.translateController.savePreference(data || {});
+  }
+
+  async translateDetectLanguage(data: { text: string }) {
+    if (!data?.text?.trim()) return { language: "unknown", confidence: 0 };
+    return this.translateController.detectLanguage(data.text);
+  }
+
+  async translatePage(data: { tabId: string; url?: string; targetLanguage?: string }) {
+    if (!data?.tabId) throw new Error("Tab id is required");
+    const tab = this.tabController.getTabById(data.tabId);
+    if (!tab) throw new Error("Tab not found");
+    const targetUrl = data.url || tab.webContents.getURL();
+    if (!targetUrl) throw new Error("Target url is required");
+    const translatedUrl = this.translateController.buildTranslatePageUrl({
+      targetUrl,
+      targetLanguage: data.targetLanguage,
+    });
+    await tab.webContents.loadURL(translatedUrl);
+    return { url: translatedUrl };
+  }
+
+  async translateSelection(data: { tabId: string; text?: string; sourceLanguage?: string; targetLanguage?: string }) {
+    if (!data?.tabId) throw new Error("Tab id is required");
+    const tab = this.tabController.getTabById(data.tabId);
+    if (!tab) throw new Error("Tab not found");
+
+    let text = data?.text?.trim() || "";
+    if (!text) {
+      const selected = await tab.webContents.executeJavaScript(
+        `(() => String(window.getSelection?.()?.toString?.() || "").trim())();`,
+        true,
+      );
+      text = String(selected || "").trim();
+    }
+    if (!text) throw new Error("Selection text is required");
+
+    const result = await this.translateController.translateSelection({
+      ...data,
+      text,
+    });
+    if (result?.translatedText) {
+      await tab.webContents.executeJavaScript(
+        `(() => {
+          const old = document.getElementById("__minus_translate_selection_popup");
+          if (old) old.remove();
+          const selection = window.getSelection?.();
+          const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+          const rect = range ? range.getBoundingClientRect() : null;
+          const anchor = window.__minusSelectionAnchor || {};
+          const x = Number(rect?.left || anchor?.x || window.innerWidth / 2);
+          const y = Number(rect?.bottom || anchor?.y || window.innerHeight / 2);
+
+          const root = document.createElement("div");
+          root.id = "__minus_translate_selection_popup";
+          root.style.position = "fixed";
+          root.style.zIndex = "2147483647";
+          root.style.maxWidth = "340px";
+          root.style.minWidth = "200px";
+          root.style.left = Math.max(8, Math.min(window.innerWidth - 360, x)) + "px";
+          root.style.top = Math.max(8, Math.min(window.innerHeight - 180, y + 10)) + "px";
+          root.style.background = "#0f172a";
+          root.style.color = "#fff";
+          root.style.padding = "10px";
+          root.style.borderRadius = "10px";
+          root.style.border = "1px solid rgba(255,255,255,.15)";
+          root.style.boxShadow = "0 18px 40px rgba(0,0,0,.35)";
+          root.style.fontFamily = "Inter, system-ui, -apple-system, sans-serif";
+          root.style.fontSize = "12px";
+          root.style.lineHeight = "1.4";
+
+          const meta = document.createElement("div");
+          meta.style.opacity = ".8";
+          meta.style.fontSize = "11px";
+          meta.style.marginBottom = "6px";
+          meta.textContent = ${JSON.stringify(`${result.sourceLanguage} -> ${result.targetLanguage}`)};
+
+          const text = document.createElement("div");
+          text.textContent = ${JSON.stringify(result.translatedText)};
+          text.style.whiteSpace = "pre-wrap";
+          text.style.wordBreak = "break-word";
+
+          const close = document.createElement("button");
+          close.type = "button";
+          close.textContent = "×";
+          close.style.position = "absolute";
+          close.style.top = "4px";
+          close.style.right = "6px";
+          close.style.border = "none";
+          close.style.background = "transparent";
+          close.style.color = "#fff";
+          close.style.cursor = "pointer";
+          close.style.fontSize = "14px";
+          close.onclick = () => root.remove();
+
+          root.appendChild(meta);
+          root.appendChild(text);
+          root.appendChild(close);
+          document.documentElement.appendChild(root);
+          // setTimeout(() => root.remove(), 9000);
+          let intervalId = null;
+          intervalId = setInterval(() => {
+            const currentSelection = String(window.getSelection?.()?.toString?.() || "").trim();
+            if (currentSelection !== ${JSON.stringify(text)}) {
+              clearInterval(intervalId);
+              root.remove();
+            }
+          },1000)
+        })();`,
+        true,
+      );
+    }
+    return result;
+  }
+
+  async translateOpenManager(data: { tabId: string }) {
+    if (!data?.tabId) throw new Error("Tab id is required");
+    const tab = this.tabController.getTabById(data.tabId);
+    if (!tab) throw new Error("Tab not found");
+    const result = await this.translateController.openManager(this.window, tab);
+    if (!result) return false;
+    await this.translateController.applyManagerState(result);
+    return true;
+  }
+
+  async translateGetSelectionHistory() {
+    return this.translateController.getRecentSelections();
   }
 }
