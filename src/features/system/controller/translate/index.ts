@@ -8,6 +8,10 @@ export class TranslateController {
     await this.service.initialize();
   }
 
+  scriptInjection(text: string, result: { sourceLanguage: string; targetLanguage: string; translatedText: string }) {
+    return this.service.scriptInjection(text, result);
+  }
+
   getPreference() {
     return this.service.getPreference();
   }

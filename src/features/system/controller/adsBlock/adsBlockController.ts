@@ -1176,11 +1176,11 @@ export class AdBlocker {
       {
         enableCompression: true,
       },
-      {
-        path: "engine.bin",
-        read: async (...args) => readFileSync(...args),
-        write: async (...args) => writeFileSync(...args),
-      },
+      // {
+      //   path: "engine.bin",
+      //   read: async (...args) => readFileSync(...args),
+      //   write: async (...args) => writeFileSync(...args),
+      // },
     );
   }
 
@@ -1203,9 +1203,11 @@ export class AdBlocker {
 
     view.webContents.on("did-navigate", () => {
       if (view.webContents.getURL().includes("youtube.com")) {
-        view.webContents.executeJavaScript(`(${SponsorBlock.toString()})();(${SkipADSBlock.toString()})();`).catch((err) => {
-          console.error("[YT Adblock] Injection failed:", err);
-        });
+        view.webContents
+          .executeJavaScript(`(${SponsorBlock.toString()})();(${SkipADSBlock.toString()})();`)
+          .catch((err) => {
+            console.error("[YT Adblock] Injection failed:", err);
+          });
       }
     });
 

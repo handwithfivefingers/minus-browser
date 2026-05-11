@@ -28,6 +28,7 @@ interface ISystemForm {
   intervalTime: string;
   hardwareAcceleration: string;
   layout: "FLOATING" | "BASIC";
+  savedCookies: "0" | "1";
 }
 
 const Sidebar = ({ active, onChange }: { active: SettingTab; onChange: (tab: SettingTab) => void }) => {
@@ -114,6 +115,22 @@ const SystemSection = ({
             <option value="1">On</option>
           </select>
         </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm text-slate-600">Cookie saved as</span>
+          <select
+            value={form.savedCookies}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                savedCookies: event.target.value as "0" | "1",
+              }))
+            }
+            className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm"
+          >
+            <option value="0">System</option>
+            <option value="1">File</option>
+          </select>
+        </label>
 
         <label className="flex flex-col gap-1.5 md:col-span-2">
           <span className="text-sm text-slate-600">Layout Template</span>
@@ -172,7 +189,8 @@ const Setting = () => {
   const [activeTab, setActiveTab] = useState<SettingTab>("system");
   const [systemForm, setSystemForm] = useState<ISystemForm>({
     intervalTime: "15",
-    hardwareAcceleration: "0",
+    hardwareAcceleration: "1",
+    savedCookies: "0",
     layout,
   });
 

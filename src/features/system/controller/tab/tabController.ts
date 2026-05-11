@@ -27,6 +27,7 @@ export class TabController {
         tabs: ITab[];
         index: number;
       }>();
+      console.log("data", data);
       const tabs = data?.tabs || [];
       const newTabs = new Map();
       const tabsIndex: { [key: string]: number } = {};

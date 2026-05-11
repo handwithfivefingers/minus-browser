@@ -13,27 +13,15 @@ const resolveUserDataDir = () => {
 };
 const baseDir = process.env.NODE_ENV === "development" ? devDataDir : resolveUserDataDir();
 
-const filesPath = {
-  development: {
-    userData: path.join(baseDir, "userData.json"),
-    interface: path.join(baseDir, "interface.json"),
-    session: path.join(baseDir, "session.json"),
-    bookmark: path.join(baseDir, "bookmark.json"),
-    history: path.join(baseDir, "history.json"),
-    userscripts: path.join(baseDir, "userscripts.json"),
-    passwordVault: path.join(baseDir, "passwordVault.json"),
-    translate: path.join(baseDir, "translate.json"),
-  },
-  production: {
-    userData: path.join(resolveUserDataDir(), "userData.json"),
-    interface: path.join(resolveUserDataDir(), "interface.json"),
-    session: path.join(resolveUserDataDir(), "session.json"),
-    bookmark: path.join(resolveUserDataDir(), "bookmark.json"),
-    history: path.join(resolveUserDataDir(), "history.json"),
-    userscripts: path.join(resolveUserDataDir(), "userscripts.json"),
-    passwordVault: path.join(resolveUserDataDir(), "passwordVault.json"),
-    translate: path.join(resolveUserDataDir(), "translate.json"),
-  },
+const fileStorages = {
+  userData: path.join(baseDir, "userData.json"),
+  interface: path.join(baseDir, "interface.json"),
+  session: path.join(baseDir, "session.json"),
+  bookmark: path.join(baseDir, "bookmark.json"),
+  history: path.join(baseDir, "history.json"),
+  userscripts: path.join(baseDir, "userscripts.json"),
+  passwordVault: path.join(baseDir, "passwordVault.json"),
+  translate: path.join(baseDir, "translate.json"),
 };
 
 type StoreName =
@@ -45,13 +33,9 @@ type StoreName =
   | "userscripts"
   | "passwordVault"
   | "translate";
-const pathConfig =
-  process.env.NODE_ENV === "development"
-    ? filesPath.development
-    : filesPath.production;
 export class StoreManager {
   storage = new Map();
-  configFile = pathConfig.userData;
+  configFile = fileStorages.userData;
   constructor(props: StoreName = "userData") {
     if (
       ![
@@ -67,23 +51,24 @@ export class StoreManager {
     ) {
       throw new Error("Invalid props");
     }
-    this.configFile = pathConfig[props];
+    this.configFile = fileStorages[props];
     this.initialize(props);
   }
   initialize(fileName: StoreName) {
     try {
-      const filePath = pathConfig[fileName];
+      console.log("Initializing StoreManager with file:", this.configFile);
+      const filePath = fileStorages[fileName];
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      const isExist = fs.existsSync(pathConfig[fileName]);
+      const isExist = fs.existsSync(fileStorages[fileName]);
       if (!isExist) {
-        fs.writeFileSync(pathConfig[fileName], JSON.stringify([]), "utf-8");
+        fs.writeFileSync(fileStorages[fileName], JSON.stringify([]), "utf-8");
       }
     } catch (error) {
       console.log("[ERROR] StoreManager initialize -", error);
     }
   }
 
-  readFiles = <T>(): Promise<T> => {
+  readFiles = <T>(fallback = {} as T): Promise<T> => {
     return new Promise((resolve, reject) => {
       log.info("Đang đọc file: ", this.configFile);
       fs.readFile(this.configFile, "utf-8", (error, data) => {
@@ -96,7 +81,7 @@ export class StoreManager {
         // 2. Kiểm tra nếu data bị trống (0 bytes)
         if (!data || data.trim() === "") {
           log.warn("File trống, trả về object rỗng");
-          return resolve({} as T);
+          return resolve(fallback as T);
         }
 
         try {
@@ -106,7 +91,7 @@ export class StoreManager {
         } catch (parseError) {
           log.error("Lỗi định dạng JSON không hợp lệ:", parseError);
           // Nếu file hỏng (không phải JSON), trả về object rỗng thay vì làm crash app
-          resolve({} as T);
+          resolve(fallback as T);
         }
       });
     });

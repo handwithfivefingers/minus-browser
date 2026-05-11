@@ -33,8 +33,8 @@ class MinusBrowser {
     this.isPersistingBeforeQuit = true;
     try {
       await this.viewController?.persist();
-      await this.browser?.webContents.session.flushStorageData();
-      await this.minusSession?.cookies.flushStore();
+      // await this.browser?.webContents.session.flushStorageData();
+      // await this.minusSession?.cookies.flushStore();
     } catch (error) {
       log.error("flushPersistenceOnQuit failed", error);
     }
@@ -85,6 +85,12 @@ class MinusBrowser {
           session: this.minusSession,
           // sandbox: true,
         },
+      });
+      this.minusSession.webRequest.onBeforeSendHeaders((details, callback) => {
+        details.requestHeaders["User-Agent"] =
+          // `Minus/${app.getVersion()} Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36`;
+          `Minus/${app.getVersion()} Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36`;
+        callback({ cancel: false, requestHeaders: details.requestHeaders });
       });
 
       this.browser = browser;

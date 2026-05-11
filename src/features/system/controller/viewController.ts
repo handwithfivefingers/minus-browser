@@ -14,9 +14,11 @@ import { UserScriptManagerController } from "../services/userScript.service/mang
 import { UserScriptDialogServices } from "../services/userScript.service/dialog";
 import { IUserScript } from "../interfaces/userscript";
 import { TranslateController } from "./translate";
+import { debounce } from "../utils/debounce";
 interface IUserInterface {
   layout: string;
   mode: string;
+  savedCookies?: "0" | "1";
   dataSync: {
     intervalTime: string;
     hardwareAcceleration: string;
@@ -32,8 +34,16 @@ export class ViewController {
   vaultController = new VaultController();
   vaultServices = new VaultServices();
   translateController = new TranslateController();
+  sessionStore: StoreManager = new StoreManager("session");
   userScriptManagerController = new UserScriptManagerController(this.tabController.userScripts);
   userScriptDialogController = new UserScriptDialogServices();
+
+  sessions: Electron.Cookie[] = [];
+  userInterface: IUserInterface | undefined = undefined;
+
+  sessionPersistDebounce = debounce(() => {
+    this.sessionStore.saveFiles(this.sessions || []);
+  }, 250);
 
   private invokeHandlers: Record<string, (data?: any) => any> | undefined;
   private listenerHandlers: Record<string, (data?: any) => void> | undefined;
@@ -97,14 +107,23 @@ export class ViewController {
 
   async init() {
     try {
+      await this.initializeHandlers();
+
       await Promise.all([
-        this.tabController.initialize(),
         this.vaultController.initialize(),
         this.translateController.initialize(),
+        this.tabController.initialize(),
+        this.sessionStore.initialize("session"),
       ]);
-      await this.initializeHandlers();
+
+      this.sessions = await this.sessionStore.readFiles<Electron.Cookie[]>([]).catch(() => []);
       ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
       ipcMain.on("send", (event, args: IPC) => this.onListener(args));
+
+      this.minusSession?.cookies.on("changed", (event, cookie, cause, removed) => {
+        console.log("event", JSON.stringify({ event, cookie, cause, removed }, null, 2));
+        this.sessionPersist({ cookie, removed });
+      });
     } catch (error) {
       console.log("[ERROR] View Controller -", error);
     } finally {
@@ -180,6 +199,7 @@ export class ViewController {
       //   view: currentTab.view,
       // });
       currentTab.webContents.loadURL(url);
+      currentTab.cookies = await this.getCookieFromURL(url);
       currentTab.updateUrl(url);
       this.window.webContents.send("GET_TABS", this.getTabs());
     } catch (error) {
@@ -296,10 +316,12 @@ export class ViewController {
         intervalTime: "15",
         hardwareAcceleration: "1",
       },
+      savedCookies: "0",
     };
     try {
-      const userInterface = await this.interfaceStore.readFiles();
+      const userInterface = await this.interfaceStore.readFiles<IUserInterface>();
       Object.assign(defaultData, userInterface);
+      this.userInterface = userInterface;
       return userInterface;
     } catch (error) {
       return defaultData;
@@ -309,18 +331,38 @@ export class ViewController {
   async getCookieFromURL(url: string) {
     const { origin } = new URL(url);
     if (!origin) return;
-    const viewCookie = await session.defaultSession.cookies.get({
-      url: origin,
-    });
-    return viewCookie;
+    if (this.userInterface?.savedCookies === "0") {
+      const viewCookie = await this.minusSession?.cookies.get({
+        url: origin,
+      });
+      return viewCookie;
+    } else {
+      const viewCookie = this.sessions?.filter(
+        (cookie) => cookie.domain?.includes(url) || (cookie?.domain && url.includes(cookie?.domain)),
+      );
+      return viewCookie;
+    }
   }
+
+  sessionPersist({ cookie, removed }: { cookie: Electron.Cookie; removed: boolean }) {
+    // this.sessions
+    if (removed) {
+      let index = this.sessions?.findIndex(
+        (c) => c.name === cookie.name && c.domain === cookie.domain && c.path === cookie.path,
+      );
+      if (index !== undefined && index > -1) {
+        this.sessions?.splice(index, 1);
+      }
+    } else {
+      this.sessions?.push(cookie);
+    }
+
+    this.sessionPersistDebounce();
+  }
+
   async persist() {
     try {
       const tabs = this.getTabs();
-      // const cookies = session.defaultSession.cookies;
-      // for (let i = 0; i < tabs.length; i++) {
-      //   tabs[i].cookies = await this.getCookieFromURL(tabs[i].url);
-      // }
       await Promise.all([
         this.minusSession?.cookies.flushStore(),
         this.minusSession?.flushStorageData(),
@@ -392,11 +434,16 @@ export class ViewController {
   }
 
   async saveUserScript(data: IUserScript) {
-    console.log("save user Script");
     if (!data?.source?.trim()) {
       throw new Error("Script source is required");
     }
-    return this.userScriptManagerController.saveUserScript(data);
+    const script = await this.userScriptManagerController.saveUserScript(data);
+    if (script) {
+      this.showNotification({
+        title: "UserScript Saved",
+        description: `UserScript "${script.name || "Unnamed"}" has been saved successfully.`,
+      });
+    }
   }
 
   async importUserScript() {
@@ -416,7 +463,14 @@ export class ViewController {
     if (!id) {
       throw new Error("Script id is required");
     }
-    return this.userScriptManagerController.deleteUserScript(id);
+    const script = await this.userScriptManagerController.deleteUserScript(id);
+
+    if (script) {
+      this.showNotification({
+        title: "UserScript Deleted",
+        description: `UserScript has been deleted successfully.`,
+      });
+    }
   }
 
   async toggleUserScript({ id, enabled }: { id: string; enabled?: boolean }) {
@@ -440,12 +494,18 @@ export class ViewController {
     if (!data?.password?.trim()) {
       throw new Error("Password is required");
     }
-    return this.vaultController.addVault({
+    const vault = await this.vaultController.addVault({
       site: data.site.trim(),
       username: data.username.trim(),
       password: data.password,
       notes: data.notes || "",
     });
+    if (vault) {
+      this.showNotification({
+        title: "Vault Item Saved",
+        description: `Vault item "${vault.site}" has been saved successfully.`,
+      });
+    }
   }
 
   async vaultUpdate(data: {
@@ -455,14 +515,24 @@ export class ViewController {
     if (!data?.id) {
       throw new Error("Vault item id is required");
     }
-    return this.vaultController.updateVault(data.id, data.patch || {});
+    const vault = await this.vaultController.updateVault(data.id, data.patch || {});
+    if (vault) {
+      this.showNotification({
+        title: "Vault Item Saved",
+        description: `Vault item "${vault.site}" has been saved successfully.`,
+      });
+    }
   }
 
   async vaultDelete(data: { id: string }) {
     if (!data?.id) {
       throw new Error("Vault item id is required");
     }
-    return this.vaultController.removeVault(data.id);
+    await this.vaultController.removeVault(data.id);
+    this.showNotification({
+      title: "Vault Item Deleted",
+      description: `Vault item has been deleted successfully.`,
+    });
   }
 
   async vaultFill(data: { tabId: string; credentialId: string }) {
@@ -624,76 +694,14 @@ export class ViewController {
       ...data,
       text,
     });
+
     if (result?.translatedText) {
-      await tab.webContents.executeJavaScript(
-        `(() => {
-          const old = document.getElementById("__minus_translate_selection_popup");
-          if (old) old.remove();
-          const selection = window.getSelection?.();
-          const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-          const rect = range ? range.getBoundingClientRect() : null;
-          const anchor = window.__minusSelectionAnchor || {};
-          const x = Number(rect?.left || anchor?.x || window.innerWidth / 2);
-          const y = Number(rect?.bottom || anchor?.y || window.innerHeight / 2);
-
-          const root = document.createElement("div");
-          root.id = "__minus_translate_selection_popup";
-          root.style.position = "fixed";
-          root.style.zIndex = "2147483647";
-          root.style.maxWidth = "340px";
-          root.style.minWidth = "200px";
-          root.style.left = Math.max(8, Math.min(window.innerWidth - 360, x)) + "px";
-          root.style.top = Math.max(8, Math.min(window.innerHeight - 180, y + 10)) + "px";
-          root.style.background = "#0f172a";
-          root.style.color = "#fff";
-          root.style.padding = "10px";
-          root.style.borderRadius = "10px";
-          root.style.border = "1px solid rgba(255,255,255,.15)";
-          root.style.boxShadow = "0 18px 40px rgba(0,0,0,.35)";
-          root.style.fontFamily = "Inter, system-ui, -apple-system, sans-serif";
-          root.style.fontSize = "12px";
-          root.style.lineHeight = "1.4";
-
-          const meta = document.createElement("div");
-          meta.style.opacity = ".8";
-          meta.style.fontSize = "11px";
-          meta.style.marginBottom = "6px";
-          meta.textContent = ${JSON.stringify(`${result.sourceLanguage} -> ${result.targetLanguage}`)};
-
-          const text = document.createElement("div");
-          text.textContent = ${JSON.stringify(result.translatedText)};
-          text.style.whiteSpace = "pre-wrap";
-          text.style.wordBreak = "break-word";
-
-          const close = document.createElement("button");
-          close.type = "button";
-          close.textContent = "×";
-          close.style.position = "absolute";
-          close.style.top = "4px";
-          close.style.right = "6px";
-          close.style.border = "none";
-          close.style.background = "transparent";
-          close.style.color = "#fff";
-          close.style.cursor = "pointer";
-          close.style.fontSize = "14px";
-          close.onclick = () => root.remove();
-
-          root.appendChild(meta);
-          root.appendChild(text);
-          root.appendChild(close);
-          document.documentElement.appendChild(root);
-          // setTimeout(() => root.remove(), 9000);
-          let intervalId = null;
-          intervalId = setInterval(() => {
-            const currentSelection = String(window.getSelection?.()?.toString?.() || "").trim();
-            if (currentSelection !== ${JSON.stringify(text)}) {
-              clearInterval(intervalId);
-              root.remove();
-            }
-          },1000)
-        })();`,
-        true,
-      );
+      const translateResponse = {
+        sourceLanguage: result.sourceLanguage,
+        translatedText: result.translatedText,
+        targetLanguage: result.targetLanguage,
+      };
+      await tab.webContents.executeJavaScript(this.translateController.scriptInjection(text, translateResponse), true);
     }
     return result;
   }
