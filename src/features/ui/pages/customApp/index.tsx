@@ -74,8 +74,13 @@ const CustomApp = () => {
     window.api.LISTENER("FILL_PASSWORD_REQUEST", onFillPasswordRequest);
     // window.api.LISTENER("TRANSLATE_LANGUAGE_DETECTED", onTranslateLanguageDetected);
     window.api.LISTENER("TRANSLATE_SELECTION_AVAILABLE", onTranslateSelectionAvailable);
+    // window.api.LISTENER(`CREATE_TAB`, onHandleReceiveCreateTabEvent);
+
   }, [tabId]);
 
+  // const onHandleReceiveCreateTabEvent = (payload: {url:string}) => {
+  // } 
+  
   const onTabNavigate = (isLoading: boolean) => {
     setIsLoading(isLoading);
   };

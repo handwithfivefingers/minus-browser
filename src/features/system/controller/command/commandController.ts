@@ -5,13 +5,7 @@ class CommandShortCut {
   isActive: boolean = false;
   commandName: string = "";
   callback: () => void;
-  constructor({
-    commandName,
-    callback,
-  }: {
-    commandName: string;
-    callback: () => void;
-  }) {
+  constructor({ commandName, callback }: { commandName: string; callback: () => void }) {
     this.commandName = commandName;
     this.callback = callback;
     this.initialize();
@@ -34,10 +28,10 @@ class CommandShortCut {
 
 export class CommandController {
   isSearch = false;
-  search: CommandShortCut;
-  createTab: CommandShortCut;
-  toggleDevTools: CommandShortCut;
-  reloadPage: CommandShortCut;
+  search: CommandShortCut | undefined;
+  createTab: CommandShortCut | undefined;
+  toggleDevTools: CommandShortCut | undefined;
+  reloadPage: CommandShortCut | undefined;
   viewController: ViewController;
   constructor(viewController: ViewController) {
     this.viewController = viewController;
@@ -68,25 +62,24 @@ export class CommandController {
   onSearchCallback() {
     this.isSearch = !this.isSearch;
     let view = BrowserWindow.getFocusedWindow();
-    view.webContents.send("SEARCH", { open: this.isSearch });
+    view?.webContents?.send("SEARCH", { open: this.isSearch });
   }
 
   onCreateTabCallback() {
-    console.log("EMIT CREATE_TAB");
     this.viewController.createTab();
   }
   onToggleDevTools() {
     let view = BrowserWindow.getFocusedWindow();
-    view.webContents.send("TOGGLE_DEV_TOOLS");
+    view?.webContents?.send("TOGGLE_DEV_TOOLS");
   }
   onReloadPage() {
     let view = BrowserWindow.getFocusedWindow();
-    view.webContents.send("ON_RELOAD");
+    view?.webContents?.send("ON_RELOAD");
   }
   destroy() {
-    this.search.destroy();
-    this.createTab.destroy();
-    this.toggleDevTools.destroy();
-    this.reloadPage.destroy();
+    this.search?.destroy();
+    this.createTab?.destroy();
+    this.toggleDevTools?.destroy();
+    this.reloadPage?.destroy();
   }
 }

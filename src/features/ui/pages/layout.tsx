@@ -68,13 +68,13 @@ const LayoutSideEffect = ({ children }: { children: React.ReactElement | React.R
     };
     getScreenData();
   }, []);
-  useEffect(() => {
-    window.api.LISTENER("CREATE_TAB", (tab?: Partial<Tab>) => {
-      if (tab?.id) {
-        navigate(tab.id);
-      }
-    });
-  }, []);
+  // useEffect(() => {
+  //   window.api.LISTENER("CREATE_TAB", (tab?: Partial<Tab>) => {
+  //     if (tab?.id) {
+  //       navigate(tab.id);
+  //     }
+  //   });
+  // }, []);
   return children as React.ReactElement;
 };
 

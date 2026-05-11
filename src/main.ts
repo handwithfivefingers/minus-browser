@@ -33,8 +33,6 @@ class MinusBrowser {
     this.isPersistingBeforeQuit = true;
     try {
       await this.viewController?.persist();
-      // await this.browser?.webContents.session.flushStorageData();
-      // await this.minusSession?.cookies.flushStore();
     } catch (error) {
       log.error("flushPersistenceOnQuit failed", error);
     }
