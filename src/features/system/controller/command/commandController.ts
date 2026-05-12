@@ -61,8 +61,9 @@ export class CommandController {
 
   onSearchCallback() {
     this.isSearch = !this.isSearch;
-    let view = BrowserWindow.getFocusedWindow();
-    view?.webContents?.send("SEARCH", { open: this.isSearch });
+    // let view = BrowserWindow.getFocusedWindow();
+    // view?.webContents?.send("SEARCH", { open: this.isSearch });
+    this.viewController.searchController?.showSearchBar();
   }
 
   onCreateTabCallback() {

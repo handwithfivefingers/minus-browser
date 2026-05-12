@@ -15,6 +15,7 @@ import { UserScriptDialogServices } from "../services/userScript.service/dialog"
 import { IUserScript } from "../interfaces/userscript";
 import { TranslateController } from "./translate";
 import { debounce } from "../utils/debounce";
+import { SearchController } from "./search";
 interface IUserInterface {
   layout: string;
   mode: string;
@@ -37,7 +38,7 @@ export class ViewController {
   sessionStore: StoreManager = new StoreManager("session");
   userScriptManagerController = new UserScriptManagerController(this.tabController.userScripts);
   userScriptDialogController = new UserScriptDialogServices();
-
+  searchController: SearchController | undefined;
   sessions: Electron.Cookie[] = [];
   userInterface: IUserInterface | undefined = undefined;
 
@@ -61,7 +62,8 @@ export class ViewController {
         [IPC_INVOKE_CHANNEL.GET_TAB]: (tab?: Partial<ITab>) => this.getTab({ id: tab?.id as string }),
         [IPC_INVOKE_CHANNEL.GET_USER_INTERFACE]: () => this.loadUserInterface(),
         [IPC_INVOKE_CHANNEL.CLOUD_SAVE]: () => this.persist(),
-        [IPC_INVOKE_CHANNEL.SEARCH_PAGE]: (data) => this.handleSearchPage(data),
+        // [IPC_INVOKE_CHANNEL.SEARCH_PAGE]: (data) => this.handleSearchPage(data),
+        [IPC_INVOKE_CHANNEL.SEARCH_PAGE]: (data) => this.searchController?.searchPage(data),
         [IPC_INVOKE_CHANNEL.INTERFACE_SAVE]: (data) => this.interfaceSave(data),
         [IPC_INVOKE_CHANNEL.GET_USERSCRIPTS]: () => this.getUserScripts(),
         [IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT]: (data) => this.saveUserScript(data),
@@ -115,7 +117,7 @@ export class ViewController {
         this.tabController.initialize(),
         this.sessionStore.initialize("session"),
       ]);
-
+      this.searchController = new SearchController(this.tabController);
       this.sessions = await this.sessionStore.readFiles<Electron.Cookie[]>([]).catch(() => []);
       ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
       ipcMain.on("send", (event, args: IPC) => this.onListener(args));

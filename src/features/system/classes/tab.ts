@@ -67,7 +67,8 @@ export class Tab {
   tabEventsRegistered = false;
   translateSelectionCaptureRegistered = false;
   translateSelectionActionRegistered = false;
-
+  searchBarRegistered = false;
+  searchBarVisible = false;
   constructor({
     blocker,
     userscriptController,
@@ -186,6 +187,7 @@ export class Tab {
     this.registerCredentialDetection();
     this.registerCredentialAssistAction();
     this.registerTranslateSelectionAction();
+    this.registerSearchBarAction()
   }
 
   unregisterTabEvents() {
@@ -602,5 +604,103 @@ export class Tab {
         // ignore parse errors
       }
     });
+  }
+
+  private registerSearchBarAction() {
+    if (this.searchBarRegistered) return;
+    this.searchBarRegistered = true;
+
+    // Listen for search commands sent from the injected bar via console.log
+    this.view.webContents.on("console-message", (_event, _level, message) => {
+      if (message === "__MINUS_SEARCH_CLOSE__") {
+        this.hideSearchBar();
+        const browser = BrowserWindow.getFocusedWindow();
+        browser?.webContents?.send(`SEARCH_BAR_CLOSED:${this.id}`);
+        return;
+      }
+
+      if (message.startsWith("__MINUS_SEARCH__:")) {
+        try {
+          const payload = JSON.parse(message.slice("__MINUS_SEARCH__:".length)) as {
+            query: string;
+            findNext: boolean;
+            forward: boolean;
+          };
+          const { query, findNext, forward } = payload;
+
+          if (!query?.trim()) {
+            this.view.webContents.stopFindInPage("clearSelection");
+            this.updateSearchCount(0, 0);
+            return;
+          }
+
+          this.view.webContents.findInPage(query, { forward, findNext, matchCase: false });
+        } catch (_) {}
+      }
+    });
+
+    // Handle found-in-page result — update count display in the injected bar
+    this.view.webContents.on("found-in-page", (_event, result) => {
+      if (!this.searchBarVisible) return;
+      if (result.finalUpdate) {
+        this.updateSearchCount(result.activeMatchOrdinal ?? 0, result.matches ?? 0);
+        // Forward to renderer so React toolbar can optionally show count too
+        const browser = BrowserWindow.getFocusedWindow();
+        browser?.webContents?.send(`FOUND_IN_PAGE:${this.id}`, {
+          activeMatchOrdinal: result.activeMatchOrdinal,
+          matches: result.matches,
+        });
+      }
+    });
+
+    // Close search bar when the page navigates away
+    this.view.webContents.on("did-navigate", () => {
+      if (this.searchBarVisible) this.hideSearchBar();
+    });
+    this.view.webContents.on("did-navigate-in-page", () => {
+      if (this.searchBarVisible) this.hideSearchBar();
+    });
+  }
+
+  async hideSearchBar() {
+    this.searchBarVisible = false;
+    try {
+      await this.view.webContents.executeJavaScript(
+        `
+      (() => {
+        const bar = document.getElementById("__minus_search_bar");
+        const style = document.getElementById("__minus_search_style");
+        if (bar) bar.remove();
+        if (style) style.remove();
+      })();
+    `,
+        true,
+      );
+    } catch (_) {}
+    this.view.webContents.stopFindInPage("clearSelection");
+  }
+
+  updateSearchCount(activeMatchOrdinal: number, matches: number) {
+    if (!this.searchBarVisible) return;
+    const noMatch = matches === 0;
+    const text = noMatch ? "no results" : `${activeMatchOrdinal} / ${matches}`;
+    this.view.webContents
+      .executeJavaScript(
+        `
+    (() => {
+      const count = document.getElementById("__minus_search_count");
+      const input = document.getElementById("__minus_search_input");
+      if (count) {
+        count.textContent = ${JSON.stringify(text)};
+        count.classList.toggle("no-match", ${noMatch});
+      }
+      if (input) {
+        input.classList.toggle("no-match", ${noMatch});
+      }
+    })();
+  `,
+        true,
+      )
+      .catch(() => {});
   }
 }
