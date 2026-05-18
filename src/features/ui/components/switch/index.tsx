@@ -1,24 +1,29 @@
 import clsx from "clsx";
-import React, { useState } from "react";
+import { useState } from "react";
 
-export const Switch = ({ title }: { title: string }) => {
-  const [active, setActive] = useState(false);
+interface Props {
+  title: string;
+  className?: string;
+  onCheck?: (v: boolean) => void;
+  value?: boolean;
+}
+export const Switch = ({ title, className, onCheck, value = false }: Props) => {
   return (
     <div
-      className="relative items-center w-6 h-full flex cursor-pointer"
+      className={clsx("relative items-center w-6 h-full flex cursor-pointer", className)}
       title={title}
-      onClick={() => setActive(!active)}
+      onClick={() => onCheck?.(!value)}
     >
       <div
         className={clsx("w-full h-1 rounded-full transition-all", {
-          ["bg-slate-400"]: !active,
-          ["bg-indigo-500"]: active,
+          ["bg-slate-400"]: !value,
+          ["bg-indigo-500"]: value,
         })}
       ></div>
       <span
         className={clsx("left-0 w-3 h-3 rounded-full absolute top-1/2 -translate-y-1/2 transition-all ", {
-          ["bg-slate-400"]: !active,
-          ["translate-x-full bg-indigo-500"]: active,
+          ["bg-slate-400"]: !value,
+          ["translate-x-full bg-indigo-500"]: value,
         })}
       />
     </div>

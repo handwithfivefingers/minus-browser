@@ -1,3 +1,3 @@
 export * from "./interfaces";
 export * from "./stores";
-export * from "./classes";
+export * from "./models";

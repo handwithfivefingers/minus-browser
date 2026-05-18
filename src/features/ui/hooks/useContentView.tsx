@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ITab } from "../../browsers/interfaces";
+import { Tab } from "../interfaces";
 
 const EVENT_TYPE = {
   SHOW_VIEW_BY_ID: "SHOW_VIEW_BY_ID",
@@ -7,7 +7,7 @@ const EVENT_TYPE = {
 };
 
 interface IShowViewProps {
-  tab: Partial<ITab>;
+  tab: Partial<Tab>;
   screen: {
     width: number;
     height: number;
@@ -32,22 +32,12 @@ export const useContentView = () => {
     return {
       showViewByID: async (params: IShowViewProps) => {
         try {
-          console.log("params", params);
           const response = await window.api.EMIT(EVENT_TYPE.SHOW_VIEW_BY_ID, params);
           return response;
         } catch (error) {
           console.error("Error getting tabs:", error);
         }
       },
-      // onViewChange: async ({ id, url }: IViewChange) => {
-      //   try {
-      //     const response = await window.api.LISTENERS("TAB_UPDATED_URL", { id, url });
-      //     const resp = await window.api.
-      //     return response;
-      //   } catch (error) {
-      //     console.error("Error getting tabs:", error);
-      //   }
-      // },
     };
   }, []);
 

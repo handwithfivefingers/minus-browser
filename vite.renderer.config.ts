@@ -12,24 +12,12 @@ export default defineConfig({
     ],
   },
   build: {
-    // lib: {
-    //   entry: "./src/features/ui/components/sidebar/index.tsx",
-    //   name: "SidebarComponent",
-    //   fileName: () => "sidebar.js",
-    //   formats: ["umd"], // makes it accessible as <script>
-    // },
-    // lib: {
-    //   entry: "./src/features/ui/components/sidebar/index.tsx",
-    //   name: "SidebarComponent",
-    //   fileName: () => "sidebar.js",
-    //   formats: ["umd"], // makes it accessible as <script>
-    // },
     rollupOptions: {
       input: {
         main_window: "./index.html", // path to your main html
-        userscript: "./src/features/injection/apps/userscript/index.html", // ADD THIS
-        translate: "./src/features/injection/apps/translate/index.html",
-        vault: "./src/features/injection/apps/vault/index.html",
+        userscript: "./src/features/userscript/overlay/index.html",
+        translate: "./src/features/translate/overlay/index.html",
+        vault: "./src/features/vault/overlay/index.html",
       },
     },
   },

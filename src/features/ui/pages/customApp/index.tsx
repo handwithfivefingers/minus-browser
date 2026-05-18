@@ -54,7 +54,6 @@ const CustomApp = () => {
   const { layout } = useMinusThemeStore();
   const [isLoading, setIsLoading] = useState(false);
   const handledCredentialRef = useRef<Set<string>>(new Set());
-  const handledTranslateRef = useRef<Set<string>>(new Set());
   const latestSelectionRef = useRef<string>("");
   const tab = useTabStore((s) => s.activeTab);
   const updateTab = useTabStore((s) => s.updateTab);
@@ -63,6 +62,7 @@ const CustomApp = () => {
     setActiveTab(tabId);
     getScreenData();
     tabServices.subscribeTab<{ favicon: string; title: string; url: string }>(tabId, ({ favicon, title, url }) => {
+      console.log("favicon", favicon);
       updateTab(tabId, { favicon, title, url });
     });
     window.api.LISTENER("ON_RELOAD", onReload);
@@ -74,13 +74,11 @@ const CustomApp = () => {
     window.api.LISTENER("FILL_PASSWORD_REQUEST", onFillPasswordRequest);
     // window.api.LISTENER("TRANSLATE_LANGUAGE_DETECTED", onTranslateLanguageDetected);
     window.api.LISTENER("TRANSLATE_SELECTION_AVAILABLE", onTranslateSelectionAvailable);
-    // window.api.LISTENER(`CREATE_TAB`, onHandleReceiveCreateTabEvent);
-
   }, [tabId]);
 
   // const onHandleReceiveCreateTabEvent = (payload: {url:string}) => {
-  // } 
-  
+  // }
+
   const onTabNavigate = (isLoading: boolean) => {
     setIsLoading(isLoading);
   };
@@ -130,7 +128,9 @@ const CustomApp = () => {
 
   const onFillPassword = async () => {
     try {
+      console.log("coming onFillPassword ");
       const credentials = await window.api.INVOKE<IPasswordVaultItem[]>("VAULT_LIST");
+      console.log("credentials", credentials);
       if (!credentials?.length) return;
       const currentUrl = tab?.url || "";
       const host = (() => {
@@ -306,7 +306,7 @@ const CustomApp = () => {
   const onTranslateSelectionAvailable = (payload: { tabId?: string; text?: string }) => {
     if (payload?.tabId && payload.tabId !== tabId) return;
     latestSelectionRef.current = String(payload.text || "").trim();
-    onTranslateSelection()
+    onTranslateSelection();
   };
 
   const getScreenData = async () => {
@@ -315,7 +315,7 @@ const CustomApp = () => {
   };
   if (!tabId) return <Navigate to={"/"} />;
   return (
-    <div className={LAYOUT_HEADER_CLASS[layout]}>
+    <div className={LAYOUT_HEADER_CLASS[layout as keyof typeof LAYOUT_HEADER_CLASS]}>
       <Header
         key={tabId}
         id={tabId}
@@ -383,7 +383,7 @@ const WebViewInstance = ({ id }: { id: string }) => {
   }, []);
 
   return (
-    <div className={WEBVIEW_CLASSES[layout]}>
+    <div className={WEBVIEW_CLASSES[layout as keyof typeof WEBVIEW_CLASSES]}>
       <div
         className="mx-auto absolute z-0 left-0 top-0 w-full h-full flex justify-center items-center mt-auto"
         ref={webviewRef}

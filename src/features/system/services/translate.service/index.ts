@@ -2,7 +2,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { BrowserWindow, WebContentsView } from "electron";
 import { v7 as uuidv7 } from "uuid";
-import { Tab } from "../../classes/tab";
+import { Tab } from "../../models/tab";
 import {
   ITranslateDetectResult,
   ITranslatePreference,

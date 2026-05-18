@@ -27,13 +27,13 @@ const config: ForgeConfig = {
   rebuildConfig: {},
   // makers: [new MakerSquirrel({}), new MakerZIP({}, ["darwin"]), new MakerRpm({}), new MakerDeb({}), new MakerDMG({})],
   makers: [
-    new MakerSquirrel({}),
+    // new MakerSquirrel({}),
     new MakerZIP({}, ["darwin", "win32"]),
-    new MakerDMG({
-      name: "MinusBrowser",
-      format: "ULFO",
-      overwrite: true,
-    }),
+    // new MakerDMG({
+    //   name: "MinusBrowser",
+    //   format: "ULFO",
+    //   overwrite: true,
+    // }),
   ],
   plugins: [
     new VitePlugin({
@@ -62,6 +62,10 @@ const config: ForgeConfig = {
           name: "main_window",
           config: "vite.renderer.config.ts",
         },
+        // {
+        //   name: "spotlight_window",
+        //   config: "vite.spotlight.renderer.config.ts",
+        // },
         {
           name: "vault_injection",
           config: "vite.injection.vault.config.ts",

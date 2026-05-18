@@ -8,6 +8,7 @@ import { useTabStore } from "../../stores/useTabStore";
 import { TabItem } from "../tab";
 /** @ts-ignore */
 import styles from "./styles.module.css";
+import { ErrorBoundary } from "react-error-boundary";
 interface IResizeProps {
   children: React.ReactNode;
   initialWidth?: number;
@@ -19,7 +20,7 @@ const SideMenu = () => {
   const navigate = useNavigate();
   const pathname = useLocation().pathname;
   const tabs = useTabStore((s) => s.tabs);
-
+  console.log("tabs", tabs);
   useEffect(() => {
     window.api.LISTENER("CREATE_TAB", (p) => {
       onAddNewTab(p);
@@ -33,7 +34,7 @@ const SideMenu = () => {
   const onAddNewTab = async (payload: Partial<Tab>) => {
     const tab = await window.api.INVOKE<Tab>("CREATE_TAB", payload);
     setTimeout(() => {
-      navigate(tab.id);
+      tab.id && navigate(tab.id);
     }, 500);
   };
 
@@ -42,58 +43,60 @@ const SideMenu = () => {
     navigate(`/`);
   };
   return (
-    <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={clsx(styles.sidebar)}>
-      <div className="flex gap-1 flex-col flex-1 overflow-y-auto overflow-x-hidden h-full scrollbar ">
-        <div className={clsx("w-full flex gap-0.5 items-center h-8 sticky z-[1] top-0 bg-slate-100 pb-2")}>
-          <button className={clsx("w-4 h-4 text-black", styles.appbar)}>
-            <IconGripVertical size={14} />
-          </button>
-          <button
-            className="w-3 h-3 bg-red-600/50 text-transparent rounded-full cursor-pointer hover:bg-red-600 hover:text-white"
-            onClick={onClose}
-          >
-            <IconX size={12} />
-          </button>
-        </div>
+    <ErrorBoundary FallbackComponent={ComponentError}>
+      <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={clsx(styles.sidebar)}>
+        <div className="flex gap-1 flex-col flex-1 overflow-y-auto overflow-x-hidden h-full scrollbar ">
+          <div className={clsx("w-full flex gap-0.5 items-center h-8 sticky z-[1] top-0 bg-slate-100 pb-2")}>
+            <button className={clsx("w-4 h-4 text-black", styles.appbar)}>
+              <IconGripVertical size={14} />
+            </button>
+            <button
+              className="w-3 h-3 bg-red-600/50 text-transparent rounded-full cursor-pointer hover:bg-red-600 hover:text-white"
+              onClick={onClose}
+            >
+              <IconX size={12} />
+            </button>
+          </div>
 
-        <Link
-          to={"/"}
-          viewTransition
-          className={clsx(
-            `h-10 shrink-0 px-0.5 transition-all rounded-md flex items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
-            {
-              [`bg-white text-slate-500 shadow-md`]: pathname === "/",
-              [`text-slate-500`]: pathname !== "/",
-            },
-          )}
-        >
-          <IconHome />
-        </Link>
-        {(tabs?.length > 0 &&
-          tabs?.map((tab) => {
-            return (
-              <TabItem
-                {...tab}
-                key={tab.id}
-                className={clsx("flex flex-col  items-center", styles.tabItem, {})}
-                onClose={onCloseTab}
-              />
-            );
-          })) ||
-          ""}
-        <div
-          onClick={() => onAddNewTab({})}
-          className={clsx(
-            `sticky z-[1] bottom-0 h-10 px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-500 shrink-0 bg-slate-100`,
-          )}
-          title="New Tab"
-        >
-          <IconPlus />
+          <Link
+            to={"/"}
+            viewTransition
+            className={clsx(
+              `h-10 shrink-0 px-0.5 transition-all rounded-md flex items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
+              {
+                [`bg-white text-slate-500 shadow-md`]: pathname === "/",
+                [`text-slate-500`]: pathname !== "/",
+              },
+            )}
+          >
+            <IconHome />
+          </Link>
+          {(tabs?.length > 0 &&
+            tabs?.map((tab) => {
+              return (
+                <TabItem
+                  {...tab}
+                  key={tab.id}
+                  className={clsx("flex flex-col  items-center", styles.tabItem, {})}
+                  onClose={onCloseTab}
+                />
+              );
+            })) ||
+            ""}
+          <div
+            onClick={() => onAddNewTab({})}
+            className={clsx(
+              `sticky z-[1] bottom-0 h-10 px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-500 shrink-0 bg-slate-100`,
+            )}
+            title="New Tab"
+          >
+            <IconPlus />
+          </div>
+          {/* SUB MENU */}
         </div>
-        {/* SUB MENU */}
-      </div>
-      <SubMenuItem size={tabs?.length} />
-    </ResizableSidebar>
+        <SubMenuItem size={tabs?.length} />
+      </ResizableSidebar>
+    </ErrorBoundary>
   );
 };
 
@@ -174,7 +177,7 @@ const ResizableSidebar = ({
   return (
     <div
       ref={sidebarRef}
-      className={clsx("sidebar-container ", LAYOUT_SIDEBAR_CLASS[layout], className)}
+      className={clsx("sidebar-container ", LAYOUT_SIDEBAR_CLASS[layout as keyof typeof LAYOUT_SIDEBAR_CLASS], className)}
       style={{
         width: `${width}px`,
         position: "relative",
@@ -203,5 +206,10 @@ const ResizableSidebar = ({
       />
     </div>
   );
+};
+const ComponentError = ({ error }: { error: Error }) => {
+  console.log("Stack", error.stack);
+  console.log("Name", error.name);
+  return <div>Error: {error.message}</div>;
 };
 export { SideMenu };

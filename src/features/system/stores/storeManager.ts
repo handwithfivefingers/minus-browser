@@ -56,7 +56,7 @@ export class StoreManager {
   }
   initialize(fileName: StoreName) {
     try {
-      console.log("Initializing StoreManager with file:", this.configFile);
+      // console.log("Initializing StoreManager with file:", this.configFile);
       const filePath = fileStorages[fileName];
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       const isExist = fs.existsSync(fileStorages[fileName]);
@@ -70,7 +70,7 @@ export class StoreManager {
 
   readFiles = <T>(fallback = {} as T): Promise<T> => {
     return new Promise((resolve, reject) => {
-      log.info("Đang đọc file: ", this.configFile);
+      // log.info("Đang đọc file: ", this.configFile);
       fs.readFile(this.configFile, "utf-8", (error, data) => {
         // 1. Xử lý lỗi hệ thống (ví dụ: File không tồn tại)
         if (error) {

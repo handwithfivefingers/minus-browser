@@ -1,4 +1,4 @@
-// // import { Tab } from "~/features/browsers/classes/tab";
+// // import { Tab } from "~/features/browsers/models/tab";
 
 // export interface ITab {
 //   id?: string;
@@ -37,15 +37,7 @@ export interface TabStore {
   activeTab: Tab | undefined | null;
   index: number;
   setTabs: (tabs: Tab[]) => void;
-  // tabsIndex: { [key: string]: number };
-  // initialize: ({ tabs }: { tabs: Tab[] }) => void;
-  // getTabById: (id: string) => Tab | null;
-  // addNewTab: (tab?: Partial<Tab>) => Tab;
   updateTab: (id: string, tab: Partial<Tab>) => void;
   setActiveTab: (id: string) => void;
   sync: () => void;
-  // closeTab: (tab: Tab) => {
-  //   nextIndex: number | undefined;
-  //   nextTab: Tab | undefined;
-  // };
 }

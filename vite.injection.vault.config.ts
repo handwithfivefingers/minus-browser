@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  root: "src/features/injection/apps/vault",
+  root: "src/features/vault/overlay",
   resolve: {
     alias: [
       {

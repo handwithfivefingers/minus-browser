@@ -1,11 +1,12 @@
 import { lazy, useEffect, useLayoutEffect, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import { Outlet, useNavigate } from "react-router";
+import { Outlet } from "react-router";
+import { IUserInterface } from "~/shared/types";
 import { SideMenu } from "../components";
 import { tabServices } from "../services/tab.service";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
 import { useTabStore } from "../stores/useTabStore";
-import { MinusThemeState, Tab } from "../interfaces";
+import { error } from "node:console";
 
 const Spotlight = lazy(() => import("../components").then((module) => ({ default: module.Spotlight })));
 const LAYOUT_CLASS = {
@@ -18,7 +19,7 @@ const Layout = () => {
   useEffect(() => {
     let timeout = setInterval(async () => {
       const tabs = await tabServices.getTabs();
-      if (tabs.length) {
+      if (tabs?.length) {
         setTabs?.(tabs);
         if (timeout) clearInterval(timeout);
       }
@@ -36,7 +37,7 @@ const Layout = () => {
   }, []);
   return (
     <LayoutSideEffect>
-      <div className={LAYOUT_CLASS[layout]}>
+      <div className={LAYOUT_CLASS[layout as keyof typeof LAYOUT_CLASS]}>
         <SideMenu />
         <div className="h-full overflow-auto w-full">
           <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
@@ -55,26 +56,19 @@ const Layout = () => {
 
 const LayoutSideEffect = ({ children }: { children: React.ReactElement | React.ReactNode }): React.ReactElement => {
   const minus = useMinusThemeStore();
-  const navigate = useNavigate();
   useLayoutEffect(() => {
     const getScreenData = async () => {
       try {
         // const data = await window.api.INVOKE<{ tabs: Tab[]; index: number }>("GET_TABS");
-        const userI: MinusThemeState = await window.api.INVOKE("GET_USER_INTERFACE");
-        minus.initialize(userI);
+        const theme: IUserInterface = await window.api.INVOKE("GET_USER_INTERFACE");
+        minus.initialize(theme);
       } catch (error) {
         console.error("Error getting tabs:", error);
       }
     };
     getScreenData();
   }, []);
-  // useEffect(() => {
-  //   window.api.LISTENER("CREATE_TAB", (tab?: Partial<Tab>) => {
-  //     if (tab?.id) {
-  //       navigate(tab.id);
-  //     }
-  //   });
-  // }, []);
+
   return children as React.ReactElement;
 };
 

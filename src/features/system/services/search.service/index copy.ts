@@ -1,5 +1,5 @@
 import { BrowserWindow, WebContentsView } from "electron";
-import { Tab } from "../../classes/tab";
+import { Tab } from "../../models/tab";
 
 export interface ISearchParams {
   tab: Tab;

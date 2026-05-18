@@ -1,4 +1,4 @@
-import { UserScript } from "../classes/userScript";
+import { UserScript } from "../models/userScript";
 
 export type UserScriptRunAt =
   | "document-start"

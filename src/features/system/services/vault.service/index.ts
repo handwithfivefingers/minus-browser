@@ -1,7 +1,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { BrowserWindow, WebContentsView } from "electron";
-import { Tab } from "~/features/system/classes/tab";
+import { Tab } from "~/features/system/models/tab";
 const SENTINEL = "__VAULT_RESOLVE__:";
 
 // ---------------------------------------------------------------------------
