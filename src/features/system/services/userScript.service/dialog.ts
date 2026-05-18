@@ -2,7 +2,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 // import { openUserScriptManagerDialog } from "../../injection/ui/userscriptManagerDialog";
 import { BrowserWindow, WebContentsView } from "electron";
-import { Tab } from "~/features/system/classes/tab";
+import { Tab } from "~/features/system/models/tab";
 export const openUserScriptManagerDialog = (input: any[]) => {
   const trustPolicy = (window as any)?.trustedTypes?.createPolicy("forceInner", {
     createHTML: (to_escape: string) => to_escape,

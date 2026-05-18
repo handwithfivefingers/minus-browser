@@ -6,6 +6,12 @@ export default defineConfig({
     // For Node.js native modules
     conditions: ["node"], // this is the change
     mainFields: ["module", "jsnext:main", "jsnext"],
+    alias: [
+      {
+        find: "~",
+        replacement: "/src",
+      },
+    ],
   },
   plugins: [
     {

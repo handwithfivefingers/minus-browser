@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  root: "src/features/injection/apps/userscript",
+  root: "src/features/userscript/overlay",
   resolve: {
     alias: [
       {

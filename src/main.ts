@@ -33,8 +33,6 @@ class MinusBrowser {
     this.isPersistingBeforeQuit = true;
     try {
       await this.viewController?.persist();
-      await this.browser?.webContents.session.flushStorageData();
-      await this.minusSession?.cookies.flushStore();
     } catch (error) {
       log.error("flushPersistenceOnQuit failed", error);
     }
@@ -86,6 +84,12 @@ class MinusBrowser {
           // sandbox: true,
         },
       });
+      this.minusSession.webRequest.onBeforeSendHeaders((details, callback) => {
+        details.requestHeaders["User-Agent"] =
+          // `Minus/${app.getVersion()} Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36`;
+          `Minus/${app.getVersion()} Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36`;
+        callback({ cancel: false, requestHeaders: details.requestHeaders });
+      });
 
       this.browser = browser;
 
@@ -129,9 +133,16 @@ class MinusBrowser {
   registerCommand(viewController: ViewController) {
     let gS: CommandController;
     if (!this.browser) return;
-    this.browser.on("focus", () => {
+    // const isMainFrame = this.browser.webContents.isMainFrame();
+    app.on("browser-window-focus", () => {
       gS = new CommandController(viewController);
+    })
+    app.on("browser-window-blur", () => {
+      gS?.destroy();
     });
+    // this.browser.on("focus", () => {
+    //   gS = new CommandController(viewController);
+    // });
     this.browser.on("hide", () => {
       gS?.destroy();
     });

@@ -39,7 +39,7 @@ export class ContextMenuController {
           label: "Open Link in New Window",
           click: () => {
             const window = BrowserWindow.getFocusedWindow();
-            window?.webContents.send("CREATE_TAB", { url: params.linkURL });
+            window?.webContents?.send("CREATE_TAB", { url: params.linkURL });
           },
         },
         {

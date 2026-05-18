@@ -88,8 +88,8 @@ export class PasswordController {
   }
 
   async remove(id: string) {
-    const deleted = this.items.delete(id);
+    this.items.delete(id);
     await this.persist();
-    return deleted;
+    return true;
   }
 }

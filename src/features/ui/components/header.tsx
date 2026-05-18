@@ -58,7 +58,7 @@ const Header = ({
 }: IHeader) => {
   const ref = useRef<HTMLInputElement>(null);
   const [focus, setFocus] = useState(false);
-  const { layout } = useMinusThemeStore();
+  const { layout, extension } = useMinusThemeStore();
   useEffect(() => {
     if (url && ref.current && url !== ref.current.value) {
       ref.current.value = url;
@@ -76,10 +76,9 @@ const Header = ({
   const onBookmark = () => {
     window.api.EMIT("TOGGLE_BOOKMARK", { url: ref.current?.value, id: id });
   };
-  console.log("id", id);
   if (!id) return null;
   return (
-    <div className={LAYOUT_HEADER_CLASS[layout]}>
+    <div className={LAYOUT_HEADER_CLASS[layout as keyof typeof LAYOUT_HEADER_CLASS]}>
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded flex gap-2 items-center">
         <button
           className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1"
@@ -176,48 +175,41 @@ const Header = ({
         >
           <IconCode size={16} />
         </button>
-        {/* <button
-          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
-          onClick={onFillPassword}
-          title="Fill password"
-        >
-          <IconKey size={16} />
-        </button> */}
-        <button
-          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
-          onClick={onOpenVaultManager}
-          title="Open Vault Manager"
-        >
-          <IconKey size={16} />
-        </button>
-        <button
-          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
-          onClick={onOpenTranslateManager}
-          title="Open Translate Manager"
-        >
-          <IconLanguage size={16} />
-        </button>
-        {/* <button
-          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
-          onClick={onTranslateSelection}
-          title="Translate selection"
-        >
-          Selection
-        </button> */}
-        {/* <button
-          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
-          onClick={onOpenTranslateManager}
-          title="Open Translate Manager"
-        >
-          Translate
-        </button> */}
-        <button
-          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
-          onClick={onOpenUserscriptManager}
-          title="Open Tampermonkey Manager"
-        >
-          <IconCodeDots size={16} />
-        </button>
+
+        {extension.vault ? (
+          <button
+            className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
+            onClick={onOpenVaultManager}
+            title="Open Vault Manager"
+          >
+            <IconKey size={16} />
+          </button>
+        ) : (
+          ""
+        )}
+
+        {extension.translate ? (
+          <button
+            className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
+            onClick={onOpenTranslateManager}
+            title="Open Translate Manager"
+          >
+            <IconLanguage size={16} />
+          </button>
+        ) : (
+          ""
+        )}
+        {extension.userscript ? (
+          <button
+            className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
+            onClick={onOpenUserscriptManager}
+            title="Open Tampermonkey Manager"
+          >
+            <IconCodeDots size={16} />
+          </button>
+        ) : (
+          ""
+        )}
 
         <button
           className={clsx("hover:text-yellow-500 rounded cursor-pointer p-1 transition-all", {

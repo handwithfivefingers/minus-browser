@@ -2,7 +2,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { BrowserWindow, WebContentsView } from "electron";
 import { v7 as uuidv7 } from "uuid";
-import { Tab } from "../../classes/tab";
+import { Tab } from "../../models/tab";
 import {
   ITranslateDetectResult,
   ITranslatePreference,
@@ -73,6 +73,74 @@ export class TranslateService {
       preference: this.preference,
       recentSelections: this.recentSelections,
     });
+  }
+  scriptInjection(text: string, result: { sourceLanguage: string; targetLanguage: string; translatedText: string }) {
+    return `(() => {
+          const old = document.getElementById("__minus_translate_selection_popup");
+          if (old) old.remove();
+          const selection = window.getSelection?.();
+          const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+          const rect = range ? range.getBoundingClientRect() : null;
+          const anchor = window.__minusSelectionAnchor || {};
+          const x = Number(rect?.left || anchor?.x || window.innerWidth / 2);
+          const y = Number(rect?.bottom || anchor?.y || window.innerHeight / 2);
+
+          const root = document.createElement("div");
+          root.id = "__minus_translate_selection_popup";
+          root.style.position = "fixed";
+          root.style.zIndex = "2147483647";
+          root.style.maxWidth = "340px";
+          root.style.minWidth = "200px";
+          root.style.left = Math.max(8, Math.min(window.innerWidth - 360, x)) + "px";
+          root.style.top = Math.max(8, Math.min(window.innerHeight - 180, y + 10)) + "px";
+          root.style.background = "#0f172a";
+          root.style.color = "#fff";
+          root.style.padding = "10px";
+          root.style.borderRadius = "10px";
+          root.style.border = "1px solid rgba(255,255,255,.15)";
+          root.style.boxShadow = "0 18px 40px rgba(0,0,0,.35)";
+          root.style.fontFamily = "Inter, system-ui, -apple-system, sans-serif";
+          root.style.fontSize = "12px";
+          root.style.lineHeight = "1.4";
+
+          const meta = document.createElement("div");
+          meta.style.opacity = ".8";
+          meta.style.fontSize = "11px";
+          meta.style.marginBottom = "6px";
+          meta.textContent = ${JSON.stringify(`${result.sourceLanguage} -> ${result.targetLanguage}`)};
+
+          const text = document.createElement("div");
+          text.textContent = ${JSON.stringify(result.translatedText)};
+          text.style.whiteSpace = "pre-wrap";
+          text.style.wordBreak = "break-word";
+
+          const close = document.createElement("button");
+          close.type = "button";
+          close.textContent = "×";
+          close.style.position = "absolute";
+          close.style.top = "4px";
+          close.style.right = "6px";
+          close.style.border = "none";
+          close.style.background = "transparent";
+          close.style.color = "#fff";
+          close.style.cursor = "pointer";
+          close.style.fontSize = "14px";
+          close.onclick = () => root.remove();
+
+          root.appendChild(meta);
+          root.appendChild(text);
+          root.appendChild(close);
+          document.documentElement.appendChild(root);
+          // setTimeout(() => root.remove(), 9000);
+          let intervalId = null;
+          intervalId = setInterval(() => {
+            const currentSelection = String(window.getSelection?.()?.toString?.() || "").trim();
+            if (currentSelection !== ${JSON.stringify(text)}) {
+              clearInterval(intervalId);
+              root.remove();
+            }
+          },1000)
+        })();`;
   }
 
   getPreference() {
