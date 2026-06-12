@@ -1,6 +1,7 @@
 import { IconInnerShadowTopLeft } from "@tabler/icons-react";
 import { lazy, useEffect, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router";
+import { ITab } from "~/shared/types";
 import { useContentView } from "../../hooks/useContentView";
 import { Tab } from "../../interfaces";
 import { debounce, navigateOrSearch } from "../../libs";
@@ -15,7 +16,7 @@ const LAYOUT_HEADER_CLASS = {
   FLOATING: "h-[calc(100svh-8px)] rounded-md relative overflow-hidden w-full flex flex-col gap-1",
 };
 const WEBVIEW_CLASSES = {
-  BASIC: "h-[calc(100vh-34px)] rounded-md relative overflow-hidden",
+  BASIC: "h-[calc(100vh-34px)] relative overflow-hidden",
   FLOATING: "h-[calc(100vh-46px)] rounded-md relative overflow-hidden",
 };
 
@@ -52,7 +53,7 @@ interface ITranslatePreference {
 const CustomApp = () => {
   const { customApp: tabId = "" } = useParams<{ customApp: string }>();
   const { layout } = useMinusThemeStore();
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const handledCredentialRef = useRef<Set<string>>(new Set());
   const latestSelectionRef = useRef<string>("");
   const tab = useTabStore((s) => s.activeTab);
@@ -61,15 +62,11 @@ const CustomApp = () => {
   useEffect(() => {
     setActiveTab(tabId);
     getScreenData();
-    tabServices.subscribeTab<{ favicon: string; title: string; url: string }>(tabId, ({ favicon, title, url }) => {
-      console.log("favicon", favicon);
-      updateTab(tabId, { favicon, title, url });
+    tabServices.subscribeTab<ITab>(tabId, (tab) => {
+      updateTab(tabId, tab);
     });
-    window.api.LISTENER("ON_RELOAD", onReload);
+    // window.api.LISTENER("ON_RELOAD", onReload);
     window.api.LISTENER(`LOADING:${tabId}`, onTabNavigate);
-    window.api.LISTENER(`TITLE_UPDATED:${tabId}`, (str: string) => {
-      updateTab(tabId, { title: str });
-    });
     window.api.LISTENER("VAULT_CREDENTIAL_DETECTED", onCredentialDetected);
     window.api.LISTENER("FILL_PASSWORD_REQUEST", onFillPasswordRequest);
     // window.api.LISTENER("TRANSLATE_LANGUAGE_DETECTED", onTranslateLanguageDetected);
@@ -80,7 +77,7 @@ const CustomApp = () => {
   // }
 
   const onTabNavigate = (isLoading: boolean) => {
-    setIsLoading(isLoading);
+    setLoading(isLoading);
   };
 
   const handleSearch = async (url: string) => {
@@ -333,7 +330,7 @@ const CustomApp = () => {
         onTranslatePage={onTranslatePage}
         // onTranslateSelection={onTranslateSelection}
         onOpenTranslateManager={onOpenTranslateManager}
-        isLoading={isLoading}
+        isLoading={loading}
       />
       <WebViewInstance id={tabId} />
     </div>
@@ -385,7 +382,7 @@ const WebViewInstance = ({ id }: { id: string }) => {
   return (
     <div className={WEBVIEW_CLASSES[layout as keyof typeof WEBVIEW_CLASSES]}>
       <div
-        className="mx-auto absolute z-0 left-0 top-0 w-full h-full flex justify-center items-center mt-auto"
+        className="mx-auto absolute z-0 left-0 top-0 w-full h-full flex justify-center items-center mt-auto bg-slate-200"
         ref={webviewRef}
       >
         <IconInnerShadowTopLeft className="animate-spin" />

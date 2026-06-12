@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { BrowserWindow, WebContentsView } from "electron";
 import { eventStore } from "~/features/system/stores/minusEventEmitter";
+import { minusSessionManager } from "~/features/system/services/session";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { IUserScript } from "../types";
@@ -50,6 +51,7 @@ export class UserScriptService {
           nodeIntegration: false,
           contextIsolation: true,
           sandbox: false,
+          session: minusSessionManager.session,
         },
       });
       userScriptView.setBounds(tabBounds);

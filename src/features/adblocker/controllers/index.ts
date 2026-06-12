@@ -4,16 +4,8 @@ import { app, WebContentsView } from "electron";
 import log from "electron-log";
 import { AdblockService } from "../services";
 import fs from "node:fs";
-import path from "node:path";
-const devDataDir = path.resolve(process.cwd(), "adblock-lists-mirror/lists/metadata.json");
-const resolveUserDataDir = () => {
-  try {
-    return path.join(app.getPath("userData"), `adblock-lists-mirror/lists/metadata.json`);
-  } catch {
-    return devDataDir;
-  }
-};
-const baseDir = process.env.NODE_ENV === "development" ? devDataDir : resolveUserDataDir();
+
+const baseDir = `https://raw.githubusercontent.com/brave/adblock-lists-mirror/lists/lists/metadata.json`;
 
 export class AdBlocker {
   blocker: ElectronBlocker | undefined;
@@ -28,15 +20,19 @@ export class AdBlocker {
   }
 
   private async load() {
-    const metaData = fs.readFileSync(baseDir, "utf-8");
-    const fullList = JSON.parse(metaData);
-    const fullLists = Object.keys(fullList).map((key: string) => {
-      return fullList[key];
-    });
-    this.blocker = await ElectronBlocker.fromLists(fetch, fullLists, {
-      enableCompression: true,
-    });
-    this.isInitialize = true;
+    try {
+      const metaData = await fetch(baseDir).then((res) => res.text());
+      const fullList = JSON.parse(metaData);
+      const fullLists = Object.keys(fullList).map((key: string) => {
+        return fullList[key];
+      });
+      this.blocker = await ElectronBlocker.fromLists(fetch, fullLists, {
+        enableCompression: true,
+      });
+      this.isInitialize = true;
+    } catch (error) {
+      console.log("Adblocker load error", error);
+    }
   }
 
   async setupAdvancedRequestBlocking(session: Electron.Session) {
@@ -68,5 +64,8 @@ export class AdBlocker {
       log.info("%cRed style-injected", style.length, url, "color: red");
     });
     this.blocker?.on("filter-matched", console.log.bind(console, "%cfilter-matched"));
+  }
+  disabled(session: Electron.Session) {
+    this.blocker?.disableBlockingInSession(session);
   }
 }

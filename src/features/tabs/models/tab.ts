@@ -1,4 +1,4 @@
-import { BrowserWindow, session, WebContentsView } from "electron";
+import { BrowserWindow, WebContentsAudioStateChangedEventParams, WebContentsView } from "electron";
 import { v7 as uuid_v7 } from "uuid";
 import { AdblockTabPlugin } from "~/features/adblocker/plugin";
 import { cacheSystem } from "~/features/cacheSystem";
@@ -10,6 +10,8 @@ import { TranslateTabPlugin } from "~/features/translate/plugin";
 import { UserScriptTabPlugin } from "~/features/userscript/plugin";
 import { VaultTabPlugin } from "~/features/vault";
 import { ITab, IUserInterface } from "~/shared/types";
+import { minusSessionManager } from "~/features/system/services/session";
+import { app } from "electron";
 interface IDestroy {
   destroy?: () => void;
 }
@@ -47,12 +49,14 @@ export class Tab {
   url: string = "https://google.com";
   isPinned: boolean = false;
   isFocused: boolean = false;
+  audible: boolean = false;
+  isLoading = false;
   index?: number;
   favicon: string = "";
   timestamp: number = Date.now();
   isBookmarked: boolean = false;
   cookies?: Electron.Cookie[];
-  minusSession: Electron.Session = session.fromPartition("persist:minus-browser");
+  minusSession: Electron.Session = minusSessionManager.session;
   interface: StoreManager = new StoreManager("interface");
   lastUpdated?: number;
   private pluginManager: TabPluginManager = new TabPluginManager();
@@ -62,7 +66,6 @@ export class Tab {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      // sandbox: true,
       session: this.minusSession,
     },
   });
@@ -78,7 +81,6 @@ export class Tab {
     this.eventEmitter = eventEmitter;
     this.createContextMenu();
     this.requestPermissions();
-    this.applyStyles();
     this.pluginReady = this.registerPlugin();
     this.registerCommonEvent();
   }
@@ -90,6 +92,7 @@ export class Tab {
       }>();
     };
     const extensionManager = await cacheSystem.get<IUserInterface>("interface", fallback);
+    const adblockPlugin = new AdblockTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }));
     if (extensionManager && "extension" in extensionManager) {
       const { vault, translate, adblock, userscript } = extensionManager.extension;
       if (vault) {
@@ -97,9 +100,6 @@ export class Tab {
         this.pluginManager.register(vaulPlugin);
       }
       if (adblock) {
-        const adblockPlugin = new AdblockTabPlugin((channel: string, data: any) =>
-          this.eventEmitter({ channel, data }),
-        );
         this.pluginManager.register(adblockPlugin);
       }
       if (userscript) {
@@ -124,26 +124,130 @@ export class Tab {
     this.webContents.on("page-title-updated", this.updateTitle.bind(this));
     this.webContents.on("did-navigate", (_event, url) => this.updateUrl(url));
     this.webContents.on("did-navigate-in-page", (_event, url) => this.updateUrl(url));
+    this.webContents.on("audio-state-changed", this.updateAudioState.bind(this));
+    this.webContents.on("did-start-loading", this.tabLoading.bind(this, true));
+    this.webContents.on("did-stop-loading", this.tabLoading.bind(this, false));
+  }
+
+  tabLoading(isLoading: boolean) {
+    this.isLoading = isLoading;
+    const browser = BrowserWindow.getFocusedWindow();
+    browser?.webContents?.send(`LOADING:${this.id}`, isLoading);
+  }
+
+  updateAudioState({ audible }: WebContentsAudioStateChangedEventParams) {
+    this.audible = audible;
+    this.peristInformationToRenderer({ audible });
   }
 
   updateFavicon(event: any, favicons: string[]) {
     this.favicon = favicons[0];
     const metaData = {
       favicon: favicons[0],
-      title: this.view.webContents.getTitle(),
       url: this.view.webContents.getURL(),
+      title: this.view.webContents.getTitle(),
     };
+    this.updateTitle();
     this.updateUrl(this.view.webContents.getURL());
-    const browser = BrowserWindow.getFocusedWindow();
-    browser?.webContents?.send(`FAVICON_UPDATED:${this.id}`, metaData);
+    this.peristInformationToRenderer(metaData);
   }
+
+  peristInformationToRenderer(information: Partial<ITab>) {
+    const browser = BrowserWindow.getFocusedWindow();
+    browser?.webContents?.send(`TAB_INFORMATION_UPDATED:${this.id}`, information);
+  }
+
+  // async loadSession(url: string) {
+  //   // const domain = new URL(url).hostname;
+  //   // const { subDomains, domain, topLevelDomains } = parseDomain(fromUrl(url));
+
+  //   const domainData = await analyzeDomain(url);
+
+  //   if (!domainData.domain) {
+  //     console.log("URL không hợp lệ, bỏ qua load session");
+  //     return;
+  //   }
+  //   const targetDomain = domainData.domain;
+
+  //   let session = await cacheSystem.get<Electron.Cookie[]>("session");
+  //   if (!session?.length) return;
+  //   // let cookies = session?.filter(
+  //   //   (cookie) =>
+  //   //     (cookie.domain?.includes(domain) || (cookie?.domain && domain.includes(cookie?.domain))) &&
+  //   //     cookie?.expirationDate &&
+  //   //     cookie?.expirationDate * 1000 > Date.now(),
+  //   // );
+
+  //   let cookies = session.filter((cookie) => {
+  //     if (!cookie.domain || !cookie.expirationDate) return false;
+
+  //     // Kiểm tra hạn sử dụng (Electron expirationDate tính bằng giây)
+  //     const isExpired = cookie.expirationDate * 1000 <= Date.now();
+  //     if (isExpired) return false;
+
+  //     // Chuẩn hóa domain của cookie để so sánh (xóa dấu chấm đầu nếu có, ví dụ: .example.com -> example.com)
+  //     const cleanCookieDomain = cookie.domain.startsWith(".") ? cookie.domain.slice(1) : cookie.domain;
+  //     let currentHostname = "";
+  //     try {
+  //       currentHostname = new URL(url).hostname;
+  //     } catch (_) {
+  //       currentHostname = targetDomain;
+  //     }
+
+  //     // Khớp nếu cookie domain chứa target domain HOẶC ngược lại (hỗ trợ chia sẻ session giữa subdomains)
+  //     return currentHostname.endsWith(cleanCookieDomain) || cleanCookieDomain.endsWith(currentHostname);
+
+  //   });
+
+  //   if (!cookies?.length) return;
+  //   let uniqCookie = new Map<string, Electron.Cookie>();
+  //   for (let c of cookies) {
+  //     uniqCookie.set(c.name, c);
+  //   }
+  //   if (uniqCookie.size === 0) return;
+  //   let pm: Promise<any>[] = [];
+
+  //   let protocol = "https:";
+  //   try {
+  //     protocol = new URL(url).protocol;
+  //   } catch (_) {}
+
+  //   [...uniqCookie.values()].forEach((cookie) => {
+  //     if (cookie?.expirationDate && cookie?.expirationDate * 1000 > Date.now()) {
+  //       const cleanDomainForUrl = cookie.domain!.startsWith(".") ? cookie.domain!.slice(1) : cookie.domain;
+  //       const cookieUrl = `${protocol}//${cleanDomainForUrl}${cookie.path || "/"}`;
+  //       const cookieDetails: Electron.CookiesSetDetails = {
+  //         url: cookieUrl, // Sửa lỗi quan trọng: Phải truyền URL đầy đủ, không truyền độc domain
+  //         name: cookie.name,
+  //         value: cookie.value,
+  //         domain: cookie.domain, // Giữ nguyên domain gốc (ví dụ: .example.com) để bao phủ subdomain
+  //         expirationDate: cookie.expirationDate,
+  //         sameSite: cookie.sameSite,
+  //         secure: cookie.secure,
+  //         httpOnly: cookie.httpOnly,
+  //         path: cookie.path || "/",
+  //       };
+
+  //       pm.push(this.webContents.session.cookies.set(cookieDetails));
+  //     }
+  //   });
+  //   await Promise.all(pm)
+  //     .then(() => {
+  //       console.log("cookie loaded");
+  //     })
+  //     .catch((errr) => {
+  //       console.log("Err", errr);
+  //     });
+  // }
 
   updateTitle() {
     this.title = this.view.webContents.getTitle();
+    this.peristInformationToRenderer({ title: this.title });
   }
 
-  updateUrl(url: string) {
+  async updateUrl(url: string) {
     this.url = url;
+    this.peristInformationToRenderer({ title: this.url });
   }
 
   updateTab(tab: Partial<ITab>) {
@@ -156,10 +260,6 @@ export class Tab {
 
   onBlur() {
     this.isFocused = false;
-  }
-
-  private applyStyles() {
-    this.view.setBorderRadius(8);
   }
 
   createContextMenu() {
@@ -234,6 +334,7 @@ export class Tab {
       id: this.id,
       title: this.title,
       url: this.url,
+      isLoading: this.isLoading,
       isPinned: this.isPinned,
       isFocused: this.isFocused,
       index: this.index,
@@ -241,6 +342,7 @@ export class Tab {
       timestamp: this.timestamp,
       isBookmarked: this.isBookmarked,
       cookies: this.cookies,
+      audible: this.audible,
     };
   }
 }

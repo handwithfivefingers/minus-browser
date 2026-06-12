@@ -3,7 +3,6 @@ import { BrowserWindow, clipboard, Menu, MenuItem } from "electron";
 export class ContextMenuController {
   template: any[] | undefined;
   initialize(event: Electron.Event, params: Electron.ContextMenuParams) {
-    console.log("params", params);
     const template: Partial<MenuItem>[] = [
       { label: "Cut", role: "cut" },
       { label: "Copy", role: "copy" },
@@ -33,7 +32,8 @@ export class ContextMenuController {
           return clipboard.writeText(params.srcURL);
         },
       });
-    } else if (params.linkURL) {
+    }
+    if (params.linkURL) {
       template.unshift(
         {
           label: "Open Link in New Window",
@@ -47,7 +47,7 @@ export class ContextMenuController {
           click: () => {
             return clipboard.writeText(params.linkURL);
           },
-        }
+        },
       );
     }
 

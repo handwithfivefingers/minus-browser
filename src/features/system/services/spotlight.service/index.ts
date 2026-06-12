@@ -1,4 +1,5 @@
 import { BrowserWindow, WebContentsView } from "electron";
+import { minusSessionManager } from "../session";
 
 export class SpotlightService {
   isOpen = false;
@@ -13,6 +14,7 @@ export class SpotlightService {
         contextIsolation: true,
         enablePreferredSizeMode: true,
         backgroundThrottling: true,
+        session: minusSessionManager.session,
       },
     });
   }

@@ -8,6 +8,21 @@ import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { appBundleId } from "./package.json";
+
+const makers = [];
+if (import.meta.env.VITE_PLATFORM === "WIN") {
+  makers.push(new MakerZIP({}, ["darwin", "win32"]));
+}
+if (import.meta.env.VITE_PLATFORM === "MAC") {
+  makers.push(
+    new MakerDMG({
+      name: "MinusBrowser",
+      format: "ULFO",
+      overwrite: true,
+    }),
+  );
+}
+
 const config: ForgeConfig = {
   packagerConfig: {
     name: "MinusBrowser",
@@ -27,8 +42,8 @@ const config: ForgeConfig = {
   rebuildConfig: {},
   // makers: [new MakerSquirrel({}), new MakerZIP({}, ["darwin"]), new MakerRpm({}), new MakerDeb({}), new MakerDMG({})],
   makers: [
-    new MakerSquirrel({}),
-    new MakerZIP({}, ["darwin", "win32"]),
+    // new MakerSquirrel({}),
+    // new MakerZIP({}, ["darwin", "win32"]),
     new MakerDMG({
       name: "MinusBrowser",
       format: "ULFO",

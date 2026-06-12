@@ -23,4 +23,7 @@ export class AdblockTabPlugin implements ITabPlugin {
       }
     };
   }
+  disabled(ctx: IExecutionContext) {
+    blocker.disabled(ctx.webContents.session);
+  }
 }

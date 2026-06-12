@@ -1,10 +1,11 @@
-import { app, BrowserWindow, Menu, Notification, screen, session } from "electron";
+import { app, BrowserWindow, Menu, Notification, screen } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
-import { CommandController, ViewController } from "./features/system/controller";
 import { StoreManager } from "./features/system";
-
+import { CommandController, ViewController } from "./features/system/controller";
+import { menuApplication } from "./features/system/services/menu";
+import { minusSessionManager } from "./features/system/services/session";
 Object.assign(console, log.functions);
 
 if (started) {
@@ -14,9 +15,7 @@ const preloadPath = path.join(__dirname, "/preload.js");
 
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 
-if (process.platform !== "darwin") {
-  Menu.setApplicationMenu(null);
-}
+Menu.setApplicationMenu(null);
 class MinusBrowser {
   browser: BrowserWindow | null = null;
   interfaceStore: StoreManager = new StoreManager("interface");
@@ -41,6 +40,7 @@ class MinusBrowser {
   async initialize() {
     app.on("ready", () => {
       log.initialize();
+      app.setAppUserModelId(`com.minusbrowser.localdev`);
     });
     app.on("before-quit", async (event) => {
       if (this.didRunBeforeQuit) return;
@@ -62,14 +62,18 @@ class MinusBrowser {
     });
 
     app.whenReady().then(async () => {
-      this.createWindow();
+      await this.createWindow();
+      if (menuApplication?.menu) Menu.setApplicationMenu(menuApplication?.menu);
     });
   }
   createWindow = async () => {
     try {
       const primaryDisplay = screen.getPrimaryDisplay();
       const { width, height } = primaryDisplay.workAreaSize;
-      this.minusSession = session.fromPartition("persist:minus-browser");
+      await minusSessionManager.load();
+      minusSessionManager.watch();
+
+      this.minusSession = minusSessionManager.session;
       const browser = new BrowserWindow({
         width,
         height,
@@ -81,7 +85,6 @@ class MinusBrowser {
           contextIsolation: true,
           preload: preloadPath,
           session: this.minusSession,
-          // sandbox: true,
         },
       });
       this.minusSession.webRequest.onBeforeSendHeaders((details, callback) => {
@@ -136,7 +139,7 @@ class MinusBrowser {
     // const isMainFrame = this.browser.webContents.isMainFrame();
     app.on("browser-window-focus", () => {
       gS = new CommandController(viewController);
-    })
+    });
     app.on("browser-window-blur", () => {
       gS?.destroy();
     });
@@ -155,6 +158,8 @@ class MinusBrowser {
   }
 
   registerNotification() {
+    const isSupport = Notification.isSupported();
+    if (!isSupport) return console.log("Notification is not supported");
     this.showNotification();
   }
   showNotification() {

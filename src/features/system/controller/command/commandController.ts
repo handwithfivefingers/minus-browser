@@ -68,6 +68,7 @@ export class CommandController {
   }
 
   onSearchCallback() {
+    console.log("Search callback");
     this.isSearch = !this.isSearch;
     // let view = BrowserWindow.getFocusedWindow();
     // view?.webContents?.send("SEARCH", { open: this.isSearch });

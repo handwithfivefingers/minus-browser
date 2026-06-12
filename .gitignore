@@ -92,6 +92,10 @@ typings/
 # Vite
 .vite/
 
+#IDE
+
+.vscode
+
 # Electron-Forge
 out/
 
@@ -100,4 +104,4 @@ engine.bin
 
 userData.json
 interface.json
-appData/*
+appData

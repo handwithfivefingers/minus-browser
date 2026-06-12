@@ -1,27 +1,20 @@
-import { app, BrowserWindow, ipcMain, Notification, session, WebContentsView } from "electron";
+import { app, BrowserWindow, ipcMain, Notification, WebContentsView } from "electron";
 import log from "electron-log";
-import { IHandleResizeView, IPC, ITab } from "../interfaces";
-import { ErrorServices } from "../services/error.services";
-import { StoreManager } from "../stores";
-import { isSameURl } from "../utils";
-// import { TabController } from "./tab";
-// import { VaultController } from "./vault";
-// import { VaultServices } from "../services/vault.service";
-// import { UserScriptManagerController } from "../services/userScript.service/manger";
-// import { UserScriptDialogServices } from "../services/userScript.service/dialog";
-// import { IUserScript } from "../interfaces/userscript";
-// import { TranslateController } from "./translate";
-import { searchController as splitSearchController, SearchRoute } from "~/features/search";
 import { cacheSystem } from "~/features/cacheSystem";
+import { SearchRoute, searchController as splitSearchController } from "~/features/search";
 import { TabController } from "~/features/tabs/controllers";
 import { Tab } from "~/features/tabs/models/tab";
 import { TranslateRoute } from "~/features/translate/route-init";
+import { UserScriptRoute } from "~/features/userscript/route-init";
 import { VaultRoute } from "~/features/vault/route-init";
 import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
 import { IUserInterface } from "~/shared/types";
+import { IHandleResizeView, IPC, ITab } from "../interfaces";
+import { ErrorServices } from "../services/error.services";
+import { minusSessionManager } from "../services/session";
+import { StoreManager } from "../stores";
 import { eventStore } from "../stores/minusEventEmitter";
-import { debounce } from "../utils/debounce";
-import { UserScriptRoute } from "~/features/userscript/route-init";
+import { isSameURl } from "../utils";
 
 export type EmitToRenderer = (channel: string, data?: unknown) => void;
 export class ViewController {
@@ -29,9 +22,7 @@ export class ViewController {
   wc: Electron.WebContents | undefined;
   userStore: StoreManager = new StoreManager("userData");
   interfaceStore: StoreManager = new StoreManager("interface");
-  minusSession: Electron.Session | undefined = session.fromPartition("persist:minus-browser");
-  sessionStore: StoreManager = new StoreManager("session");
-  sessions: Electron.Cookie[] = [];
+  minusSession: Electron.Session | undefined = minusSessionManager.session;
   userInterface: IUserInterface | undefined = undefined;
   tabController: TabController | undefined;
 
@@ -42,10 +33,6 @@ export class ViewController {
   // userScriptDialogController = new UserScriptDialogServices();
   searchController = splitSearchController;
 
-  sessionPersistDebounce = debounce(() => {
-    this.sessionStore.saveFiles(this.sessions || []);
-  }, 250);
-
   private invokeHandlers: Record<string, (data?: any) => any> | undefined;
   private listenerHandlers: Record<string, (data?: any) => void> | undefined;
 
@@ -53,6 +40,18 @@ export class ViewController {
     this.tabController = new TabController((payload) => this.onInvoke(payload));
     this.window = window;
     this.init();
+    Notification.handleActivation((details) => {
+      console.log("Notification activated:", details.type);
+      if (details.type === "reply") {
+        console.log("User reply:", details.reply);
+      } else if (details.type === "action") {
+        console.log("Action index:", details.actionIndex);
+      }
+    });
+  }
+
+  handleClickNotification(notification: Electron.ActivationArguments) {
+    console.log("notification", notification);
   }
 
   private async initializeHandlers() {
@@ -115,17 +114,20 @@ export class ViewController {
 
   async init() {
     try {
-      await this.initializeHandlers();
-
-      await Promise.all([this.tabController?.initialize(), this.sessionStore.initialize("session")]);
-      // this.searchController = new SearchController(this.tabController);
-      this.sessions = await this.sessionStore.readFiles<Electron.Cookie[]>([]).catch(() => []);
+      // await this.initializeHandlers();
+      await minusSessionManager.load();
+      await Promise.all([this.initializeHandlers(), this.tabController?.initialize()]);
+      minusSessionManager.watch();
       ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
       ipcMain.on("send", (event, args: IPC) => this.onListener(args));
 
-      this.minusSession?.cookies.on("changed", (event, cookie, cause, removed) => {
-        this.sessionPersist({ cookie, removed });
-      });
+      Notification.getHistory()
+        .then((r) => {
+          console.log("r", r);
+        })
+        .catch((e) => {
+          console.log("Notification error", e);
+        });
     } catch (error) {
       console.log("[ERROR] View Controller -", error);
     } finally {
@@ -135,7 +137,6 @@ export class ViewController {
 
   getTabs() {
     const response = this.tabController?.getTabs();
-    console.log("response", response);
     return response;
   }
 
@@ -170,10 +171,8 @@ export class ViewController {
   }
 
   createTab(tab?: Partial<ITab>) {
-    let now = performance.now();
     const newTab = this.tabController?.addNewTab(tab);
     this.window.webContents.send("GET_TABS", this.getTabs());
-    console.log("Execute time:", performance.now() - now);
     return newTab;
   }
 
@@ -205,8 +204,8 @@ export class ViewController {
       //   url,
       //   view: currentTab.view,
       // });
+      // currentTab.cookies = await this.getCookieFromURL(url);
       currentTab.webContents.loadURL(url);
-      currentTab.cookies = await this.getCookieFromURL(url);
       currentTab.updateUrl(url);
       this.window.webContents.send("GET_TABS", this.getTabs());
     } catch (error) {
@@ -251,6 +250,7 @@ export class ViewController {
       if (!props || !props.id) throw new Error("Tab not found");
       const currentTab = this.tabController?.getTabById(props.id) as Tab;
       currentTab.hide();
+      currentTab.view.webContents.close();
       this.detachChildView(currentTab.view);
       const { nextTab } = this.tabController?.closeTab(props.id) || {};
       if (nextTab?.view) this.attachChildView(nextTab?.view);
@@ -296,21 +296,6 @@ export class ViewController {
     }
   }
 
-  handleSearchPage(v: any) {
-    // const view = this.viewManager[this.viewActive];
-    // log.info("handleSearchPage", view);
-    // if (!view) return;
-    // log.info("handleSearchPage clearSelection");
-    // view.webContents?.on("found-in-page", (event, result) => {
-    //   console.log("found-in-page");
-    //   if (result.finalUpdate) view.webContents?.stopFindInPage("clearSelection");
-    // });
-    // view.webContents?.findInPage(v.data, {
-    //   forward: false,
-    //   findNext: true,
-    //   matchCase: true,
-    // });
-  }
   handleToggleBookmark({ url, id }: { url: string; id: string }) {
     /**
      * @Todo
@@ -346,42 +331,48 @@ export class ViewController {
     }
   }
 
-  async getCookieFromURL(url: string) {
-    const { origin } = new URL(url);
-    if (!origin) return;
-    if (this.userInterface?.savedCookies === "0") {
-      const viewCookie = await this.minusSession?.cookies.get({
-        url: origin,
-      });
-      return viewCookie;
-    } else {
-      const viewCookie = this.sessions?.filter(
-        (cookie) => cookie.domain?.includes(url) || (cookie?.domain && url.includes(cookie?.domain)),
-      );
-      return viewCookie;
-    }
-  }
+  // async getCookieFromURL(url: string) {
+  //   const { origin } = new URL(url);
+  //   if (!origin) return;
+  //   if (this.userInterface?.savedCookies === "0") {
+  //     const viewCookie = await this.minusSession?.cookies.get({
+  //       url: origin,
+  //     });
+  //     return viewCookie;
+  //   } else {
+  //     const viewCookie = this.sessions?.filter(
+  //       (cookie) => cookie.domain?.includes(url) || (cookie?.domain && url.includes(cookie?.domain)),
+  //     );
+  //     return viewCookie;
+  //   }
+  // }
 
-  sessionPersist({ cookie, removed }: { cookie: Electron.Cookie; removed: boolean }) {
-    // this.sessions
-    if (removed) {
-      let index = this.sessions?.findIndex(
-        (c) => c.name === cookie.name && c.domain === cookie.domain && c.path === cookie.path,
-      );
-      if (index !== undefined && index > -1) {
-        this.sessions?.splice(index, 1);
-      }
-    } else {
-      this.sessions?.push(cookie);
-    }
+  // sessionPersist({ cookie, removed }: { cookie: Electron.Cookie; removed: boolean }) {
+  //   // this.sessions
+  //   if (removed) {
+  //     let index = this.sessions?.findIndex(
+  //       (c) => c.name === cookie.name && c.domain === cookie.domain && c.path === cookie.path,
+  //     );
+  //     if (index !== undefined && index > -1) {
+  //       this.sessions?.splice(index, 1);
+  //     }
+  //   } else {
+  //     this.sessions?.push(cookie);
+  //   }
 
-    this.sessionPersistDebounce();
-  }
+  //   const nextSession = this.sessions.filter(
+  //     (cookie) => cookie?.expirationDate && cookie.expirationDate * 1000 > Date.now(),
+  //   );
+  //   this.sessions = nextSession;
+
+  //   this.sessionPersistDebounce();
+  // }
 
   async persist() {
     try {
       const tabs = this.getTabs();
       await Promise.all([
+        minusSessionManager.save(),
         this.minusSession?.cookies.flushStore(),
         this.minusSession?.flushStorageData(),
         this.userStore.saveFiles({ tabs: tabs || [], index: 0 }),
@@ -452,23 +443,6 @@ export class ViewController {
     }).show();
   }
 
-  // async getUserScripts() {
-  //   return this.userScriptManagerController.getUserScripts();
-  // }
-
-  // async saveUserScript(data: IUserScript) {
-  //   if (!data?.source?.trim()) {
-  //     throw new Error("Script source is required");
-  //   }
-  //   const script = await this.userScriptManagerController.saveUserScript(data);
-  //   if (script) {
-  //     this.showNotification({
-  //       title: "UserScript Saved",
-  //       description: `UserScript "${script.name || "Unnamed"}" has been saved successfully.`,
-  //     });
-  //   }
-  // }
-
   // async importUserScript() {
   //   const result = await dialog.showOpenDialog(this.window, {
   //     properties: ["openFile"],
@@ -480,211 +454,5 @@ export class ViewController {
   //   if (result.canceled || !result.filePaths?.length) return null;
   //   const imported = await this.userScriptManagerController.importUserScript(result.filePaths[0]);
   //   return imported;
-  // }
-
-  // async deleteUserScript({ id }: { id: string }) {
-  //   if (!id) {
-  //     throw new Error("Script id is required");
-  //   }
-  //   const script = await this.userScriptManagerController.deleteUserScript(id);
-
-  //   if (script) {
-  //     this.showNotification({
-  //       title: "UserScript Deleted",
-  //       description: `UserScript has been deleted successfully.`,
-  //     });
-  //   }
-  // }
-
-  // async toggleUserScript({ id, enabled }: { id: string; enabled?: boolean }) {
-  //   if (!id) {
-  //     throw new Error("Script id is required");
-  //   }
-  //   return this.userScriptManagerController.toggleUserScript(id, enabled);
-  // }
-
-  // async vaultFill(data: { tabId: string; credentialId: string }) {
-  //   if (!data?.tabId) {
-  //     throw new Error("Tab id is required");
-  //   }
-  //   if (!data?.credentialId) {
-  //     throw new Error("Credential id is required");
-  //   }
-  //   const tab = this.tabController?.getTabById(data.tabId);
-  //   if (!tab) {
-  //     throw new Error("Tab not found");
-  //   }
-  //   const credential = this.vaultController.getVaultById(data.credentialId);
-  //   if (!credential) {
-  //     throw new Error("Credential not found");
-  //   }
-
-  //   const script = this.vaultController.getDialogScriptInjection(credential);
-  //   const result = await tab.webContents.executeJavaScript(script, true);
-  //   return result;
-  // }
-
-  // async vaultSelectCredential(data: { tabId: string; candidates: { id: string; username: string; site: string }[] }) {
-  //   if (!data?.tabId) throw new Error("Tab id is required");
-  //   if (!Array.isArray(data?.candidates) || data.candidates.length === 0) {
-  //     return null;
-  //   }
-  //   const tab = this.tabController?.getTabById(data.tabId);
-  //   if (!tab) throw new Error("Tab not found");
-  //   return this.vaultServices.selectCredential(tab.webContents, data.candidates);
-  // }
-
-  // async vaultConfirmSave(data: { tabId: string; username: string; site: string }) {
-  //   if (!data?.tabId) throw new Error("Tab id is required");
-  //   const tab = this.tabController?.getTabById(data.tabId);
-  //   if (!tab) throw new Error("Tab not found");
-  //   return this.vaultServices.confirmSave(tab.webContents, {
-  //     username: data.username,
-  //     site: data.site,
-  //   });
-  // }
-
-  // async vaultOpenManager(data: { tabId: string }) {
-  //   if (!data?.tabId) throw new Error("Tab id is required");
-  //   const tab = this.tabController?.getTabById(data.tabId);
-  //   if (!tab) throw new Error("Tab not found");
-  //   const vaultItems = this.vaultController.getVaults();
-  //   const result = await this.vaultServices.openManager(
-  //     this.window, // BrowserWindow — needed to addChildView the vault overlay
-  //     tab, // full Tab — needed for tab.view.getBounds() and fallback webContents
-  //     vaultItems,
-  //   );
-  //   if (!Array.isArray(result)) return false;
-  //   const existing = this.vaultController.getVaults();
-  //   const existingIds = new Set(existing.map((item) => item.id));
-  //   const nextIds = new Set(result.filter((item) => item.id && existingIds.has(item.id)).map((item) => item.id));
-  //   for (const current of existing) {
-  //     if (!nextIds.has(current.id)) {
-  //       await this.vaultController.removeVault(current.id);
-  //     }
-  //   }
-  //   for (const item of result) {
-  //     if (!item?.site?.trim() || !item?.username?.trim() || !item?.password?.trim()) {
-  //       continue;
-  //     }
-  //     if (existingIds.has(item.id)) {
-  //       await this.vaultController.updateVault(item.id, {
-  //         site: item.site.trim(),
-  //         username: item.username.trim(),
-  //         password: item.password,
-  //         notes: item.notes || "",
-  //       });
-  //     } else {
-  //       await this.vaultController.addVault({
-  //         site: item.site.trim(),
-  //         username: item.username.trim(),
-  //         password: item.password,
-  //         notes: item.notes || "",
-  //       });
-  //     }
-  //   }
-  //   return true;
-  // }
-
-  // async userscriptOpenManager(data: { tabId: string }) {
-  //   try {
-  //     if (!data?.tabId) throw new Error("Tab id is required");
-  //     const tab = this.tabController?.getTabById(data.tabId);
-  //     if (!tab) throw new Error("Tab not found");
-  //     const scripts = this.userScriptManagerController.getUserScripts();
-  //     const result = await this.userScriptDialogController.openManager(this.window, tab, scripts);
-  //     if (!Array.isArray(result)) return false;
-  //     const existing = this.userScriptManagerController.getUserScripts();
-  //     const existingIds = new Set(existing.map((item) => item.id));
-  //     const nextIds = new Set(result.filter((item) => item.id && existingIds.has(item.id)).map((item) => item.id));
-  //     for (const current of existing) {
-  //       if (!nextIds.has(current.id)) {
-  //         await this.userScriptManagerController.deleteUserScript(current.id);
-  //       }
-  //     }
-  //     for (const item of result) {
-  //       if (!item?.source?.trim()) continue;
-  //       if (existingIds.has(item.id)) {
-  //         await this.userScriptManagerController.saveUserScript(item);
-  //       } else {
-  //         await this.userScriptManagerController.saveUserScript(item);
-  //       }
-  //     }
-  //     return true;
-  //   } catch (error) {
-  //     log.error("error", error);
-  //   }
-  // }
-
-  // async translateGetPreference() {
-  //   return this.translateController.getPreference();
-  // }
-
-  // async translateSavePreference(data: Record<string, any>) {
-  //   return this.translateController.savePreference(data || {});
-  // }
-
-  // async translateDetectLanguage(data: { text: string }) {
-  //   if (!data?.text?.trim()) return { language: "unknown", confidence: 0 };
-  //   return this.translateController.detectLanguage(data.text);
-  // }
-
-  // async translatePage(data: { tabId: string; url?: string; targetLanguage?: string }) {
-  //   if (!data?.tabId) throw new Error("Tab id is required");
-  //   const tab = this.tabController?.getTabById(data.tabId);
-  //   if (!tab) throw new Error("Tab not found");
-  //   const targetUrl = data.url || tab.webContents.getURL();
-  //   if (!targetUrl) throw new Error("Target url is required");
-  //   const translatedUrl = this.translateController.buildTranslatePageUrl({
-  //     targetUrl,
-  //     targetLanguage: data.targetLanguage,
-  //   });
-  //   await tab.webContents.loadURL(translatedUrl);
-  //   return { url: translatedUrl };
-  // }
-
-  // async translateSelection(data: { tabId: string; text?: string; sourceLanguage?: string; targetLanguage?: string }) {
-  //   if (!data?.tabId) throw new Error("Tab id is required");
-  //   const tab = this.tabController?.getTabById(data.tabId);
-  //   if (!tab) throw new Error("Tab not found");
-
-  //   let text = data?.text?.trim() || "";
-  //   if (!text) {
-  //     const selected = await tab.webContents.executeJavaScript(
-  //       `(() => String(window.getSelection?.()?.toString?.() || "").trim())();`,
-  //       true,
-  //     );
-  //     text = String(selected || "").trim();
-  //   }
-  //   if (!text) throw new Error("Selection text is required");
-
-  //   const result = await this.translateController.translateSelection({
-  //     ...data,
-  //     text,
-  //   });
-
-  //   if (result?.translatedText) {
-  //     const translateResponse = {
-  //       sourceLanguage: result.sourceLanguage,
-  //       translatedText: result.translatedText,
-  //       targetLanguage: result.targetLanguage,
-  //     };
-  //     await tab.webContents.executeJavaScript(this.translateController.scriptInjection(text, translateResponse), true);
-  //   }
-  //   return result;
-  // }
-
-  // async translateOpenManager(data: { tabId: string }) {
-  //   if (!data?.tabId) throw new Error("Tab id is required");
-  //   const tab = this.tabController?.getTabById(data.tabId);
-  //   if (!tab) throw new Error("Tab not found");
-  //   const result = await this.translateController.openManager(this.window, tab);
-  //   if (!result) return false;
-  //   await this.translateController.applyManagerState(result);
-  //   return true;
-  // }
-
-  // async translateGetSelectionHistory() {
-  //   return this.translateController.getRecentSelections();
   // }
 }

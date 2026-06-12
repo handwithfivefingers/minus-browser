@@ -1,4 +1,4 @@
-export type Collection = "tab" | "password" | "userscripts" | "passwordVault" | "translate" | "interface";
+export type Collection = "tab" | "password" | "userscripts" | "passwordVault" | "translate" | "interface" | "session";
 
 export class CacheSystem {
   private data: Record<Collection, any> = {
@@ -8,6 +8,7 @@ export class CacheSystem {
     passwordVault: null,
     translate: null,
     interface: null,
+    session: null,
   };
   constructor() {}
 

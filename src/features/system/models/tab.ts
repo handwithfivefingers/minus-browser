@@ -1,4 +1,4 @@
-import { WebContentsView, BrowserWindow, session } from "electron";
+import { WebContentsView, BrowserWindow } from "electron";
 import { v7 as uuid_v7 } from "uuid";
 import { AdBlocker } from "../controller/adsBlock";
 import { ContextMenuController } from "../controller/context";
@@ -7,6 +7,7 @@ import log from "electron-log";
 import { IPC_RENDERER_EVENT } from "../constants/ipc";
 import { VaultController } from "../controller/vault";
 import { UserScriptController } from "../controller/userScript";
+import { minusSessionManager } from "../services/session";
 // import { VaultController } from "~/features/vault/controller/vaultController";
 interface IDestroy {
   destroy?: () => void;
@@ -50,7 +51,7 @@ export class Tab {
   timestamp: number = Date.now();
   isBookmarked: boolean = false;
   cookies?: Electron.Cookie[];
-  minusSession: Electron.Session = session.fromPartition("persist:minus-browser");
+  minusSession: Electron.Session = minusSessionManager.session;
   view: WebContentsView = new WebContentsView({
     webPreferences: {
       nodeIntegration: false,
