@@ -10,10 +10,21 @@ import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { appBundleId } from "./package.json";
 
 const makers = [];
-if (import.meta.env.VITE_PLATFORM === "WIN") {
+const { PLATFORM } = (import.meta as any).env;
+if (PLATFORM === "WIN") {
   makers.push(new MakerZIP({}, ["darwin", "win32"]));
 }
-if (import.meta.env.VITE_PLATFORM === "MAC") {
+if (PLATFORM === "MAC") {
+  makers.push(
+    new MakerDMG({
+      name: "MinusBrowser",
+      format: "ULFO",
+      overwrite: true,
+    }),
+  );
+}
+if (!PLATFORM) {
+  makers.push(new MakerZIP({}, ["darwin", "win32"]));
   makers.push(
     new MakerDMG({
       name: "MinusBrowser",
@@ -40,16 +51,7 @@ const config: ForgeConfig = {
     asar: true,
   },
   rebuildConfig: {},
-  // makers: [new MakerSquirrel({}), new MakerZIP({}, ["darwin"]), new MakerRpm({}), new MakerDeb({}), new MakerDMG({})],
-  makers: [
-    // new MakerSquirrel({}),
-    // new MakerZIP({}, ["darwin", "win32"]),
-    new MakerDMG({
-      name: "MinusBrowser",
-      format: "ULFO",
-      overwrite: true,
-    }),
-  ],
+  makers,
   plugins: [
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
@@ -66,7 +68,6 @@ const config: ForgeConfig = {
           config: "vite.preload.config.ts",
           target: "preload",
         },
-
       ],
       renderer: [
         {

@@ -88,13 +88,16 @@ export class Tab {
     this.pluginManager.unregister(this.id);
     const fallback = async () => {
       return this.interface.readFiles<{
-        extension: { adblock: boolean; translate: boolean; userscript: boolean; vault: boolean };
+        extension: { adblock: boolean; translate: boolean; userscript: boolean; vault: boolean; disabledFilters: string[] };
       }>();
     };
     const extensionManager = await cacheSystem.get<IUserInterface>("interface", fallback);
-    const adblockPlugin = new AdblockTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }));
     if (extensionManager && "extension" in extensionManager) {
-      const { vault, translate, adblock, userscript } = extensionManager.extension;
+      const { vault, translate, adblock, userscript, disabledFilters } = extensionManager.extension;
+      const adblockPlugin = new AdblockTabPlugin(
+        (channel: string, data: any) => this.eventEmitter({ channel, data }),
+        disabledFilters || [],
+      );
       if (vault) {
         const vaulPlugin = new VaultTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }));
         this.pluginManager.register(vaulPlugin);

@@ -22,12 +22,7 @@ export class SearchController {
     eventStore.broadcast("searchBarClosed", true);
   }
 
-  searchPage(queryParams: {
-    query: string;
-    forward?: boolean;
-    findNext?: boolean;
-    matchCase?: boolean;
-  }) {
+  searchPage(queryParams: { query: string; forward?: boolean; findNext?: boolean; matchCase?: boolean }) {
     if (!this.activeView) return;
     if (!queryParams?.query?.trim()) {
       this.activeView.webContents.stopFindInPage("clearSelection");

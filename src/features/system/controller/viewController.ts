@@ -323,6 +323,7 @@ export class ViewController {
         vault: true,
         translate: true,
         userscript: true,
+        disabledFilters: [],
       },
     };
     try {

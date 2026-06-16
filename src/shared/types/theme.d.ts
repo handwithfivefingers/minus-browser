@@ -11,5 +11,6 @@ export interface IUserInterface {
     vault: boolean;
     translate: boolean;
     userscript: boolean;
+    disabledFilters: string[];
   };
 }

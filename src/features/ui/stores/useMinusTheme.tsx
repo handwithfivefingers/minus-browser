@@ -14,6 +14,7 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
     vault: true,
     translate: true,
     userscript: true,
+    disabledFilters: [],
   },
   setLayout: (layout: "BASIC" | "FLOATING") => {
     set({ layout });

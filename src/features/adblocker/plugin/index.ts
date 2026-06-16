@@ -6,9 +6,12 @@ const blocker = new AdBlocker();
 
 export class AdblockTabPlugin implements ITabPlugin {
   readonly name = "adblocker";
-  constructor(private emitToRenderer: (channel: string, data: any) => void) {
+  constructor(
+    private emitToRenderer: (channel: string, data: any) => void,
+    private disabledFilters: string[] = [],
+  ) {
     this.emitToRenderer = emitToRenderer;
-    blocker.initialize();
+    blocker.initialize(this.disabledFilters);
   }
 
   register(hooks: ITabLifecycleHooks, ctx: IExecutionContext) {

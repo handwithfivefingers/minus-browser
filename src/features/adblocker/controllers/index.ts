@@ -3,8 +3,6 @@ import fetch from "cross-fetch";
 import { app, WebContentsView } from "electron";
 import log from "electron-log";
 import { AdblockService } from "../services";
-import fs from "node:fs/promises";
-import path from "node:path";
 
 const baseDir = `https://raw.githubusercontent.com/brave/adblock-lists-mirror/lists/lists/metadata.json`;
 
@@ -14,39 +12,43 @@ export class AdBlocker {
   isInitialize = false;
   private initializing?: Promise<void>;
   private activeSessions = new Set<Electron.Session>();
+  private lastDisabledKey = "";
+  private _disabledFilters: string[] = [];
 
-  async initialize() {
-    if (this.isInitialize) return;
-    if (this.initializing) return this.initializing;
+  async initialize(disabledFilters?: string[]) {
+    if (disabledFilters !== undefined) {
+      this._disabledFilters = disabledFilters;
+    }
+    const key = [...this._disabledFilters].sort().join(",");
+    if (this.isInitialize && this.lastDisabledKey === key) return;
+
+    if (this.initializing) {
+      await this.initializing;
+      this.initializing = undefined;
+      if (this.isInitialize && this.lastDisabledKey === key) return;
+    }
+
+    this.isInitialize = false;
+    this.lastDisabledKey = key;
     this.initializing = this.load();
     return this.initializing;
-  }
-
-  private getCachePath() {
-    return path.join(app.getPath("userData"), "adblock-cache.bin");
   }
 
   private async load() {
     try {
       const metaData = await fetch(baseDir).then((res) => res.text());
-      const fullList = JSON.parse(metaData);
-      const fullLists = Object.keys(fullList).map((key: string) => {
-        return fullList[key];
-      });
-
-      const cachePath = this.getCachePath();
-      const caching = {
-        path: cachePath,
-        read: (p: string) => fs.readFile(p),
-        write: (p: string, buf: Uint8Array) => fs.writeFile(p, buf),
-      };
+      const fullList: Record<string, string> = JSON.parse(metaData);
+      const disabledSet = new Set(this._disabledFilters);
+      const fullLists = Object.keys(fullList)
+        .filter((key) => !disabledSet.has(key))
+        .map((key) => fullList[key]);
 
       this.engine = await FiltersEngine.fromLists(fetch, fullLists, {
         enableCompression: true,
         loadCosmeticFilters: true,
         loadNetworkFilters: true,
         loadCSPFilters: true,
-      }, caching);
+      });
       this.isInitialize = true;
     } catch (error) {
       console.log("Adblocker load error", error);
