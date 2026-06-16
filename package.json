@@ -7,7 +7,7 @@
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
   "scripts": {
-    "start": "cross-env --unhandled-rejections=strict electron-forge start ",
+    "start": "cross-env NODE_OPTIONS=\"--no-deprecation\" --unhandled-rejections=strict electron-forge start ",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "build:mac": "cross-env PLATFORM=MAC electron-forge make",
