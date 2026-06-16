@@ -3,7 +3,7 @@
   "productName": "MinusBrowser",
   "appBundleId": "com.minusbrowser.localdev",
   "appId": "com.minusbrowser.localdev",
-  "version": "0.2.4",
+  "version": "0.2.8.1",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -13,6 +13,7 @@
     "build:mac": "__VITE_PLATFORM=MAC && electron-forge make",
     "build:win": "__VITE_PLATFORM=WIN && electron-forge make",
     "publish": "electron-forge publish",
+    "build:renderers": "node scripts/build-renderers.mjs",
     "lint": "eslint --ext .ts,.tsx ."
   },
   "keywords": [],
@@ -45,13 +46,14 @@
     "vite": "^5.4.19"
   },
   "dependencies": {
-    "@ghostery/adblocker-electron": "^2.17.3",
-    "@ghostery/adblocker-electron-preload": "2.14.1",
+    "@ghostery/adblocker": "^2.17.3",
     "@tabler/icons-react": "^3.34.1",
     "clsx": "^2.1.1",
     "cross-fetch": "^4.1.0",
+    "electron-findbar": "^3.7.2",
     "electron-log": "^5.4.2",
     "electron-squirrel-startup": "^1.0.1",
+    "fuse.js": "^7.4.2",
     "parse-domain": "^8.3.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

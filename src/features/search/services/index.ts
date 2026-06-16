@@ -107,7 +107,7 @@ const SEARCH_BAR_SCRIPT = `
       #__minus_search_close { color: #aaa; }
     }
   \`;
-  document.head.appendChild(style);
+  (document.head || document.documentElement).appendChild(style);
 
   const bar = document.createElement("div");
   bar.id = ID;
@@ -121,7 +121,7 @@ const SEARCH_BAR_SCRIPT = `
   document.documentElement.appendChild(bar);
 
   const input = document.getElementById("__minus_search_input");
-  const search = (forward, findNext = true) => {
+  const search = (forward,findNext = true) => {
     console.log("__MINUS_SEARCH__:" + JSON.stringify({ query: input.value, findNext, forward }));
     requestAnimationFrame(() => requestAnimationFrame(() => input.focus()));
   };
@@ -139,8 +139,8 @@ const SEARCH_BAR_SCRIPT = `
     }
   });
 
-  document.getElementById("__minus_search_prev").addEventListener("click", () => search(false, true));
-  document.getElementById("__minus_search_next").addEventListener("click", () => search(true, true));
+  document.getElementById("__minus_search_prev").addEventListener("click", () => search(false));
+  document.getElementById("__minus_search_next").addEventListener("click", () => search(true));
   document.getElementById("__minus_search_close").addEventListener("click", () => {
     console.log("__MINUS_SEARCH_CLOSE__");
   });
@@ -158,14 +158,18 @@ const SEARCH_BAR_SCRIPT = `
   }, true);
 
   input.focus();
+
+  console.log("__MINUS_SEARCH_OPEN__");
 })();
 `;
 
 export class SearchService {
   async showSearchBar(view: WebContentsView) {
-    await view.webContents.executeJavaScript(SEARCH_BAR_SCRIPT, true).catch((e) => {
-      console.log("e", e);
+    const result = await view.webContents.executeJavaScript(SEARCH_BAR_SCRIPT, true).catch((e) => {
+      console.warn("[Search] Failed to inject search bar:", e?.message || e);
+      return false;
     });
+    return result !== false;
   }
 
   async hideSearchBar(view: WebContentsView) {

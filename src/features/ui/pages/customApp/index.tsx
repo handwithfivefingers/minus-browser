@@ -330,6 +330,7 @@ const CustomApp = () => {
         onTranslatePage={onTranslatePage}
         // onTranslateSelection={onTranslateSelection}
         onOpenTranslateManager={onOpenTranslateManager}
+        onOpenSpotlight={(query) => window.api.EMIT("SPOTLIGHT_OPEN", { query })}
         isLoading={loading}
       />
       <WebViewInstance id={tabId} />

@@ -11,6 +11,7 @@ import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
 import { IUserInterface } from "~/shared/types";
 import { IHandleResizeView, IPC, ITab } from "../interfaces";
 import { ErrorServices } from "../services/error.services";
+import { SpotlightRoute, spotlightController } from "~/features/spotlight";
 import { minusSessionManager } from "../services/session";
 import { StoreManager } from "../stores";
 import { eventStore } from "../stores/minusEventEmitter";
@@ -25,14 +26,8 @@ export class ViewController {
   minusSession: Electron.Session | undefined = minusSessionManager.session;
   userInterface: IUserInterface | undefined = undefined;
   tabController: TabController | undefined;
-
-  // translateController = new TranslateController();
-  // vaultController = new VaultController();
-  // vaultServices = new VaultServices();
-  // userScriptManagerController = new UserScriptManagerController(this.tabController?.userScripts);
-  // userScriptDialogController = new UserScriptDialogServices();
+  spotlightController = spotlightController;
   searchController = splitSearchController;
-
   private invokeHandlers: Record<string, (data?: any) => any> | undefined;
   private listenerHandlers: Record<string, (data?: any) => void> | undefined;
 
@@ -40,14 +35,6 @@ export class ViewController {
     this.tabController = new TabController((payload) => this.onInvoke(payload));
     this.window = window;
     this.init();
-    Notification.handleActivation((details) => {
-      console.log("Notification activated:", details.type);
-      if (details.type === "reply") {
-        console.log("User reply:", details.reply);
-      } else if (details.type === "action") {
-        console.log("Action index:", details.actionIndex);
-      }
-    });
   }
 
   handleClickNotification(notification: Electron.ActivationArguments) {
@@ -67,6 +54,7 @@ export class ViewController {
         ...TranslateRoute,
         ...UserScriptRoute,
         ...SearchRoute,
+        ...SpotlightRoute,
         // [IPC_INVOKE_CHANNEL.SEARCH_PAGE]: (data) => this.searchController?.searchPage(data),
         // [IPC_INVOKE_CHANNEL.GET_USERSCRIPTS]: () => this.getUserScripts(),
         // [IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT]: (data) => this.saveUserScript(data),
@@ -105,11 +93,24 @@ export class ViewController {
         [IPC_EMIT_CHANNEL.CLOSE_APP]: () => this.onCloseApp(),
         [IPC_EMIT_CHANNEL.REQUEST_PIP]: (data) => this.requestPIP(data),
         [IPC_EMIT_CHANNEL.TOGGLE_BOOKMARK]: (data) => this.handleToggleBookmark(data),
+        [IPC_EMIT_CHANNEL.SPOTLIGHT_OPEN]: (data) => this.openSpotlight(data),
+        [IPC_EMIT_CHANNEL.SPOTLIGHT_CLOSE]: () => this.closeSpotlight(),
+        [IPC_EMIT_CHANNEL.OPEN_TAB_BY_ID]: (data) => this.handleOpenTabById(data),
       };
       console.log("initializeHandlers Completed");
     } catch (err) {
       console.log("initializeHandlers Error");
     }
+  }
+
+  private forwardRendererEvent(channel: string, data?: unknown) {
+    this.window.webContents.send(channel, data);
+  }
+
+  private syncTabsToWindows() {
+    const tabs = this.getTabs() || [];
+    this.window.webContents.send("GET_TABS", tabs);
+    this.spotlightController.syncTabs(tabs);
   }
 
   async init() {
@@ -131,7 +132,8 @@ export class ViewController {
     } catch (error) {
       console.log("[ERROR] View Controller -", error);
     } finally {
-      this.window.webContents.send("GET_TABS", this.getTabs());
+      this.syncTabsToWindows();
+      spotlightController.warmup().catch(() => {});
     }
   }
 
@@ -170,9 +172,12 @@ export class ViewController {
     }
   }
 
-  createTab(tab?: Partial<ITab>) {
-    const newTab = this.tabController?.addNewTab(tab);
-    this.window.webContents.send("GET_TABS", this.getTabs());
+  async createTab(tab?: Partial<ITab>) {
+    const newTab = await this.tabController?.addNewTab(tab);
+    this.syncTabsToWindows();
+    if (newTab?.id) {
+      this.forwardRendererEvent("OPEN_TAB_BY_ID", { id: newTab.id });
+    }
     return newTab;
   }
 
@@ -189,6 +194,7 @@ export class ViewController {
       currentTab.show();
       currentTab.view.setBounds(props.screen);
       this.tabController?.setActiveTab(currentTab.id);
+      this.syncTabsToWindows();
     } catch (error) {
       return new ErrorServices(error);
     }
@@ -254,7 +260,7 @@ export class ViewController {
       this.detachChildView(currentTab.view);
       const { nextTab } = this.tabController?.closeTab(props.id) || {};
       if (nextTab?.view) this.attachChildView(nextTab?.view);
-      this.window.webContents.send("GET_TABS", this.getTabs());
+      this.syncTabsToWindows();
     } catch (error) {
       return new ErrorServices(error);
     }
@@ -381,6 +387,24 @@ export class ViewController {
     } catch (error) {
       return new ErrorServices(error);
     }
+  }
+
+  openSpotlight(payload?: { query?: string }) {
+    spotlightController.open({
+      query: payload?.query || this.tabController?.activeTab?.url || this.tabController?.activeTab?.title || "",
+      tabs: this.getTabs() || [],
+    });
+  }
+
+  closeSpotlight() {
+    spotlightController.close();
+  }
+
+  handleOpenTabById(data: { id: string }) {
+    if (!data?.id) return;
+    this.forwardRendererEvent("OPEN_TAB_BY_ID", { id: data.id });
+    this.tabController?.setActiveTab(data.id);
+    this.syncTabsToWindows();
   }
 
   attachChildView(view: WebContentsView) {

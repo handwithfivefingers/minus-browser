@@ -1,10 +1,13 @@
 import { BrowserWindow, WebContentsView } from "electron";
 import { IExecutionContext, ITabLifecycleHooks, ITabPlugin } from "~/shared/types";
+import { eventStore } from "~/features/system/stores/minusEventEmitter";
 import { SearchService } from "../services";
 
 export class SearchTabPlugin implements ITabPlugin {
   readonly name = "search";
   private searchBarVisible = false;
+  private requestId: number | undefined;
+  private preText = "";
   private service = new SearchService();
 
   constructor(private emitToRenderer: (channel: string, data: any) => void) {
@@ -18,10 +21,18 @@ export class SearchTabPlugin implements ITabPlugin {
   }
 
   private async handleConsoleMessage(ctx: IExecutionContext, message: string) {
+    if (message === "__MINUS_SEARCH_OPEN__") {
+      this.searchBarVisible = true;
+      return;
+    }
+
     if (message === "__MINUS_SEARCH_CLOSE__") {
-      await this.hideSearchBar(ctx);
+      this.searchBarVisible = false;
+      this.requestId = undefined;
+      await this.service.hideSearchBar({ webContents: ctx.webContents } as WebContentsView);
       const browser = BrowserWindow.getFocusedWindow();
       browser?.webContents?.send(`SEARCH_BAR_CLOSED:${ctx.tabId}`);
+      eventStore.broadcast("searchBarClosed", true);
       return;
     }
 
@@ -38,10 +49,16 @@ export class SearchTabPlugin implements ITabPlugin {
       if (!query?.trim()) {
         ctx.webContents.stopFindInPage("clearSelection");
         await this.service.updateSearchCount(ctx.webContents as Electron.WebContents, 0, 0);
+        this.requestId = undefined;
+        this.preText = "";
         return;
       }
 
-      ctx.webContents.findInPage(query, { forward, findNext, matchCase: false });
+      if (findNext) {
+        this.findNext(ctx.webContents as Electron.WebContents, forward);
+      } else {
+        this.startFind(ctx.webContents as Electron.WebContents, query, forward);
+      }
     } catch {
       // ignore malformed console payloads
     }
@@ -60,9 +77,22 @@ export class SearchTabPlugin implements ITabPlugin {
     });
   }
 
+  private startFind(webContents: Electron.WebContents, text: string, forward: boolean, matchCase = false) {
+    if (!text) return;
+    this.preText = text;
+    this.requestId = webContents.findInPage(text, { forward, matchCase });
+  }
+
+  private findNext(webContents: Electron.WebContents, forward: boolean, matchCase = false) {
+    if (!this.preText) return;
+    this.requestId = webContents.findInPage(this.preText, { forward, matchCase, findNext: true });
+  }
+
   private async hideSearchBar(ctx: IExecutionContext) {
     if (!this.searchBarVisible) return;
     this.searchBarVisible = false;
+    this.requestId = undefined;
     await this.service.hideSearchBar({ webContents: ctx.webContents } as WebContentsView);
+    eventStore.broadcast("searchBarClosed", true);
   }
 }

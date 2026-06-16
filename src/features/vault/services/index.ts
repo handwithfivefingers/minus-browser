@@ -34,8 +34,7 @@ function resolveVaultUrl(): string {
   const basePath = path.join(
     getSafeDirname(),
     // @ts-ignore
-    // `../renderer/${VAULT_INJECTION_VITE_NAME}/index.html`,
-    `../renderer/main_window/src/features/vault/overlay/index.html`,
+    `../renderer/${VAULT_INJECTION_VITE_NAME}/index.html`,
   );
   return pathToFileURL(basePath).toString();
 }

@@ -91,6 +91,7 @@ typings/
 
 # Vite
 .vite/
+dist/
 
 #IDE
 

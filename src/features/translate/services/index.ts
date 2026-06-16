@@ -61,8 +61,9 @@ function resolveTranslateUrl(): string {
     );
     return pathToFileURL(rendererPath).toString();
   }
-  // .vite/renderer/main_window/src/features/translate/overlay/index.html
-  const basePath = path.join(getSafeDirname(), `../renderer/main_window/src/features/translate/overlay/index.html`);
+  // const basePath = path.join(getSafeDirname(), `../renderer/translate_injection/index.html`);
+  /**@ts-ignore */
+  const basePath = path.join(getSafeDirname(), `../renderer/${TRANSLATE_INJECTION_WINDOW_VITE_NAME}/src/features/translate/overlay/index.html`);
   return pathToFileURL(basePath).toString();
 }
 

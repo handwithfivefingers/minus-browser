@@ -19,6 +19,7 @@ export class SearchController {
   async stopSearch() {
     if (!this.activeView) return;
     await this.service.hideSearchBar(this.activeView);
+    eventStore.broadcast("searchBarClosed", true);
   }
 
   searchPage(queryParams: {

@@ -32,7 +32,7 @@ function resolveUserScriptUrl(): string {
   const basePath = path.join(
     getSafeDirname(),
     // @ts-ignore
-    `../renderer/main_window/src/features/userscript/overlay/index.html`,
+    `../renderer/${USERSCRIPT_INJECTION_VITE_NAME}/index.html`,
   );
   return pathToFileURL(basePath).toString();
 }

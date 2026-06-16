@@ -66,21 +66,17 @@ const config: ForgeConfig = {
           config: "vite.preload.config.ts",
           target: "preload",
         },
-        {
-          entry: "src/adb-preload.ts",
-          config: "vite.adb-preload.config.ts",
-          target: "preload",
-        },
+
       ],
       renderer: [
         {
           name: "main_window",
           config: "vite.renderer.config.ts",
         },
-        // {
-        //   name: "spotlight_window",
-        //   config: "vite.spotlight.renderer.config.ts",
-        // },
+        {
+          name: "spotlight_window",
+          config: "vite.spotlight.renderer.config.ts",
+        },
         {
           name: "vault_injection",
           config: "vite.injection.vault.config.ts",

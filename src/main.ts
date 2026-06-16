@@ -134,27 +134,8 @@ class MinusBrowser {
     }
   };
   registerCommand(viewController: ViewController) {
-    let gS: CommandController;
-    if (!this.browser) return;
-    // const isMainFrame = this.browser.webContents.isMainFrame();
-    app.on("browser-window-focus", () => {
-      gS = new CommandController(viewController);
-    });
-    app.on("browser-window-blur", () => {
-      gS?.destroy();
-    });
-    // this.browser.on("focus", () => {
-    //   gS = new CommandController(viewController);
-    // });
-    this.browser.on("hide", () => {
-      gS?.destroy();
-    });
-    this.browser.on("blur", () => {
-      gS?.destroy();
-    });
-    this.browser.on("closed", () => {
-      gS?.destroy();
-    });
+    const controller = new CommandController(viewController);
+    menuApplication.rebuild(controller.menuItems);
   }
 
   registerNotification() {

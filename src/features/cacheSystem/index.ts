@@ -15,7 +15,6 @@ export class CacheSystem {
   async get<T>(key: Collection, fallback?: () => any) {
     try {
       if (key in this.data && !!this.data[key]) {
-        console.log("Hit cache", this.data, key);
         return this.data[key] as T;
       }
       if (typeof fallback === undefined) return undefined;

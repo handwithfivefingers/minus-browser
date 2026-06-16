@@ -13,7 +13,10 @@ type LISTENER_CHANNEL =
   | "TOGGLE_DEV_TOOLS"
   | "GET_TABS"
   | "CREATE_TAB"
-  | "FAVICON_UPDATED";
+  | "FAVICON_UPDATED"
+  | "SPOTLIGHT_OPEN"
+  | "SPOTLIGHT_CLOSE"
+  | "OPEN_TAB_BY_ID";
 
 export interface IElectronAPI {
   INVOKE: <T>(channel: IPCInvokeChannel, data?: any) => Promise<T> | T;
