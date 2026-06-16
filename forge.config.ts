@@ -8,6 +8,32 @@ import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { appBundleId } from "./package.json";
+
+const makers = [];
+const { PLATFORM } = (import.meta as any).env;
+if (PLATFORM === "WIN") {
+  makers.push(new MakerZIP({}, ["darwin", "win32"]));
+}
+if (PLATFORM === "MAC") {
+  makers.push(
+    new MakerDMG({
+      name: "MinusBrowser",
+      format: "ULFO",
+      overwrite: true,
+    }),
+  );
+}
+if (!PLATFORM) {
+  makers.push(new MakerZIP({}, ["darwin", "win32"]));
+  makers.push(
+    new MakerDMG({
+      name: "MinusBrowser",
+      format: "ULFO",
+      overwrite: true,
+    }),
+  );
+}
+
 const config: ForgeConfig = {
   packagerConfig: {
     name: "MinusBrowser",
@@ -25,16 +51,7 @@ const config: ForgeConfig = {
     asar: true,
   },
   rebuildConfig: {},
-  // makers: [new MakerSquirrel({}), new MakerZIP({}, ["darwin"]), new MakerRpm({}), new MakerDeb({}), new MakerDMG({})],
-  makers: [
-    // new MakerSquirrel({}),
-    new MakerZIP({}, ["darwin", "win32"]),
-    // new MakerDMG({
-    //   name: "MinusBrowser",
-    //   format: "ULFO",
-    //   overwrite: true,
-    // }),
-  ],
+  makers,
   plugins: [
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
@@ -51,21 +68,16 @@ const config: ForgeConfig = {
           config: "vite.preload.config.ts",
           target: "preload",
         },
-        {
-          entry: "src/adb-preload.ts",
-          config: "vite.adb-preload.config.ts",
-          target: "preload",
-        },
       ],
       renderer: [
         {
           name: "main_window",
           config: "vite.renderer.config.ts",
         },
-        // {
-        //   name: "spotlight_window",
-        //   config: "vite.spotlight.renderer.config.ts",
-        // },
+        {
+          name: "spotlight_window",
+          config: "vite.spotlight.renderer.config.ts",
+        },
         {
           name: "vault_injection",
           config: "vite.injection.vault.config.ts",

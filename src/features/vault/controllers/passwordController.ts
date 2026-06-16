@@ -53,10 +53,10 @@ export class PasswordController {
 
   private async persist() {
     try {
-      const items = await this.list();
-      const data = JSON.stringify(items);
+      const list = [...this.items.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+      const data = JSON.stringify(list);
       const vault = this.encrypt(data);
-      cacheSystem.set("passwordVault", items);
+      cacheSystem.set("passwordVault", { vault });
       await this.store.saveFiles({ vault });
     } catch (error) {
       console.log("persit vault error", error);

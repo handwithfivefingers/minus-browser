@@ -4,7 +4,7 @@ import { Tab } from "../../tabs/models/tab";
 export class TabPluginManager {
   private plugins: ITabPlugin[] = [];
   isAttached: boolean = false;
-  eventCaching: Map<string, Record<string, () => void>> = new Map();
+  eventCaching: Map<string, Record<string, Array<() => void>>> = new Map();
 
   register(plugin: ITabPlugin) {
     this.plugins.push(plugin);
@@ -12,7 +12,7 @@ export class TabPluginManager {
   unregister(tabId: string) {
     const uns = this.eventCaching.get(tabId);
     if (uns) {
-      Object.keys(uns).forEach((key) => uns[key]());
+      Object.keys(uns).forEach((key) => uns[key]?.forEach((fn) => fn()));
       this.eventCaching.delete(tabId);
     }
     this.plugins = [];
@@ -32,10 +32,7 @@ export class TabPluginManager {
 
   saveUnsubscribe(tabId: string, name: string, callback: () => void) {
     const unsubs = this.eventCaching.get(tabId) || {};
-    if (unsubs[name]) {
-      return;
-    }
-    unsubs[name] = callback;
+    (unsubs[name] ??= []).push(callback);
     this.eventCaching.set(tabId, unsubs);
   }
 

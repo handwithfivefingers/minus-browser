@@ -4,6 +4,7 @@ class MinusEventEmitter<T> extends EventEmitter {
   eventListeners: Map<string, boolean> = new Map();
   constructor() {
     super();
+    this.setMaxListeners(15);
   }
   broadcast<T>(key: string, value: T) {
     this.eventListeners.set(key, true);

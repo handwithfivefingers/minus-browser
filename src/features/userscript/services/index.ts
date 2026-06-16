@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { BrowserWindow, WebContentsView } from "electron";
 import { eventStore } from "~/features/system/stores/minusEventEmitter";
+import { minusSessionManager } from "~/features/system/services/session";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { IUserScript } from "../types";
@@ -31,7 +32,7 @@ function resolveUserScriptUrl(): string {
   const basePath = path.join(
     getSafeDirname(),
     // @ts-ignore
-    `../renderer/main_window/src/features/userscript/overlay/index.html`,
+    `../renderer/${USERSCRIPT_INJECTION_VITE_NAME}/index.html`,
   );
   return pathToFileURL(basePath).toString();
 }
@@ -50,6 +51,7 @@ export class UserScriptService {
           nodeIntegration: false,
           contextIsolation: true,
           sandbox: false,
+          session: minusSessionManager.session,
         },
       });
       userScriptView.setBounds(tabBounds);

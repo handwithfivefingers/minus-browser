@@ -43,7 +43,6 @@ export class TabController {
         tabs: Tab[];
         index: number;
       }>("tab", fallback);
-      log.info("Tab controller initialize", data);
       const tabs = data?.tabs || [];
       const newTabs = new Map();
       const tabsIndex: { [key: string]: number } = {};
@@ -106,10 +105,8 @@ export class TabController {
       return tabJSON;
     } catch (err) {
     } finally {
-      const cached = await cacheSystem.get<{
-        tabs: Tab[];
-      }>("tab");
-      const nextState = cached?.tabs.length ? [...cached.tabs] : [];
+      const cached = await cacheSystem.get<Tab[]>("tab");
+      const nextState = cached?.length ? [...cached] : [];
       cacheSystem.set("tab", [...nextState, tabObject]);
     }
   }
@@ -131,10 +128,8 @@ export class TabController {
     } catch (error) {
       console.log("updateTab error", error);
     } finally {
-      const cached = await cacheSystem.get<{
-        tabs: Tab[];
-      }>("tab");
-      const nextState = cached?.tabs.length ? [...cached.tabs] : [];
+      const cached = await cacheSystem.get<Tab[]>("tab");
+      const nextState = cached?.length ? [...cached] : [];
       const index = nextState.findIndex((item) => item.id === id);
       if (index !== -1) {
         nextState[index] = updatedTab;

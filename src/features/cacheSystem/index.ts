@@ -1,4 +1,4 @@
-export type Collection = "tab" | "password" | "userscripts" | "passwordVault" | "translate" | "interface";
+export type Collection = "tab" | "password" | "userscripts" | "passwordVault" | "translate" | "interface" | "session";
 
 export class CacheSystem {
   private data: Record<Collection, any> = {
@@ -8,13 +8,13 @@ export class CacheSystem {
     passwordVault: null,
     translate: null,
     interface: null,
+    session: null,
   };
   constructor() {}
 
   async get<T>(key: Collection, fallback?: () => any) {
     try {
       if (key in this.data && !!this.data[key]) {
-        console.log("Hit cache", this.data, key);
         return this.data[key] as T;
       }
       if (typeof fallback === undefined) return undefined;

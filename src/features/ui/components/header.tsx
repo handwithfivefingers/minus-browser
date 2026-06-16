@@ -11,8 +11,7 @@ import {
   IconStarFilled,
 } from "@tabler/icons-react";
 import clsx from "clsx";
-import { useEffect, useRef, useState } from "react";
-import { isValidDomainOrIP } from "../libs";
+import { useEffect, useState } from "react";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
 interface IHeader {
   url?: string;
@@ -28,6 +27,7 @@ interface IHeader {
   onTranslatePage: () => void;
   // onTranslateSelection: () => void;
   onOpenTranslateManager: () => void;
+  onOpenSpotlight: (query?: string) => void;
   title?: string;
   isLoading: boolean;
   isBookmarked?: boolean;
@@ -44,7 +44,6 @@ const Header = ({
   isLoading,
   url,
   isBookmarked,
-  onSearch,
   onBackWard,
   onToggleDevTools,
   onReload,
@@ -55,26 +54,14 @@ const Header = ({
   onTranslatePage,
   // onTranslateSelection,
   onOpenTranslateManager,
+  onOpenSpotlight,
 }: IHeader) => {
-  const ref = useRef<HTMLInputElement>(null);
-  const [focus, setFocus] = useState(false);
   const { layout, extension } = useMinusThemeStore();
-  useEffect(() => {
-    if (url && ref.current && url !== ref.current.value) {
-      ref.current.value = url;
-      if (isValidDomainOrIP(url)) {
-        ref.current.value = url;
-      }
-    }
-  }, [url]);
-
-  const handleSearch = () => {
-    if (!ref.current) return;
-    let v = ref.current.value;
-    onSearch(v);
-  };
   const onBookmark = () => {
-    window.api.EMIT("TOGGLE_BOOKMARK", { url: ref.current?.value, id: id });
+    window.api.EMIT("TOGGLE_BOOKMARK", { url: url, id: id });
+  };
+  const openSpotlight = () => {
+    onOpenSpotlight(url || title || "");
   };
   if (!id) return null;
   return (
@@ -93,8 +80,7 @@ const Header = ({
       </div>*/}
       <div
         className={[
-          "flex gap-1 w-1/2 bg-white rounded-full  border-2 transition-all relative mx-auto",
-          (focus && "border-indigo-500/50") || "border-transparent",
+          "flex gap-1 w-1/2 bg-white rounded-full border-2 transition-all relative mx-auto border-transparent",
         ].join(" ")}
       >
         <div className="flex gap-0.5 absolute top-0.5 left-0.5">
@@ -119,39 +105,20 @@ const Header = ({
         </div>
         <div className="flex px-12 items-center rounded-full gap-0.5 w-full">
           <input
-            className={clsx("py-1 w-full transition-all outline-transparent outline bg-white text-xs", {
-              ["hidden"]: !focus,
-            })}
-            ref={ref}
-            onBlur={() => setFocus(false)}
-            placeholder="Ctrl + K"
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === "Enter") {
-                handleSearch();
-              }
-            }}
-            title={ref.current?.value}
-          />
-          <input
-            className={clsx("py-1 w-full transition-all outline-transparent outline bg-white text-xs", {
-              ["hidden"]: focus,
-            })}
-            value={title}
-            onFocus={() => {
-              setFocus(true);
-              setTimeout(() => {
-                ref.current?.focus();
-              }, 50);
+            className="py-1 w-full transition-all outline-transparent outline bg-white text-xs cursor-pointer"
+            value={url || title || ""}
+            onMouseDown={(event) => {
+              event.preventDefault();
+              openSpotlight();
             }}
             placeholder="Ctrl + K"
-            title={title}
+            title={url || title}
             readOnly
           />
         </div>
         <button
           className="hover:text-white transition-all  px-1 py-1  h-[calc(100%-4px)] hover:bg-indigo-500/50 cursor-pointer active:translate-y-0.5 text-indigo-500  absolute right-0.5 top-0.5 rounded-full"
-          onClick={handleSearch}
+          onClick={openSpotlight}
           title="Search"
         >
           <IconSearch size={12} />

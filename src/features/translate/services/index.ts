@@ -2,6 +2,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { BrowserWindow, WebContentsView } from "electron";
 import { v7 as uuidv7 } from "uuid";
+import { minusSessionManager } from "~/features/system/services/session";
 import {
   ITranslateDetectResult,
   ITranslatePreference,
@@ -60,10 +61,9 @@ function resolveTranslateUrl(): string {
     );
     return pathToFileURL(rendererPath).toString();
   }
-  const basePath = path.join(
-    getSafeDirname(),
-    `../renderer/main_window/src/features/translate/overlay/index.html`,
-  );
+  // const basePath = path.join(getSafeDirname(), `../renderer/translate_injection/index.html`);
+  /**@ts-ignore */
+  const basePath = path.join(getSafeDirname(), `../renderer/${TRANSLATE_INJECTION_WINDOW_VITE_NAME}/src/features/translate/overlay/index.html`);
   return pathToFileURL(basePath).toString();
 }
 
@@ -255,6 +255,7 @@ export class TranslateService {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
+        session: minusSessionManager.session,
       },
     });
     translateView.setBounds(view.getBounds());

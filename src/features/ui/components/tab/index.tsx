@@ -1,4 +1,4 @@
-import { IconError404, IconX } from "@tabler/icons-react";
+import { IconError404, IconVolume, IconX } from "@tabler/icons-react";
 import clsx from "clsx";
 import { memo } from "react";
 import { Link, useLocation } from "react-router";
@@ -7,7 +7,9 @@ import { Avatar } from "../avatar";
 /** @ts-ignore */
 import styles from "./styles.module.css";
 import { ErrorBoundary } from "react-error-boundary";
-interface ITabItem extends Omit<any, "updateTitle" | "updateUrl" | "onFocus" | "onBlur"> {
+import { ITab } from "~/shared/types";
+interface ITabItem extends Omit<ITab, "updateTitle" | "updateUrl" | "onFocus" | "onBlur" | "id"> {
+  id: string;
   className?: string;
   onClose: ({ id }: { id: string }) => void;
 }
@@ -33,7 +35,16 @@ const TabItem = memo(({ id, className, onClose, ...props }: ITabItem) => {
           title={tab?.title}
           onClick={() => setActiveTab(id)}
         >
-          <Avatar src={tab?.favicon} />
+          <div className="flex relative">
+            <Avatar src={tab?.favicon} />
+            {tab?.audible && (
+              <IconVolume
+                className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 text-slate-700"
+                size={12}
+              />
+            )}
+          </div>
+
           <span className={styles.title}>{typeof tab?.title === "string" ? tab?.title : "New Tab"}</span>
         </Link>
         <IconX

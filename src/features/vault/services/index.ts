@@ -1,6 +1,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { BrowserWindow, WebContentsView } from "electron";
+import { minusSessionManager } from "~/features/system/services/session";
 // import { Tab } from "~/features/system/models/tab";
 const SENTINEL = "__VAULT_RESOLVE__:";
 
@@ -33,8 +34,7 @@ function resolveVaultUrl(): string {
   const basePath = path.join(
     getSafeDirname(),
     // @ts-ignore
-    // `../renderer/${VAULT_INJECTION_VITE_NAME}/index.html`,
-    `../renderer/main_window/src/features/vault/overlay/index.html`,
+    `../renderer/${VAULT_INJECTION_VITE_NAME}/index.html`,
   );
   return pathToFileURL(basePath).toString();
 }
@@ -77,6 +77,7 @@ export class VaultServices {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
+        session: minusSessionManager.session,
       },
     });
     vaultView.setBounds(tabBounds);

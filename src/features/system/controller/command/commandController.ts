@@ -1,81 +1,77 @@
-import { BrowserWindow, globalShortcut } from "electron";
+import { BrowserWindow, MenuItem, WebContentsView } from "electron";
+import Findbar from "electron-findbar";
+import { eventStore } from "~/features/system/stores/minusEventEmitter";
 import { ViewController } from "..";
-import { SpotlightService } from "../../services/spotlight.service";
-import { searchController } from "~/features/search";
-
-class CommandShortCut {
-  isActive: boolean = false;
-  commandName: string = "";
-  callback: () => void;
-  constructor({ commandName, callback }: { commandName: string; callback: () => void }) {
-    this.commandName = commandName;
-    this.callback = callback;
-    this.initialize();
-  }
-
-  initialize() {
-    // log.info("CommandShortCut initialized");
-    let isRegistered = globalShortcut.isRegistered(this.commandName);
-    if (!isRegistered) {
-      globalShortcut.register(this.commandName, this.callback);
-    }
-  }
-
-  destroy() {
-    globalShortcut.unregister(this.commandName);
-    this.isActive = false;
-    // console.log(`Command ${this.commandName} deleted`);
-  }
-}
 
 export class CommandController {
   isSearch = false;
-  search: CommandShortCut | undefined;
-  createTab: CommandShortCut | undefined;
-  toggleDevTools: CommandShortCut | undefined;
-  reloadPage: CommandShortCut | undefined;
-  spotlight: CommandShortCut | undefined;
   viewController: ViewController;
-
-  spotlightService: SpotlightService = new SpotlightService();
+  activeTab: WebContentsView | null = null;
   constructor(viewController: ViewController) {
     this.viewController = viewController;
-    this.initialize();
+    // eventStore.listen("searchBarClosed", () => {
+    //   this.isSearch = false;
+    // });
+    eventStore.listen("viewChanges", (view: WebContentsView) => {
+      this.activeTab = view;
+    });
   }
 
-  initialize() {
-    // log.info("CommandController initialized");
-    this.search = new CommandShortCut({
-      commandName: "CommandOrControl+F",
-      callback: () => this.onSearchCallback(),
-    });
-    this.createTab = new CommandShortCut({
-      commandName: "CommandOrControl+T",
-      callback: () => this.onCreateTabCallback(),
-    });
-    // this.spotlight = new CommandShortCut({
-    //   commandName: "CommandOrControl+K",
-    //   callback: () => this.onOpenSpotlight(),
-    // });
-    this.toggleDevTools = new CommandShortCut({
-      commandName: "F12",
-      callback: () => this.onToggleDevTools(),
-    });
-    this.reloadPage = new CommandShortCut({
-      commandName: "CommandOrControl+R",
-      callback: () => this.onReloadPage(),
-    });
+  get menuItems(): MenuItem[] {
+    return [
+      new MenuItem({
+        label: "Search",
+        accelerator: "CommandOrControl+F",
+        click: () => this.onSearchCallback(),
+      }),
+      new MenuItem({
+        label: "New Tab",
+        accelerator: "CommandOrControl+T",
+        click: () => this.onCreateTabCallback(),
+      }),
+      new MenuItem({
+        label: "Spotlight",
+        accelerator: "CommandOrControl+K",
+        click: () => this.onOpenSpotlight(),
+      }),
+      new MenuItem({
+        label: "Toggle DevTools",
+        accelerator: "F12",
+        click: () => this.onToggleDevTools(),
+      }),
+      new MenuItem({
+        label: "Reload",
+        accelerator: "CommandOrControl+R",
+        click: () => this.onReloadPage(),
+      }),
+    ];
   }
 
   onSearchCallback() {
+    console.log("Search callback");
     this.isSearch = !this.isSearch;
-    // let view = BrowserWindow.getFocusedWindow();
-    // view?.webContents?.send("SEARCH", { open: this.isSearch });
-    if (this.isSearch) {
-      searchController?.showSearchBar();
-    } else {
-      searchController?.stopSearch();
+    console.log("Findbar", Findbar);
+    const searchProcess = (bar: ReturnType<typeof Findbar.from>) => {
+      bar.setBoundsHandler((parentBounds, findbarBounds) => {
+        return {
+          x: parentBounds.x + parentBounds.width - findbarBounds.width - 20,
+          y: parentBounds.y + findbarBounds.height,
+        };
+      });
+
+      if (this.isSearch) bar.open();
+      else bar.close();
+    };
+    if (!this.activeTab) return;
+    let findBar;
+    try {
+      findBar = Findbar.fromIfExists(this.activeTab?.webContents);
+      searchProcess(findBar);
+    } catch (error) {
+      findBar = Findbar.from(this.activeTab?.webContents);
+      searchProcess(findBar);
     }
+    if (!findBar) return;
   }
 
   onCreateTabCallback() {
@@ -87,30 +83,15 @@ export class CommandController {
   }
 
   onOpenSpotlight() {
-    let win = BrowserWindow.getFocusedWindow();
-    // const spotlight = new SpotlightService();
-    // spotlight.openSpotlight();
-    if (!win) return;
-    console.log("this.spotlightService", this.spotlightService);
-    if (this.spotlightService.isOpen) {
-      this.spotlightService.close();
-      return;
+    if (this.viewController.spotlightController.isOpen) {
+      this.viewController.closeSpotlight();
+    } else {
+      this.viewController.openSpotlight();
     }
-    this.spotlightService.openSpotlight();
-    console.log("this.spotlightService", this.spotlightService);
   }
 
   onReloadPage() {
     let view = BrowserWindow.getFocusedWindow();
     view?.webContents?.send("ON_RELOAD");
-  }
-  destroy() {
-    this.search?.destroy();
-    this.createTab?.destroy();
-    this.toggleDevTools?.destroy();
-    this.reloadPage?.destroy();
-    // let view = BrowserWindow.getFocusedWindow();
-    // this.spotlight?.destroy();
-    this.spotlightService.close();
   }
 }

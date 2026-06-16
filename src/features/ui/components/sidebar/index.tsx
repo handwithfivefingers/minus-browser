@@ -8,7 +8,7 @@ import { useTabStore } from "../../stores/useTabStore";
 import { TabItem } from "../tab";
 /** @ts-ignore */
 import styles from "./styles.module.css";
-import { ErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 interface IResizeProps {
   children: React.ReactNode;
   initialWidth?: number;
@@ -20,7 +20,6 @@ const SideMenu = () => {
   const navigate = useNavigate();
   const pathname = useLocation().pathname;
   const tabs = useTabStore((s) => s.tabs);
-  console.log("tabs", tabs);
   useEffect(() => {
     window.api.LISTENER("CREATE_TAB", (p) => {
       onAddNewTab(p);
@@ -43,7 +42,7 @@ const SideMenu = () => {
     navigate(`/`);
   };
   return (
-    <ErrorBoundary FallbackComponent={ComponentError}>
+    <ErrorBoundary FallbackComponent={(fallbackProps) => <ComponentError {...fallbackProps} />}>
       <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={clsx(styles.sidebar)}>
         <div className="flex gap-1 flex-col flex-1 overflow-y-auto overflow-x-hidden h-full scrollbar ">
           <div className={clsx("w-full flex gap-0.5 items-center h-8 sticky z-[1] top-0 bg-slate-100 pb-2")}>
@@ -177,7 +176,11 @@ const ResizableSidebar = ({
   return (
     <div
       ref={sidebarRef}
-      className={clsx("sidebar-container ", LAYOUT_SIDEBAR_CLASS[layout as keyof typeof LAYOUT_SIDEBAR_CLASS], className)}
+      className={clsx(
+        "sidebar-container ",
+        LAYOUT_SIDEBAR_CLASS[layout as keyof typeof LAYOUT_SIDEBAR_CLASS],
+        className,
+      )}
       style={{
         width: `${width}px`,
         position: "relative",
@@ -207,9 +210,9 @@ const ResizableSidebar = ({
     </div>
   );
 };
-const ComponentError = ({ error }: { error: Error }) => {
-  console.log("Stack", error.stack);
-  console.log("Name", error.name);
-  return <div>Error: {error.message}</div>;
+const ComponentError = ({ error }: FallbackProps) => {
+  console.log("Stack", (error as Error)?.stack);
+  console.log("Name", (error as Error)?.name);
+  return <div>Error: {(error as Error)?.message}</div>;
 };
 export { SideMenu };
