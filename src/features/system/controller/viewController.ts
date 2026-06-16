@@ -185,13 +185,14 @@ export class ViewController {
     try {
       if (!props?.tab.id) throw new Error("Tab id not found");
       const currentTab = this.tabController?.getTabById(props.tab?.id) as Tab;
+      currentTab.show();
+      if (!currentTab.isAlive) currentTab.createView();
       this.attachChildView(currentTab.view);
       const url1 = currentTab.url;
       const url2 = currentTab.webContents.getURL();
       if (!isSameURl(url1, url2)) {
         currentTab.webContents.loadURL(currentTab.url);
       }
-      currentTab.show();
       currentTab.view.setBounds(props.screen);
       this.tabController?.setActiveTab(currentTab.id);
       this.syncTabsToWindows();
@@ -206,11 +207,7 @@ export class ViewController {
       if (!id || !url) throw new Error("Tab id or url not found");
       const currentTab = this.tabController?.getTabById(id);
       if (!currentTab) throw new Error("Tab not found");
-      // await this.loadSessionByURL({
-      //   url,
-      //   view: currentTab.view,
-      // });
-      // currentTab.cookies = await this.getCookieFromURL(url);
+      if (currentTab.isHibernated) currentTab.wake();
       currentTab.webContents.loadURL(url);
       currentTab.updateUrl(url);
       this.window.webContents.send("GET_TABS", this.getTabs());
@@ -222,7 +219,7 @@ export class ViewController {
   handleResizeView(props: IHandleResizeView) {
     const { tab, screen } = props;
     const currentTab = this.tabController?.getTabById(tab?.id as string);
-    if (!currentTab) return;
+    if (!currentTab || !currentTab.isAlive) return;
     currentTab.view.setBounds(screen);
   }
 
@@ -230,7 +227,7 @@ export class ViewController {
     try {
       if (!props || !props.id) return;
       const currentTab = this.tabController?.getTabById(props.id);
-      if (!currentTab) return;
+      if (!currentTab || !currentTab.isAlive) return;
       currentTab.hide();
       this.detachChildView(currentTab.view);
     } catch (error) {
@@ -255,11 +252,12 @@ export class ViewController {
     try {
       if (!props || !props.id) throw new Error("Tab not found");
       const currentTab = this.tabController?.getTabById(props.id) as Tab;
-      currentTab.hide();
-      currentTab.view.webContents.close();
-      this.detachChildView(currentTab.view);
+      if (currentTab?.isAlive) {
+        currentTab.hide();
+        this.detachChildView(currentTab.view);
+      }
       const { nextTab } = this.tabController?.closeTab(props.id) || {};
-      if (nextTab?.view) this.attachChildView(nextTab?.view);
+      if (nextTab?.isAlive) this.attachChildView(nextTab?.view);
       this.syncTabsToWindows();
     } catch (error) {
       return new ErrorServices(error);
@@ -269,9 +267,8 @@ export class ViewController {
   handleToggleDevTools(props: { id: string }) {
     if (!props || !props.id) return;
     const currentTab = this.tabController?.getTabById(props?.id);
-    if (!currentTab) return;
+    if (!currentTab || !currentTab.isAlive) return;
     const view = currentTab.view;
-    if (!view) return;
     let isOpenedDevTools = view.webContents?.isDevToolsOpened();
     view.webContents?.toggleDevTools();
     if (isOpenedDevTools) {
@@ -286,6 +283,7 @@ export class ViewController {
       let id = tab?.id || this.tabController?.activeTab?.id;
       if (!id) throw new Error("Tab not found");
       const currentTab = this.tabController?.getTabById(id);
+      if (!currentTab?.isAlive) throw new Error("Tab not alive");
       return currentTab?.onReload();
     } catch (error) {
       return new ErrorServices(error);
@@ -378,11 +376,13 @@ export class ViewController {
   async persist() {
     try {
       const tabs = this.getTabs();
+      const index = this.tabController?.index || 0;
+      const activeTabId = this.tabController?.activeTab?.id || null;
       await Promise.all([
         minusSessionManager.save(),
         this.minusSession?.cookies.flushStore(),
         this.minusSession?.flushStorageData(),
-        this.userStore.saveFiles({ tabs: tabs || [], index: 0 }),
+        this.userStore.saveFiles({ tabs: tabs || [], index, activeTabId }),
       ]);
       return this.window.webContents?.send("SYNC");
     } catch (error) {
@@ -403,6 +403,8 @@ export class ViewController {
 
   handleOpenTabById(data: { id: string }) {
     if (!data?.id) return;
+    const tab = this.tabController?.getTabById(data.id);
+    if (tab?.isHibernated) tab.wake();
     this.forwardRendererEvent("OPEN_TAB_BY_ID", { id: data.id });
     this.tabController?.setActiveTab(data.id);
     this.syncTabsToWindows();
