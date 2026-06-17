@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Fuse from "fuse.js";
 import { Tab } from "~/features/ui/interfaces";
 import { isValidDomainOrIP, navigateOrSearch } from "../../ui/libs";
+// @ts-ignore
 import "./assets/styles.css";
 
 interface SpotlightProps {
@@ -128,6 +129,7 @@ const SpotlightApp = () => {
               score: 70,
               onSelect: () => {
                 const url = `https://google.com/search?q=${encodeURIComponent(normalizedQuery)}`;
+                // @ts-ignore
                 window.api.INVOKE<{ id: string }>("CREATE_TAB", { url }).finally(closeSpotlight);
               },
             },
@@ -146,7 +148,10 @@ const SpotlightApp = () => {
             score: isValidDomainOrIP(normalizedQuery) ? 95 : 40,
             onSelect: () => {
               const url = isValidDomainOrIP(normalizedQuery) ? navigateOrSearch(normalizedQuery) : undefined;
-              window.api.INVOKE<{ id: string }>("CREATE_TAB", url ? { url } : undefined).finally(closeSpotlight);
+              window.api
+                .INVOKE<{ id: string }>("CREATE_TAB", url ? { url } : undefined)
+                // @ts-ignore
+                .finally(closeSpotlight);
             },
           },
         ]
@@ -158,6 +163,7 @@ const SpotlightApp = () => {
             description: "Open a fresh tab",
             score: 110,
             onSelect: () => {
+              // @ts-ignore
               window.api.INVOKE<{ id: string }>("CREATE_TAB").finally(closeSpotlight);
             },
           },
@@ -192,6 +198,7 @@ const SpotlightApp = () => {
     const fallbackUrl = normalizedQuery ? navigateOrSearch(normalizedQuery) : undefined;
     window.api
       .INVOKE<{ id: string }>("CREATE_TAB", fallbackUrl ? { url: fallbackUrl } : undefined)
+      // @ts-ignore
       .finally(() => closeSpotlight());
   };
 
@@ -204,7 +211,7 @@ const SpotlightApp = () => {
         if (e.target === e.currentTarget) closeSpotlight();
       }}
     >
-      <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md" />
+      <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md" onClick={closeSpotlight} />
 
       <div className="relative w-full max-w-2xl mx-4 animate-slide-down">
         <div className="overflow-hidden rounded-2xl border border-white/8 bg-slate-950/95 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_40px_80px_rgba(0,0,0,0.6)] backdrop-blur-xl">

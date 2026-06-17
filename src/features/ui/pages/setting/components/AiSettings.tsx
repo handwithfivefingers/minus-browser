@@ -1,8 +1,11 @@
-import { IconBrain, IconRobot, IconCloud, IconLanguage } from "@tabler/icons-react";
+import { IconBrain, IconRobot, IconCloud, IconLanguage, IconRefresh } from "@tabler/icons-react";
+import { useRef, useState } from "react";
 import { Switch } from "~/features/ui/components";
 import { useAiSettingsStore } from "~/features/ui/features/aiSider/stores/useAiSettingsStore";
 import { LANGUAGE_MAP } from "~/features/ui/features/aiSider/services/promptTemplates";
+import { fetchModels } from "~/features/ui/features/aiSider/services/aiProvider";
 import type { DefaultMode } from "~/features/ui/features/aiSider/stores/useAiSettingsStore";
+import type { AiModel } from "~/features/ui/features/aiSider/services/aiProvider";
 
 const LANGUAGE_OPTIONS = Object.entries(LANGUAGE_MAP).map(([value, label]) => ({ value, label }));
 
@@ -10,14 +13,6 @@ const PROVIDERS = [
   { id: "groq", label: "Groq" },
   { id: "openai", label: "OpenAI" },
   { id: "custom", label: "Custom" },
-];
-
-const MODELS = [
-  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B" },
-  { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B" },
-  { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B" },
-  { id: "gemma2-9b-it", label: "Gemma 2 9B" },
-  { id: "deepseek-r1-distill-llama-70b", label: "DeepSeek R1 70B" },
 ];
 
 const MODES: { id: DefaultMode; label: string }[] = [
@@ -49,6 +44,29 @@ const AiSettings = () => {
     setLanguage,
     reset,
   } = useAiSettingsStore();
+  const [models, setModels] = useState<AiModel[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+  const [modelsFetched, setModelsFetched] = useState(false);
+  const fetchedRef = useRef(false);
+
+  const loadModels = async () => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    setModelsLoading(true);
+    setModelsError(null);
+    try {
+      const list = await fetchModels();
+      setModels(list);
+      setModelsFetched(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load models";
+      setModelsError(message);
+      setModelsFetched(false);
+    } finally {
+      setModelsLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -61,17 +79,54 @@ const AiSettings = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm text-slate-600">Default Model</span>
-            <select
-              value={defaultModel}
-              onChange={(e) => setDefaultModel(e.target.value)}
-              className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm"
-            >
-              {MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={models.length > 0 && models.find((m) => m.id === defaultModel) ? defaultModel : ""}
+                onClick={loadModels}
+                onFocus={loadModels}
+                onChange={(e) => {
+                  if (e.target.value) setDefaultModel(e.target.value);
+                }}
+                disabled={modelsLoading}
+                className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm w-full disabled:opacity-50 disabled:cursor-wait"
+              >
+                {modelsLoading && <option value="">Loading models...</option>}
+                {modelsError && !modelsLoading && <option value="">Failed to load — click to retry</option>}
+                {models.length === 0 && !modelsFetched && !modelsLoading && (
+                  <option value="">Click to load models</option>
+                )}
+                {models.length === 0 && modelsFetched && !modelsLoading && (
+                  <option value="">No models available</option>
+                )}
+                {modelsFetched && !models.find((m) => m.id === defaultModel) && (
+                  <option value={defaultModel}>{defaultModel}</option>
+                )}
+                {models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              {modelsLoading && (
+                <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+              {modelsFetched && !modelsLoading && (
+                <button
+                  onClick={() => {
+                    fetchedRef.current = false;
+                    setModels([]);
+                    setModelsFetched(false);
+                    loadModels();
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-indigo-500 cursor-pointer transition-colors"
+                  title="Refresh models"
+                >
+                  <IconRefresh size={14} />
+                </button>
+              )}
+            </div>
           </label>
 
           <label className="flex flex-col gap-1.5">

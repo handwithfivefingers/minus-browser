@@ -61,6 +61,17 @@ function getDefaultModel(): string {
   return "llama-3.3-70b-versatile";
 }
 
+export type AiModel = {
+  id: string;
+  label: string;
+};
+
+export async function fetchModels(): Promise<AiModel[]> {
+  const client = getClient();
+  const list = await client.models.list();
+  return list.data.map((m) => ({ id: m.id, label: m.id }));
+}
+
 export async function chatCompletion(messages: AiMessage[], options: AiCompletionOptions = {}): Promise<string> {
   const model = options.model || getDefaultModel();
   const temperature = options.temperature ?? 0.7;
