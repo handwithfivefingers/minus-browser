@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { chatCompletionStream } from "../services/aiProvider";
 import { LANGUAGE_MAP } from "../services/promptTemplates";
+import { useAiSidebarStore } from "../stores/useAiSidebarStore";
+import type { ChatMessage } from "../stores/useAiSidebarStore";
 import type { AiMessage } from "../services/aiProvider";
 
 function getSystemPrompt(): string {
@@ -16,12 +18,6 @@ function getSystemPrompt(): string {
   return `You are a helpful AI assistant. Answer concisely and accurately.\n\nImportant: Respond in ${label}.`;
 }
 
-export type ChatMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-};
-
 let messageIdCounter = 0;
 
 function generateId(): string {
@@ -30,32 +26,29 @@ function generateId(): string {
 }
 
 export function useAiChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const messages = useAiSidebarStore((s) => s.chatMessages);
+  const setChatMessages = useAiSidebarStore((s) => s.setChatMessages);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const messagesRef = useRef<ChatMessage[]>([]);
+  const messagesRef = useRef<ChatMessage[]>(messages);
+
+  messagesRef.current = messages;
 
   const sendMessage = useCallback(async (content: string) => {
     setError(null);
     setIsLoading(true);
 
     const userMessage: ChatMessage = { id: generateId(), role: "user", content };
-
-    setMessages((prev) => {
-      const next = [...prev, userMessage];
-      messagesRef.current = next;
-      return next;
-    });
+    const nextWithUser = [...messagesRef.current, userMessage];
+    messagesRef.current = nextWithUser;
+    setChatMessages(nextWithUser);
 
     const assistantId = generateId();
     const assistantMessage: ChatMessage = { id: assistantId, role: "assistant", content: "" };
-
-    setMessages((prev) => {
-      const next = [...prev, assistantMessage];
-      messagesRef.current = next;
-      return next;
-    });
+    const nextWithAssistant = [...messagesRef.current, assistantMessage];
+    messagesRef.current = nextWithAssistant;
+    setChatMessages(nextWithAssistant);
 
     const history: AiMessage[] = [
       { role: "system", content: getSystemPrompt() },
@@ -73,14 +66,18 @@ export function useAiChat() {
       for await (const chunk of chatCompletionStream(history)) {
         if (abortController.signal.aborted) break;
         fullContent += chunk;
-        setMessages((prev) =>
-          prev.map((m) => (m.id === assistantId ? { ...m, content: fullContent } : m)),
+        const updated = messagesRef.current.map((m) =>
+          m.id === assistantId ? { ...m, content: fullContent } : m,
         );
+        messagesRef.current = updated;
+        setChatMessages(updated);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "An unknown error occurred";
       setError(message);
-      setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+      const filtered = messagesRef.current.filter((m) => m.id !== assistantId);
+      messagesRef.current = filtered;
+      setChatMessages(filtered);
     } finally {
       setIsLoading(false);
       abortRef.current = null;
@@ -88,7 +85,7 @@ export function useAiChat() {
   }, []);
 
   const clearMessages = useCallback(() => {
-    setMessages([]);
+    setChatMessages([]);
     setError(null);
     messagesRef.current = [];
     abortRef.current?.abort();

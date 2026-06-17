@@ -187,7 +187,7 @@ export class AdBlocker {
       callback({});
     });
 
-    this.onShowADBlockRequest();
+    // this.onShowADBlockRequest();
   }
 
   disable() {

@@ -3,7 +3,7 @@ import { type ComponentPropsWithoutRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
-import type { ChatMessage } from "../hooks/useAiChat";
+import type { ChatMessage } from "../stores/useAiSidebarStore";
 
 function CodeBlock({ children, className }: { children: string; className?: string }) {
   const [copied, setCopied] = useState(false);
@@ -34,11 +34,7 @@ function CodeBlock({ children, className }: { children: string; className?: stri
 }
 
 function InlineCode({ children }: { children: React.ReactNode }) {
-  return (
-    <code className="bg-slate-100 text-pink-600 px-1 py-0.5 rounded text-xs font-mono">
-      {children}
-    </code>
-  );
+  return <code className="bg-slate-100 text-pink-600 px-1 py-0.5 rounded text-xs font-mono">{children}</code>;
 }
 
 type CodeProps = ComponentPropsWithoutRef<"code"> & { className?: string };
@@ -90,7 +86,9 @@ const MessageBubble = ({ message }: { message: ChatMessage }) => {
                   return <strong className="font-semibold">{children}</strong>;
                 },
               }}
-            />
+            >
+              {message.content}
+            </ReactMarkdown>
           ) : (
             <span className="text-slate-400 italic">Thinking...</span>
           )}

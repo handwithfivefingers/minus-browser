@@ -14,11 +14,18 @@ function getDefaultMode(): AiSidebarMode {
   return "chat";
 }
 
+export type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+};
+
 interface IAiSidebarStore {
   isOpen: boolean;
   activeMode: AiSidebarMode;
   width: number;
   pendingText: string;
+  chatMessages: ChatMessage[];
   toggle: () => void;
   open: () => void;
   close: () => void;
@@ -26,6 +33,8 @@ interface IAiSidebarStore {
   setWidth: (width: number) => void;
   setPendingText: (text: string) => void;
   clearPendingText: () => void;
+  setChatMessages: (messages: ChatMessage[]) => void;
+  clearChatMessages: () => void;
 }
 
 const useAiSidebarStore = create<IAiSidebarStore>((set) => ({
@@ -33,6 +42,7 @@ const useAiSidebarStore = create<IAiSidebarStore>((set) => ({
   activeMode: getDefaultMode(),
   width: 380,
   pendingText: "",
+  chatMessages: [],
   toggle: () => set((state) => ({ isOpen: !state.isOpen })),
   open: () => set({ isOpen: true }),
   close: () => set({ isOpen: false }),
@@ -40,6 +50,8 @@ const useAiSidebarStore = create<IAiSidebarStore>((set) => ({
   setWidth: (width) => set({ width }),
   setPendingText: (text) => set({ pendingText: text }),
   clearPendingText: () => set({ pendingText: "" }),
+  setChatMessages: (messages) => set({ chatMessages: messages }),
+  clearChatMessages: () => set({ chatMessages: [] }),
 }));
 
 export { useAiSidebarStore };

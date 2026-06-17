@@ -18,6 +18,7 @@ const ChatMode = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    console.log("messages", messages);
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
@@ -67,9 +68,7 @@ const ChatMode = () => {
         ))}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">
-            {error}
-          </div>
+          <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-600">{error}</div>
         )}
       </div>
 
@@ -82,8 +81,8 @@ const ChatMode = () => {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask anything..."
-            rows={1}
-            className="flex-1 bg-transparent resize-none text-sm outline-none text-slate-700 placeholder:text-slate-400 max-h-32 scrollbar"
+            // rows={1}
+            className="flex-1 bg-transparent resize-none text-sm outline-none text-slate-700 placeholder:text-slate-400 min-h-32 scrollbar"
           />
           {isLoading ? (
             <button
@@ -104,9 +103,7 @@ const ChatMode = () => {
             </button>
           )}
         </div>
-        <p className="text-[9px] text-slate-400 text-center mt-1">
-          Enter to send · Shift+Enter for new line
-        </p>
+        <p className="text-[9px] text-slate-400 text-center mt-1">Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   );
