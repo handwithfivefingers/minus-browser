@@ -429,6 +429,7 @@ export class ViewController {
     spotlightController.open({
       query: payload?.query || this.tabController?.activeTab?.url || this.tabController?.activeTab?.title || "",
       tabs: this.getTabs() || [],
+      activeTabId: this.tabController?.activeTab?.id,
     });
   }
 

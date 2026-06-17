@@ -10,6 +10,7 @@ import "./assets/styles.css";
 
 interface SpotlightProps {
   query: string;
+  activeTabId?: string;
 }
 
 type SpotlightAction =
@@ -43,6 +44,7 @@ const SpotlightApp = () => {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [visible, setVisible] = useState(false);
+  const [activeTabId, setActiveTabId] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const hasTabs = tabs.length > 0;
@@ -50,6 +52,7 @@ const SpotlightApp = () => {
   useEffect(() => {
     window.api.LISTENER("SPOTLIGHT_OPEN", (payload?: SpotlightProps) => {
       setQuery(payload?.query || "");
+      setActiveTabId(payload?.activeTabId);
       setActiveIndex(0);
       setVisible(true);
       requestAnimationFrame(() => {
@@ -83,6 +86,14 @@ const SpotlightApp = () => {
 
   const normalizedQuery = query.trim();
 
+  const navigateCurrentTab = (url: string) => {
+    if (activeTabId) {
+      window.api.EMIT("VIEW_CHANGE_URL", { id: activeTabId, url });
+    } else {
+      window.api.INVOKE<{ id: string }>("CREATE_TAB", { url });
+    }
+  };
+
   const closeSpotlight = () => {
     setVisible(false);
     window.api.EMIT("SPOTLIGHT_CLOSE");
@@ -111,66 +122,103 @@ const SpotlightApp = () => {
         kind: "tab" as const,
         label: tab.title || tab.url || "New tab",
         description: tab.url || "Switch to tab",
-        score: queryText ? Math.max(100 - index, 1) : 100 - index,
+        score: queryText ? Math.max(90 - index, 1) : 100 - index,
         onSelect: () => {
           window.api.EMIT("OPEN_TAB_BY_ID", { id: tab.id });
           closeSpotlight();
         },
       }));
 
-    const searchAction =
-      normalizedQuery && !isValidDomainOrIP(normalizedQuery)
-        ? [
-            {
-              id: `search:${normalizedQuery}`,
-              kind: "search" as const,
-              label: `Search for "${normalizedQuery}"`,
-              description: "Open a new tab with web search results",
-              score: 70,
-              onSelect: () => {
-                const url = `https://google.com/search?q=${encodeURIComponent(normalizedQuery)}`;
-                // @ts-ignore
-                window.api.INVOKE<{ id: string }>("CREATE_TAB", { url }).finally(closeSpotlight);
-              },
-            },
-          ]
-        : [];
+    const extraActions: SpotlightAction[] = [];
 
-    const createAction = normalizedQuery
-      ? [
-          {
-            id: `create:${normalizedQuery}`,
-            kind: "create" as const,
-            label: isValidDomainOrIP(normalizedQuery) ? `Open "${normalizedQuery}"` : "Create new tab",
-            description: isValidDomainOrIP(normalizedQuery)
-              ? "Open the typed address in a fresh tab"
-              : "Open a blank tab",
-            score: isValidDomainOrIP(normalizedQuery) ? 95 : 40,
-            onSelect: () => {
-              const url = isValidDomainOrIP(normalizedQuery) ? navigateOrSearch(normalizedQuery) : undefined;
-              window.api
-                .INVOKE<{ id: string }>("CREATE_TAB", url ? { url } : undefined)
-                // @ts-ignore
-                .finally(closeSpotlight);
-            },
+    if (normalizedQuery) {
+      const isDomain = isValidDomainOrIP(normalizedQuery);
+
+      if (isDomain) {
+        const url = navigateOrSearch(normalizedQuery);
+        extraActions.push({
+          id: `goto:${normalizedQuery}`,
+          kind: "create" as const,
+          label: `Go to "${normalizedQuery}"`,
+          description: "Navigate current tab",
+          score: 95,
+          onSelect: () => {
+            navigateCurrentTab(url);
+            closeSpotlight();
           },
-        ]
-      : [
-          {
-            id: "create:new-tab",
-            kind: "create" as const,
-            label: "Create new tab",
-            description: "Open a fresh tab",
-            score: 110,
-            onSelect: () => {
+        });
+        extraActions.push({
+          id: `open-new-tab:${normalizedQuery}`,
+          kind: "create" as const,
+          label: `Open "${normalizedQuery}" in a new tab`,
+          description: "Open the typed address in a fresh tab",
+          score: 85,
+          onSelect: () => {
+            window.api
+              .INVOKE<{ id: string }>("CREATE_TAB", { url })
               // @ts-ignore
-              window.api.INVOKE<{ id: string }>("CREATE_TAB").finally(closeSpotlight);
-            },
+              .finally(closeSpotlight);
           },
-        ];
+        });
+      }
 
-    return [...matchingTabs, ...createAction, ...searchAction].sort((a, b) => b.score - a.score);
-  }, [normalizedQuery, tabs]);
+      extraActions.push({
+        id: `search:${normalizedQuery}`,
+        kind: "search" as const,
+        label: `Search for "${normalizedQuery}"`,
+        description: isDomain ? "Search for this text" : "Navigate current tab to search results",
+        score: isDomain ? 60 : 70,
+        onSelect: () => {
+          const url = `https://google.com/search?q=${encodeURIComponent(normalizedQuery)}`;
+          navigateCurrentTab(url);
+          closeSpotlight();
+        },
+      });
+
+      if (!isDomain) {
+        const searchUrl = `https://google.com/search?q=${encodeURIComponent(normalizedQuery)}`;
+        extraActions.push({
+          id: `search-new-tab:${normalizedQuery}`,
+          kind: "create" as const,
+          label: `Search "${normalizedQuery}" in a new tab`,
+          description: "Open search results in a fresh tab",
+          score: 55,
+          onSelect: () => {
+            window.api
+              .INVOKE<{ id: string }>("CREATE_TAB", { url: searchUrl })
+              // @ts-ignore
+              .finally(closeSpotlight);
+          },
+        });
+      }
+
+      extraActions.push({
+        id: "create:new-tab",
+        kind: "create" as const,
+        label: "Create new tab",
+        description: "Open a blank tab",
+        score: 40,
+        onSelect: () => {
+          // @ts-ignore
+          window.api.INVOKE<{ id: string }>("CREATE_TAB").finally(closeSpotlight);
+        },
+      });
+    } else {
+      extraActions.push({
+        id: "create:new-tab",
+        kind: "create" as const,
+        label: "Create new tab",
+        description: "Open a fresh tab",
+        score: 110,
+        onSelect: () => {
+          // @ts-ignore
+          window.api.INVOKE<{ id: string }>("CREATE_TAB").finally(closeSpotlight);
+        },
+      });
+    }
+
+    return [...matchingTabs, ...extraActions].sort((a, b) => b.score - a.score);
+  }, [normalizedQuery, tabs, activeTabId]);
 
   useEffect(() => {
     if (activeIndex >= actions.length) {
@@ -195,11 +243,13 @@ const SpotlightApp = () => {
       actions[activeIndex].onSelect();
       return;
     }
-    const fallbackUrl = normalizedQuery ? navigateOrSearch(normalizedQuery) : undefined;
-    window.api
-      .INVOKE<{ id: string }>("CREATE_TAB", fallbackUrl ? { url: fallbackUrl } : undefined)
-      // @ts-ignore
-      .finally(() => closeSpotlight());
+    if (normalizedQuery) {
+      const url = navigateOrSearch(normalizedQuery);
+      navigateCurrentTab(url);
+    } else {
+      window.api.INVOKE<{ id: string }>("CREATE_TAB");
+    }
+    closeSpotlight();
   };
 
   if (!visible) return null;
