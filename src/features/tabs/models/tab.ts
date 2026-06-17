@@ -1,7 +1,7 @@
 import { BrowserWindow, WebContentsAudioStateChangedEventParams, WebContentsView } from "electron";
 import { v7 as uuid_v7 } from "uuid";
-import { AdblockTabPlugin } from "~/features/adblocker/plugin";
 import { cacheSystem } from "~/features/cacheSystem";
+import { AiTabPlugin } from "~/features/ui/features/aiSider/plugin";
 import { SearchTabPlugin } from "~/features/search/plugin";
 import { StoreManager } from "~/features/system";
 import { ContextMenuController } from "~/features/system/controller/context";
@@ -11,7 +11,6 @@ import { UserScriptTabPlugin } from "~/features/userscript/plugin";
 import { VaultTabPlugin } from "~/features/vault";
 import { ITab, IUserInterface } from "~/shared/types";
 import { minusSessionManager } from "~/features/system/services/session";
-import { app } from "electron";
 interface IDestroy {
   destroy?: () => void;
 }
@@ -55,6 +54,7 @@ export class Tab {
   favicon: string = "";
   timestamp: number = Date.now();
   isBookmarked: boolean = false;
+  isHibernated: boolean = false;
   cookies?: Electron.Cookie[];
   minusSession: Electron.Session = minusSessionManager.session;
   interface: StoreManager = new StoreManager("interface");
@@ -62,48 +62,92 @@ export class Tab {
   private pluginManager: TabPluginManager = new TabPluginManager();
   private pluginReady?: Promise<void>;
 
-  view: WebContentsView = new WebContentsView({
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      session: this.minusSession,
-    },
-  });
-  webContents: Electron.WebContents & IDestroy;
+  private _view: WebContentsView | null = null;
+  private _webContents: (Electron.WebContents & IDestroy) | null = null;
   eventEmitter: <T>(payload: { channel: string; data: T }) => void;
+
+  get view(): WebContentsView {
+    return this._view!;
+  }
+
+  get webContents(): Electron.WebContents & IDestroy {
+    return this._webContents!;
+  }
+
+  get isAlive(): boolean {
+    return this._view !== null;
+  }
+
   constructor({
     eventEmitter,
     ...props
   }: Partial<ITab> & { eventEmitter: <T>(payload: { channel: string; data: T }) => void }) {
     Object.assign(this, props);
-    this.webContents = this.view.webContents;
-    this.view.setMaxListeners(30);
     this.eventEmitter = eventEmitter;
+  }
+
+  createView() {
+    this._view = new WebContentsView({
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        session: this.minusSession,
+      },
+    });
+    this._webContents = this._view.webContents;
+    this._view.setMaxListeners(30);
     this.createContextMenu();
     this.requestPermissions();
-    this.pluginReady = this.registerPlugin();
     this.registerCommonEvent();
+    this.isHibernated = false;
+    this.pluginReady ??= this.registerPlugin();
   }
+
+  destroyView() {
+    if (!this._view) return;
+    try {
+      this._view.webContents.close();
+    } catch {
+      // ignore close errors
+    }
+    this._view = null;
+    this._webContents = null;
+  }
+
+  hibernate() {
+    if (this.isHibernated || !this._view) return;
+    this.url = this._webContents?.getURL() || this.url;
+    this.title = this._webContents?.getTitle() || this.title;
+    console.log("Tab will hibernate", this.title);
+    this.destroyView();
+    this.isHibernated = true;
+  }
+
+  wake() {
+    if (!this.isHibernated) return;
+    this.createView();
+    this.pluginReady = this.registerPlugin();
+    this.webContents.loadURL(this.url);
+    this.isHibernated = false;
+  }
+
   async registerPlugin() {
     this.pluginManager.unregister(this.id);
     const fallback = async () => {
       return this.interface.readFiles<{
-        extension: { adblock: boolean; translate: boolean; userscript: boolean; vault: boolean; disabledFilters: string[] };
+        extension: {
+          translate: boolean;
+          userscript: boolean;
+          vault: boolean;
+        };
       }>();
     };
     const extensionManager = await cacheSystem.get<IUserInterface>("interface", fallback);
     if (extensionManager && "extension" in extensionManager) {
-      const { vault, translate, adblock, userscript, disabledFilters } = extensionManager.extension;
-      const adblockPlugin = new AdblockTabPlugin(
-        (channel: string, data: any) => this.eventEmitter({ channel, data }),
-        disabledFilters || [],
-      );
+      const { vault, translate, userscript } = extensionManager.extension;
       if (vault) {
         const vaulPlugin = new VaultTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }));
         this.pluginManager.register(vaulPlugin);
-      }
-      if (adblock) {
-        this.pluginManager.register(adblockPlugin);
       }
       if (userscript) {
         this.pluginManager.register(
@@ -118,18 +162,27 @@ export class Tab {
       this.pluginManager.register(
         new SearchTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
       );
+      this.pluginManager.register(
+        new AiTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+      );
     }
   }
 
   registerCommonEvent() {
-    this.webContents.on("page-favicon-updated", this.updateFavicon.bind(this));
+    if (!this._webContents) return;
+    this._webContents.on("page-favicon-updated", this.updateFavicon.bind(this));
     // @ts-ignore
-    this.webContents.on("page-title-updated", this.updateTitle.bind(this));
-    this.webContents.on("did-navigate", (_event, url) => this.updateUrl(url));
-    this.webContents.on("did-navigate-in-page", (_event, url) => this.updateUrl(url));
-    this.webContents.on("audio-state-changed", this.updateAudioState.bind(this));
-    this.webContents.on("did-start-loading", this.tabLoading.bind(this, true));
-    this.webContents.on("did-stop-loading", this.tabLoading.bind(this, false));
+    this._webContents.on("page-title-updated", this.updateTitle.bind(this));
+    // @ts-ignore
+    this._webContents.on("did-navigate", (_event, url, _httpStatus, _httpStatusText, isMainFrame) => {
+      if (isMainFrame) this.updateUrl(url);
+    });
+    this._webContents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
+      if (isMainFrame) this.updateUrl(url);
+    });
+    this._webContents.on("audio-state-changed", this.updateAudioState.bind(this));
+    this._webContents.on("did-start-loading", this.tabLoading.bind(this, true));
+    this._webContents.on("did-stop-loading", this.tabLoading.bind(this, false));
   }
 
   tabLoading(isLoading: boolean) {
@@ -147,11 +200,11 @@ export class Tab {
     this.favicon = favicons[0];
     const metaData = {
       favicon: favicons[0],
-      url: this.view.webContents.getURL(),
-      title: this.view.webContents.getTitle(),
+      url: this._webContents?.getURL() || this.url,
+      title: this._webContents?.getTitle() || this.title,
     };
     this.updateTitle();
-    this.updateUrl(this.view.webContents.getURL());
+    this.updateUrl(this._webContents?.getURL() || this.url);
     this.peristInformationToRenderer(metaData);
   }
 
@@ -160,91 +213,10 @@ export class Tab {
     browser?.webContents?.send(`TAB_INFORMATION_UPDATED:${this.id}`, information);
   }
 
-  // async loadSession(url: string) {
-  //   // const domain = new URL(url).hostname;
-  //   // const { subDomains, domain, topLevelDomains } = parseDomain(fromUrl(url));
-
-  //   const domainData = await analyzeDomain(url);
-
-  //   if (!domainData.domain) {
-  //     console.log("URL không hợp lệ, bỏ qua load session");
-  //     return;
-  //   }
-  //   const targetDomain = domainData.domain;
-
-  //   let session = await cacheSystem.get<Electron.Cookie[]>("session");
-  //   if (!session?.length) return;
-  //   // let cookies = session?.filter(
-  //   //   (cookie) =>
-  //   //     (cookie.domain?.includes(domain) || (cookie?.domain && domain.includes(cookie?.domain))) &&
-  //   //     cookie?.expirationDate &&
-  //   //     cookie?.expirationDate * 1000 > Date.now(),
-  //   // );
-
-  //   let cookies = session.filter((cookie) => {
-  //     if (!cookie.domain || !cookie.expirationDate) return false;
-
-  //     // Kiểm tra hạn sử dụng (Electron expirationDate tính bằng giây)
-  //     const isExpired = cookie.expirationDate * 1000 <= Date.now();
-  //     if (isExpired) return false;
-
-  //     // Chuẩn hóa domain của cookie để so sánh (xóa dấu chấm đầu nếu có, ví dụ: .example.com -> example.com)
-  //     const cleanCookieDomain = cookie.domain.startsWith(".") ? cookie.domain.slice(1) : cookie.domain;
-  //     let currentHostname = "";
-  //     try {
-  //       currentHostname = new URL(url).hostname;
-  //     } catch (_) {
-  //       currentHostname = targetDomain;
-  //     }
-
-  //     // Khớp nếu cookie domain chứa target domain HOẶC ngược lại (hỗ trợ chia sẻ session giữa subdomains)
-  //     return currentHostname.endsWith(cleanCookieDomain) || cleanCookieDomain.endsWith(currentHostname);
-
-  //   });
-
-  //   if (!cookies?.length) return;
-  //   let uniqCookie = new Map<string, Electron.Cookie>();
-  //   for (let c of cookies) {
-  //     uniqCookie.set(c.name, c);
-  //   }
-  //   if (uniqCookie.size === 0) return;
-  //   let pm: Promise<any>[] = [];
-
-  //   let protocol = "https:";
-  //   try {
-  //     protocol = new URL(url).protocol;
-  //   } catch (_) {}
-
-  //   [...uniqCookie.values()].forEach((cookie) => {
-  //     if (cookie?.expirationDate && cookie?.expirationDate * 1000 > Date.now()) {
-  //       const cleanDomainForUrl = cookie.domain!.startsWith(".") ? cookie.domain!.slice(1) : cookie.domain;
-  //       const cookieUrl = `${protocol}//${cleanDomainForUrl}${cookie.path || "/"}`;
-  //       const cookieDetails: Electron.CookiesSetDetails = {
-  //         url: cookieUrl, // Sửa lỗi quan trọng: Phải truyền URL đầy đủ, không truyền độc domain
-  //         name: cookie.name,
-  //         value: cookie.value,
-  //         domain: cookie.domain, // Giữ nguyên domain gốc (ví dụ: .example.com) để bao phủ subdomain
-  //         expirationDate: cookie.expirationDate,
-  //         sameSite: cookie.sameSite,
-  //         secure: cookie.secure,
-  //         httpOnly: cookie.httpOnly,
-  //         path: cookie.path || "/",
-  //       };
-
-  //       pm.push(this.webContents.session.cookies.set(cookieDetails));
-  //     }
-  //   });
-  //   await Promise.all(pm)
-  //     .then(() => {
-  //       console.log("cookie loaded");
-  //     })
-  //     .catch((errr) => {
-  //       console.log("Err", errr);
-  //     });
-  // }
-
   updateTitle() {
-    this.title = this.view.webContents.getTitle();
+    if (this._webContents) {
+      this.title = this._webContents.getTitle();
+    }
     this.peristInformationToRenderer({ title: this.title });
   }
 
@@ -266,18 +238,18 @@ export class Tab {
   }
 
   createContextMenu() {
-    this.webContents.on("context-menu", new ContextMenuController().initialize);
+    if (!this._webContents) return;
+    this._webContents.on("context-menu", new ContextMenuController().initialize);
   }
   requestPermissions() {
-    this.view.webContents.session.setDisplayMediaRequestHandler(
+    if (!this._view) return;
+    this._view.webContents.session.setDisplayMediaRequestHandler(
       (request, callback) => {
         callback({ video: request.frame || undefined });
       },
       { useSystemPicker: true },
     );
-    this.view.webContents.session.setPermissionRequestHandler((webContents, permission, request) => {
-      // 'clipboard-read' | 'clipboard-sanitized-write' | 'display-capture' | 'fullscreen' | 'geolocation' | 'idle-detection' | 'media' | 'mediaKeySystem' | 'midi' | 'midiSysex' | 'notifications' | 'pointerLock' | 'keyboardLock' | 'openExternal' | 'speaker-selection' | 'storage-access' | 'top-level-storage-access' | 'window-management' | 'unknown' | 'fileSystem',
-      // console.log("view.webContents.session.setPermissionRequestHandler", permission, webContents, request);
+    this._view.webContents.session.setPermissionRequestHandler((webContents, permission, request) => {
       if (
         permission === "unknown" ||
         permission === "fileSystem" ||
@@ -289,7 +261,7 @@ export class Tab {
       }
       return request(true);
     });
-    this.view.webContents.setWindowOpenHandler(({ url }) => {
+    this._view.webContents.setWindowOpenHandler(({ url }) => {
       try {
         const browserView = BrowserWindow.getFocusedWindow();
         browserView?.webContents?.send("CREATE_TAB", { url: url });
@@ -300,11 +272,11 @@ export class Tab {
     });
   }
   onRequestPIP() {
-    if (!this.view.webContents.isFocused()) {
-      this.view.webContents.focus();
+    if (!this.isAlive) return;
+    if (!this._webContents!.isFocused()) {
+      this._webContents!.focus();
     }
-    this.view.webContents
-      .executeJavaScript(`(${preloadScript.toString()})()`)
+    this._webContents!.executeJavaScript(`(${preloadScript.toString()})()`)
       .then(() => {
         console.info("requestPIP success");
       })
@@ -313,23 +285,26 @@ export class Tab {
       });
   }
   onReload() {
+    if (!this.isAlive) return;
     this.pluginReady = this.registerPlugin().then(() => {
       this.pluginManager.attachTo(this);
     });
-    return this.view.webContents.reload();
+    return this._view!.webContents.reload();
   }
   show() {
-    if ("setVisible" in this.view && !this.view.getVisible()) {
-      this.view.setVisible(true);
+    if (this.isHibernated) this.wake();
+    if (this._view && "setVisible" in this._view && !this._view.getVisible()) {
+      this._view.setVisible(true);
     }
     this.pluginReady?.then(() => this.pluginManager.attachTo(this));
   }
   hide() {
-    if ("setVisible" in this.view) this.view.setVisible(false);
+    if (this._view && "setVisible" in this._view) this._view.setVisible(false);
   }
 
   clearCache() {
-    this.view.webContents.session.clearCache();
+    if (!this._view) return;
+    this._view.webContents.session.clearCache();
   }
 
   toJSON() {
@@ -344,6 +319,7 @@ export class Tab {
       favicon: this.favicon,
       timestamp: this.timestamp,
       isBookmarked: this.isBookmarked,
+      isHibernated: this.isHibernated,
       cookies: this.cookies,
       audible: this.audible,
     };

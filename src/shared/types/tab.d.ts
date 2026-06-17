@@ -8,6 +8,7 @@ export interface ITab {
   favicon?: string;
   cookies?: any[];
   isBookmarked?: boolean;
+  isHibernated?: boolean;
   audible: boolean;
   isLoading?: boolean;
 }

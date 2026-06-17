@@ -68,6 +68,16 @@ const config: ForgeConfig = {
           config: "vite.preload.config.ts",
           target: "preload",
         },
+        {
+          entry: "src/features/adblocker/adblocker-preload.ts",
+          config: "vite.adb-preload.config.ts",
+          target: "preload",
+        },
+        {
+          entry: "src/features/findbar/findbar-preload.ts",
+          config: "vite.findbar-preload.config.ts",
+          target: "preload",
+        },
       ],
       renderer: [
         {

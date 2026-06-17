@@ -11,6 +11,7 @@ export default defineConfig({
       },
     ],
   },
+  envPrefix: ["VITE_", "GROQ_AI_"],
   // build: {
   //   rollupOptions: {
   //     input: {

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Fuse from "fuse.js";
 import { Tab } from "~/features/ui/interfaces";
 import { isValidDomainOrIP, navigateOrSearch } from "../../ui/libs";
+// @ts-ignore
 import "./assets/styles.css";
 
 interface SpotlightProps {
@@ -128,6 +129,7 @@ const SpotlightApp = () => {
               score: 70,
               onSelect: () => {
                 const url = `https://google.com/search?q=${encodeURIComponent(normalizedQuery)}`;
+                // @ts-ignore
                 window.api.INVOKE<{ id: string }>("CREATE_TAB", { url }).finally(closeSpotlight);
               },
             },
@@ -146,7 +148,10 @@ const SpotlightApp = () => {
             score: isValidDomainOrIP(normalizedQuery) ? 95 : 40,
             onSelect: () => {
               const url = isValidDomainOrIP(normalizedQuery) ? navigateOrSearch(normalizedQuery) : undefined;
-              window.api.INVOKE<{ id: string }>("CREATE_TAB", url ? { url } : undefined).finally(closeSpotlight);
+              window.api
+                .INVOKE<{ id: string }>("CREATE_TAB", url ? { url } : undefined)
+                // @ts-ignore
+                .finally(closeSpotlight);
             },
           },
         ]
@@ -158,6 +163,7 @@ const SpotlightApp = () => {
             description: "Open a fresh tab",
             score: 110,
             onSelect: () => {
+              // @ts-ignore
               window.api.INVOKE<{ id: string }>("CREATE_TAB").finally(closeSpotlight);
             },
           },
@@ -192,30 +198,31 @@ const SpotlightApp = () => {
     const fallbackUrl = normalizedQuery ? navigateOrSearch(normalizedQuery) : undefined;
     window.api
       .INVOKE<{ id: string }>("CREATE_TAB", fallbackUrl ? { url: fallbackUrl } : undefined)
-      .finally(closeSpotlight);
+      // @ts-ignore
+      .finally(() => closeSpotlight());
   };
 
   if (!visible) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[2147483647] flex items-start justify-center pt-16 md:pt-24 animate-fade-in"
+      className="fixed inset-0 z-999 flex items-start justify-center pt-16 md:pt-24 animate-fade-in"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) closeSpotlight();
       }}
     >
-      <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md" />
+      <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md" onClick={closeSpotlight} />
 
       <div className="relative w-full max-w-2xl mx-4 animate-slide-down">
-        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-950/95 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_40px_80px_rgba(0,0,0,0.6)] backdrop-blur-xl">
-          <div className="flex items-center gap-3 border-b border-white/[0.06] px-5 py-4">
+        <div className="overflow-hidden rounded-2xl border border-white/8 bg-slate-950/95 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_40px_80px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+          <div className="flex items-center gap-3 border-b border-white/6 px-5 py-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-300 ring-1 ring-indigo-400/20">
               <IconSwitchHorizontal size={18} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2.5">
-                <span className="text-sm font-semibold tracking-wide text-white/90">Spotlight</span>
-                <span className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium tracking-wide text-white/40">
+                <span className="text-sm font-semibold tracking-wide text-white/90">Search</span>
+                <span className="rounded-md border border-white/8 bg-white/4 px-2 py-0.5 text-[11px] font-medium tracking-wide text-white/40">
                   {hasTabs ? `${tabs.length} tab${tabs.length !== 1 ? "s" : ""}` : "Ready"}
                 </span>
               </div>
@@ -226,15 +233,15 @@ const SpotlightApp = () => {
             <button
               type="button"
               onClick={closeSpotlight}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/30 transition-all hover:bg-white/[0.06] hover:text-white/70"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/30 transition-all hover:bg-white/6 hover:text-white/70"
               title="Close (Esc)"
             >
               <IconX size={16} />
             </button>
           </div>
 
-          <div className="border-b border-white/[0.06] px-4 py-3">
-            <div className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 transition-all focus-within:border-indigo-400/30 focus-within:bg-indigo-500/5 focus-within:ring-1 focus-within:ring-indigo-400/20">
+          <div className="border-b border-white/6 px-4 py-3">
+            <div className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/4 px-4 py-2.5 transition-all focus-within:border-indigo-400/30 focus-within:bg-indigo-500/5 focus-within:ring-1 focus-within:ring-indigo-400/20">
               <IconSearch size={17} className="shrink-0 text-white/30" />
               <input
                 ref={inputRef}
@@ -268,8 +275,8 @@ const SpotlightApp = () => {
                 className="min-w-0 flex-1 bg-transparent text-[15px] text-white/90 outline-none placeholder:text-white/25"
               />
               <div className="hidden items-center gap-1.5 md:flex">
-                <kbd className="rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium text-white/30">
-                  {navigator.platform.includes("Mac") ? "⌘K" : "Ctrl+K"}
+                <kbd className="rounded-md border border-white/8 bg-white/4 px-2 py-0.5 text-[11px] font-medium text-white/50">
+                  {navigator.platform.includes("Mac") ? "⌘ + K" : "Ctrl + K"}
                 </kbd>
               </div>
             </div>
@@ -285,9 +292,7 @@ const SpotlightApp = () => {
                     key={action.id}
                     className={clsx(
                       "group relative mx-2 flex w-[calc(100%-16px)] items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150",
-                      active
-                        ? "bg-indigo-500/12 text-white"
-                        : "text-white/70 hover:bg-white/[0.04] hover:text-white/90",
+                      active ? "bg-indigo-500/12 text-white" : "text-white/70 hover:bg-white/4 hover:text-white/90",
                     )}
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={action.onSelect}
@@ -297,7 +302,7 @@ const SpotlightApp = () => {
                       className={clsx(
                         "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 transition-all duration-150",
                         action.kind === "tab"
-                          ? "bg-white/[0.06] ring-white/[0.08] text-white/60 group-hover:text-white/80"
+                          ? "bg-white/6 ring-white/8 text-white/60 group-hover:text-white/80"
                           : action.kind === "search"
                             ? "bg-emerald-500/10 ring-emerald-400/20 text-emerald-400/80"
                             : "bg-indigo-500/10 ring-indigo-400/20 text-indigo-400/80",
@@ -314,7 +319,7 @@ const SpotlightApp = () => {
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium leading-snug">
                         {action.kind === "tab" && (
-                          <span className="mr-1.5 inline-block rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/30">
+                          <span className="mr-1.5 inline-block rounded bg-white/6 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/30">
                             Tab
                           </span>
                         )}
@@ -339,7 +344,7 @@ const SpotlightApp = () => {
               })
             ) : (
               <div className="flex flex-col items-center gap-2 px-4 py-14 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.04] ring-1 ring-white/[0.06]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/4 ring-1 ring-white/6">
                   <IconSearch size={20} className="text-white/20" />
                 </div>
                 <p className="text-sm text-white/30">{normalizedQuery ? "No matching tabs" : "No open tabs yet"}</p>
@@ -353,16 +358,14 @@ const SpotlightApp = () => {
           </div>
 
           {actions.length > 0 && (
-            <div className="flex items-center justify-between border-t border-white/[0.06] px-5 py-2.5">
-              <div className="flex items-center gap-3 text-[11px] text-white/25">
+            <div className="flex items-center justify-between border-t border-white/6  px-5 py-2.5">
+              <div className="flex items-center gap-3 text-[11px] text-white/50">
                 <span className="flex items-center gap-1">
-                  <kbd className="rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-medium">↑↓</kbd>
+                  <kbd className="rounded border border-white/8 bg-white/4 px-1.5 py-0.5 font-medium">↑↓</kbd>
                   Navigate
                 </span>
                 <span className="flex items-center gap-1">
-                  <kbd className="rounded border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-medium">
-                    Enter
-                  </kbd>
+                  <kbd className="rounded border border-white/8 bg-white/4 px-1.5 py-0.5 font-medium">Enter</kbd>
                   Select
                 </span>
               </div>

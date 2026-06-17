@@ -2,7 +2,9 @@ import { useEffect, useLayoutEffect } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet, useNavigate } from "react-router";
 import { IUserInterface } from "~/shared/types";
-import { SideMenu } from "../components";
+import { IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
+import { AiSidebar, SideMenu } from "../components";
+import { useAiSidebarStore } from "../features/aiSider/stores/useAiSidebarStore";
 import { tabServices } from "../services/tab.service";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
 import { useTabStore } from "../stores/useTabStore";
@@ -12,7 +14,7 @@ const LAYOUT_CLASS = {
   FLOATING: "flex h-screen overflow-hidden bg-slate-800 p-1 gap-1",
 };
 const Layout = () => {
-  const layout = useMinusThemeStore().layout;
+  const layout = useMinusThemeStore().layout || "FLOATING";
   const { setTabs } = useTabStore();
   const navigate = useNavigate();
 
@@ -44,6 +46,22 @@ const Layout = () => {
     });
   }, []);
 
+  useEffect(() => {
+    window.api.LISTENER(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, (payload?: { text?: string; action?: string }) => {
+      const text = payload?.text?.trim();
+      if (!text) return;
+      const action = payload?.action || "explain";
+      const modeMap: Record<string, "chat" | "summarize" | "explain"> = {
+        chat: "chat",
+        summarize: "summarize",
+        explain: "explain",
+      };
+      useAiSidebarStore.getState().setPendingText(text);
+      useAiSidebarStore.getState().setMode(modeMap[action] || "explain");
+      useAiSidebarStore.getState().open();
+    });
+  }, []);
+
   return (
     <LayoutSideEffect>
       <div className={LAYOUT_CLASS[layout as keyof typeof LAYOUT_CLASS]}>
@@ -53,6 +71,7 @@ const Layout = () => {
             <Outlet />
           </ErrorBoundary>
         </div>
+        <AiSidebar />
       </div>
       <SyncSideEffect />
     </LayoutSideEffect>
@@ -65,7 +84,7 @@ const LayoutSideEffect = ({ children }: { children: React.ReactElement | React.R
     const getScreenData = async () => {
       try {
         const theme: IUserInterface = await window.api.INVOKE("GET_USER_INTERFACE");
-        minus.initialize(theme);
+        if (theme) minus.initialize(theme);
       } catch (error) {
         console.error("Error getting tabs:", error);
       }

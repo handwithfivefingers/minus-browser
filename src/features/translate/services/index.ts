@@ -62,8 +62,11 @@ function resolveTranslateUrl(): string {
     return pathToFileURL(rendererPath).toString();
   }
   // const basePath = path.join(getSafeDirname(), `../renderer/translate_injection/index.html`);
-  /**@ts-ignore */
-  const basePath = path.join(getSafeDirname(), `../renderer/${TRANSLATE_INJECTION_WINDOW_VITE_NAME}/src/features/translate/overlay/index.html`);
+  const basePath = path.join(
+    getSafeDirname(),
+    /**@ts-ignore */
+    `../renderer/${TRANSLATE_INJECTION_WINDOW_VITE_NAME}/src/features/translate/overlay/index.html`,
+  );
   return pathToFileURL(basePath).toString();
 }
 
@@ -261,6 +264,8 @@ export class TranslateService {
     translateView.setBounds(view.getBounds());
     translateView.setBackgroundColor("#00000000");
     win.contentView.addChildView(translateView);
+
+    translateView.webContents.openDevTools();
 
     return new Promise((resolve, reject) => {
       let isReady = false;

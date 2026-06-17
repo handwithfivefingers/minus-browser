@@ -1,17 +1,15 @@
-declare module "electron-findbar" {
-  export interface Bounce {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }
-  export type BoundsHandlerCallback = (parentBounds: Bounce, findbarBounds: Bounce) => Partial<Rectangle>;
+interface FindbarAPI {
+  textChange(text: string): void;
+  findNext(): void;
+  findPrevious(): void;
+  close(): void;
+  matchCase(value: boolean): void;
+  onMatches(callback: (active: number, total: number) => void): void;
+  onFocusInput(callback: () => void): void;
+}
 
-  export type FindBar = {
-    open(): void;
-    close(): void;
-    setBoundsHandler(handler: BoundsHandlerCallback): void;
-  };
-  export function from(BrowserWindow: Electron.BrowserWindow | WebContents): FindBar;
-  export function fromIfExists(BrowserWindow: Electron.BrowserWindow | WebContents): FindBar;
+declare global {
+  interface Window {
+    findbarAPI?: FindbarAPI;
+  }
 }

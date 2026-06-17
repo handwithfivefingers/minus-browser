@@ -1,4 +1,5 @@
 import {
+  IconBrain,
   IconChevronLeft,
   IconCloudUp,
   IconCode,
@@ -7,11 +8,13 @@ import {
   IconLanguage,
   IconPictureInPicture,
   IconReload,
+  IconRobot,
   IconSearch,
   IconStarFilled,
 } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
+import { useAiSidebarStore } from "../features/aiSider/stores/useAiSidebarStore";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
 interface IHeader {
   url?: string;
@@ -179,6 +182,14 @@ const Header = ({
         )}
 
         <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
+          onClick={() => useAiSidebarStore.getState().toggle()}
+          title="AI Sidebar"
+        >
+          <IconBrain size={16} />
+        </button>
+
+        <button
           className={clsx("hover:text-yellow-500 rounded cursor-pointer p-1 transition-all", {
             ["text-yellow-500"]: isBookmarked,
           })}
@@ -210,7 +221,6 @@ const Sync = () => {
       })}
       title="Sync data"
     >
-      {/* {isSync && <span className="text-[8px] absolute right-6 top-2">Synced</span>} */}
       <IconCloudUp size={16} />
     </button>
   );

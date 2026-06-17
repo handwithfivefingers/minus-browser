@@ -1,20 +1,11 @@
-import { BrowserWindow, MenuItem, WebContentsView } from "electron";
-import Findbar from "electron-findbar";
-import { eventStore } from "~/features/system/stores/minusEventEmitter";
+import { BrowserWindow, MenuItem } from "electron";
+import { findbarService } from "~/features/findbar/service";
 import { ViewController } from "..";
 
 export class CommandController {
-  isSearch = false;
   viewController: ViewController;
-  activeTab: WebContentsView | null = null;
   constructor(viewController: ViewController) {
     this.viewController = viewController;
-    // eventStore.listen("searchBarClosed", () => {
-    //   this.isSearch = false;
-    // });
-    eventStore.listen("viewChanges", (view: WebContentsView) => {
-      this.activeTab = view;
-    });
   }
 
   get menuItems(): MenuItem[] {
@@ -22,7 +13,7 @@ export class CommandController {
       new MenuItem({
         label: "Search",
         accelerator: "CommandOrControl+F",
-        click: () => this.onSearchCallback(),
+        click: () => findbarService.toggle(),
       }),
       new MenuItem({
         label: "New Tab",
@@ -45,33 +36,6 @@ export class CommandController {
         click: () => this.onReloadPage(),
       }),
     ];
-  }
-
-  onSearchCallback() {
-    console.log("Search callback");
-    this.isSearch = !this.isSearch;
-    console.log("Findbar", Findbar);
-    const searchProcess = (bar: ReturnType<typeof Findbar.from>) => {
-      bar.setBoundsHandler((parentBounds, findbarBounds) => {
-        return {
-          x: parentBounds.x + parentBounds.width - findbarBounds.width - 20,
-          y: parentBounds.y + findbarBounds.height,
-        };
-      });
-
-      if (this.isSearch) bar.open();
-      else bar.close();
-    };
-    if (!this.activeTab) return;
-    let findBar;
-    try {
-      findBar = Findbar.fromIfExists(this.activeTab?.webContents);
-      searchProcess(findBar);
-    } catch (error) {
-      findBar = Findbar.from(this.activeTab?.webContents);
-      searchProcess(findBar);
-    }
-    if (!findBar) return;
   }
 
   onCreateTabCallback() {

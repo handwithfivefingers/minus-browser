@@ -4,3 +4,4 @@ export * from "./button";
 export * from "./avatar";
 export * from "./tab";
 export * from "./switch";
+export { AiSidebar } from "../features/aiSider/components";

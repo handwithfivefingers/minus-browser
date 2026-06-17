@@ -1,13 +1,14 @@
-import { IconAdjustments, IconCode, IconPuzzle, IconShieldLock } from "@tabler/icons-react";
+import { IconAdjustments, IconBrain, IconCode, IconPuzzle, IconShieldLock } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useState } from "react";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
+import { AiSettings } from "./components/AiSettings";
+import { Extension } from "./components/Extension";
 import { Interface } from "./components/Interface";
 import { UserScriptSection } from "./components/UserScriptSection";
 import { VaultSection } from "./components/VaultSetting";
-import { Extension } from "./components/Extension";
 
-type SettingTab = "system" | "userscript" | "vault" | "extension";
+type SettingTab = "system" | "userscript" | "vault" | "extension" | "ai";
 
 const CLASSES = {
   BASIC: "bg-slate-50 w-full h-full p-6",
@@ -27,6 +28,11 @@ const Sidebar = ({ active, onChange }: { active: SettingTab; onChange: (tab: Set
       id: "extension",
       label: "Extension",
       icon: <IconPuzzle size={16} />,
+    },
+    {
+      id: "ai",
+      label: "AI Sidebar",
+      icon: <IconBrain size={16} />,
     },
   ];
 
@@ -69,6 +75,7 @@ const Setting = () => {
             {activeTab === "userscript" && <UserScriptSection />}
             {activeTab === "vault" && <VaultSection />}
             {activeTab === "extension" && <Extension />}
+            {activeTab === "ai" && <AiSettings />}
           </main>
         </div>
       </div>

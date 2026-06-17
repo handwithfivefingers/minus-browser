@@ -1,7 +1,6 @@
-import { app, BrowserWindow } from "electron";
+import { BrowserWindow, WebContentsView } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import fs from "node:fs";
 import { Tab } from "~/features/tabs/models/tab";
 import { minusSessionManager } from "~/features/system/services/session";
 
@@ -10,31 +9,18 @@ type SpotlightOpenPayload = {
   tabs?: ReturnType<Tab["toJSON"]>[];
 };
 
-type Bounds = { x: number; y: number; width: number; height: number };
-
 const preloadPath = path.join(__dirname, "/preload.js");
-const boundsPath = path.join(app.getPath("userData"), "spotlight-bounds.json");
-
-function loadBounds(): Bounds | null {
-  try {
-    if (fs.existsSync(boundsPath)) {
-      return JSON.parse(fs.readFileSync(boundsPath, "utf-8"));
-    }
-  } catch {}
-  return null;
-}
-
-function saveBounds(bounds: Bounds) {
-  try {
-    fs.writeFileSync(boundsPath, JSON.stringify(bounds), "utf-8");
-  } catch {}
-}
 
 export class SpotlightService {
   isOpen = false;
-  window: BrowserWindow | null = null;
+  private mainWindow: BrowserWindow | null = null;
+  private view: WebContentsView | null = null;
+  private resizeHandler: (() => void) | null = null;
+  private blurHandler: (() => void) | null = null;
 
-  eventListeners = new Map<string, Function>();
+  init(mainWindow: BrowserWindow) {
+    this.mainWindow = mainWindow;
+  }
 
   private getSpotlightURL() {
     /**@ts-ignore */
@@ -46,33 +32,15 @@ export class SpotlightService {
     return pathToFileURL(filePath).toString();
   }
 
-  private async ensureWindowLoaded() {
-    const win = this.ensureWindow();
-    const spotlightURL = this.getSpotlightURL();
-    console.log("spotlightURL", spotlightURL);
-    if (win.webContents.getURL()) return win;
-    await win.loadURL(spotlightURL);
-    return win;
+  private syncViewBounds() {
+    if (!this.mainWindow || !this.view) return;
+    const { width, height } = this.mainWindow.getBounds();
+    this.view.setBounds({ x: 0, y: 0, width, height });
   }
 
-  private getWindowOptions() {
-    const parent = BrowserWindow.getFocusedWindow();
-    const bounds = loadBounds() ?? parent?.getBounds();
-    return {
-      width: bounds?.width ?? 960,
-      height: bounds?.height ?? 640,
-      x: bounds?.x ?? undefined,
-      y: bounds?.y ?? undefined,
-      show: false,
-      frame: false,
-      transparent: true,
-      resizable: false,
-      movable: true,
-      focusable: true,
-      skipTaskbar: true,
-      alwaysOnTop: true,
-      backgroundColor: "#00000000",
-      hasShadow: false,
+  async warmup() {
+    if (this.view) return;
+    this.view = new WebContentsView({
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -80,78 +48,67 @@ export class SpotlightService {
         backgroundThrottling: false,
         session: minusSessionManager.session,
       },
-    } as const;
-  }
-
-  private ensureWindow() {
-    if (this.window && !this.window.isDestroyed()) return this.window;
-
-    this.window = new BrowserWindow(this.getWindowOptions());
-    this.window.on("closed", () => {
-      this.window = null;
-      this.isOpen = false;
     });
-    return this.window;
-  }
-
-  async warmup() {
-    const win = this.ensureWindow();
-    if (!win.webContents.getURL()) {
-      win.loadURL(this.getSpotlightURL()).catch(() => {});
-    }
-    if (win.webContents.isLoading()) {
-      await new Promise<void>((resolve) => win.webContents.once("did-finish-load", resolve));
+    this.view.setBackgroundColor("#00000000");
+    this.view.webContents.loadURL(this.getSpotlightURL()).catch(() => {});
+    if (this.view.webContents.isLoading()) {
+      await new Promise<void>((resolve) => this.view!.webContents.once("did-finish-load", resolve));
     }
   }
 
   async openSpotlight(payload?: SpotlightOpenPayload) {
-    const spotlightWindow = await this.ensureWindowLoaded();
-    const sendPayload = () => {
-      spotlightWindow.webContents.send("GET_TABS", payload?.tabs || []);
-      spotlightWindow.webContents.send("SPOTLIGHT_OPEN", {
-        query: payload?.query || "",
-      });
-      spotlightWindow.show();
-      spotlightWindow.focus();
-      spotlightWindow.setAlwaysOnTop(true, "screen-saver");
-      this.isOpen = true;
-    };
-
-    if (spotlightWindow.webContents.isLoading()) {
-      spotlightWindow.webContents.once("did-finish-load", sendPayload);
-      return;
+    if (!this.mainWindow || !this.view) {
+      await this.warmup();
+      if (!this.mainWindow || !this.view) return;
     }
 
-    const closeCallback = () => this.close();
+    this.syncViewBounds();
+    this.mainWindow.contentView.addChildView(this.view);
 
-    this.eventListeners.set("SPOTLIGHT_CLOSED", closeCallback);
-    if (closeCallback) {
-      spotlightWindow.on("blur", closeCallback);
-    }
-    sendPayload();
+    this.view.webContents.send("GET_TABS", payload?.tabs || []);
+    this.view.webContents.send("SPOTLIGHT_OPEN", {
+      query: payload?.query || "",
+    });
+    this.view.webContents.focus();
+
+    this.isOpen = true;
+
+    this.resizeHandler = () => this.syncViewBounds();
+    this.mainWindow.on("resize", this.resizeHandler);
+
+    this.blurHandler = () => this.close();
+    this.mainWindow.on("blur", this.blurHandler);
   }
 
   syncTabs(tabs: ReturnType<Tab["toJSON"]>[]) {
-    if (!this.window || this.window.isDestroyed()) return;
-    this.window.webContents.send("GET_TABS", tabs);
+    if (!this.view) return;
+    this.view.webContents.send("GET_TABS", tabs);
   }
 
-  async close() {
-    if (!this.window || this.window.isDestroyed()) return;
+  close() {
+    if (!this.isOpen || !this.mainWindow || !this.view) return;
     this.isOpen = false;
-    const bounds = this.window.getBounds();
-    saveBounds(bounds);
-    this.window.hide();
-    const spotlightWindow = await this.ensureWindowLoaded();
-    const closeCallback = this.eventListeners.get("SPOTLIGHT_CLOSED");
-    /**@ts-ignore */
-    if (closeCallback) spotlightWindow.off("blur", closeCallback);
+
+    if (this.resizeHandler) {
+      this.mainWindow.off("resize", this.resizeHandler);
+      this.resizeHandler = null;
+    }
+
+    if (this.blurHandler) {
+      this.mainWindow.off("blur", this.blurHandler);
+      this.blurHandler = null;
+    }
+
+    try {
+      this.mainWindow.contentView.removeChildView(this.view);
+    } catch {}
   }
 
   destroy() {
-    if (!this.window || this.window.isDestroyed()) return;
-    this.isOpen = false;
-    this.window.close();
-    this.window = null;
+    this.close();
+    if (this.view) {
+      this.view.webContents.close();
+      this.view = null;
+    }
   }
 }

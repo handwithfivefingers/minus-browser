@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-
+// @ts-ignore
+import "./assets/styles.css";
 type Preference = {
   sourceLanguage: string;
   targetLanguage: string;
@@ -49,12 +50,6 @@ const defaultPreference: Preference = {
   neverTranslateDomains: [],
   neverTranslateLanguages: [],
 };
-
-const SHADOW_STYLES = `
-  *, *::before, *::after { box-sizing: border-box; }
-  :host { all: initial; font-family: system-ui, -apple-system, sans-serif; }
-  input, textarea, button { font-family: inherit; }
-`;
 
 const splitLines = (value: string) =>
   value
@@ -142,195 +137,200 @@ const App = () => {
       onClick={closeWithCancel}
     >
       <div
-        style={{
-          width: "980px",
-          maxWidth: "96vw",
-          maxHeight: "84vh",
-          background: "#fff",
-          border: "1px solid #e2e8f0",
-          borderRadius: "14px",
-          boxShadow: "0 30px 80px rgba(2,6,23,.30)",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          overflow: "hidden",
-        }}
+        // style={{
+        //   width: "980px",
+        //   maxWidth: "96vw",
+        //   maxHeight: "84vh",
+        //   background: "#fff",
+        //   border: "1px solid #e2e8f0",
+        //   borderRadius: "14px",
+        //   boxShadow: "0 30px 80px rgba(2,6,23,.30)",
+        //   display: "grid",
+        //   gridTemplateColumns: "1fr 1fr",
+        //   overflow: "hidden",
+        // }}
+        className="flex flex-col max-w-5xl w-full h-full m-4 max-h-[84vh] overflow-hidden shadow-2xl rounded-xl border border-slate-200 bg-white"
         onClick={(event) => event.stopPropagation()}
       >
-        <div style={{ padding: "16px", borderRight: "1px solid #e2e8f0", overflow: "auto" }}>
-          <div style={{ fontWeight: 600, marginBottom: "10px", fontSize: "15px" }}>Translate Preferences</div>
-          <label style={{ ...labelStyle, marginBottom: "8px" }}>
-            <span>Source language</span>
-            <input
-              value={preference.sourceLanguage}
-              onChange={(event) => setPreference((prev) => ({ ...prev, sourceLanguage: event.target.value }))}
-              style={inputStyle}
-              placeholder="auto"
-            />
-          </label>
-          <label style={{ ...labelStyle, marginBottom: "8px" }}>
-            <span>Target language</span>
-            <input
-              value={preference.targetLanguage}
-              onChange={(event) => setPreference((prev) => ({ ...prev, targetLanguage: event.target.value }))}
-              style={inputStyle}
-              placeholder="en"
-            />
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", fontSize: "12px" }}>
-            <input
-              type="checkbox"
-              checked={preference.autoTranslate}
-              onChange={(event) => setPreference((prev) => ({ ...prev, autoTranslate: event.target.checked }))}
-            />
-            Enable auto-translate prompts
-          </label>
-          <label style={{ ...labelStyle, marginBottom: "8px" }}>
-            <span>Always translate domains (one per line)</span>
-            <textarea
-              value={alwaysDomainsText}
-              onChange={(event) => setAlwaysDomainsText(event.target.value)}
-              style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
-              placeholder="news.example.com"
-            />
-          </label>
-          <label style={{ ...labelStyle, marginBottom: "8px" }}>
-            <span>Never translate domains (one per line)</span>
-            <textarea
-              value={neverDomainsText}
-              onChange={(event) => setNeverDomainsText(event.target.value)}
-              style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
-              placeholder="mail.example.com"
-            />
-          </label>
-          <label style={labelStyle}>
-            <span>Never translate languages (one per line, ex: ja)</span>
-            <textarea
-              value={neverLanguagesText}
-              onChange={(event) => setNeverLanguagesText(event.target.value)}
-              style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
-              placeholder="en"
-            />
-          </label>
-        </div>
-        <div style={{ padding: "16px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* h-[calc(100%-60px)] */}
+        <div className="flex w-full flex-1  overflow-hidden">
+          <div className="p-4 border-r border-slate-200">
+            <div style={{ fontWeight: 600, marginBottom: "10px", fontSize: "15px" }}>Translate Preferences</div>
+            <label style={{ ...labelStyle, marginBottom: "8px" }}>
+              <span>Source language</span>
+              <input
+                value={preference.sourceLanguage}
+                onChange={(event) => setPreference((prev) => ({ ...prev, sourceLanguage: event.target.value }))}
+                style={inputStyle}
+                placeholder="auto"
+              />
+            </label>
+            <label style={{ ...labelStyle, marginBottom: "8px" }}>
+              <span>Target language</span>
+              <input
+                value={preference.targetLanguage}
+                onChange={(event) => setPreference((prev) => ({ ...prev, targetLanguage: event.target.value }))}
+                style={inputStyle}
+                placeholder="en"
+              />
+            </label>
+            <label
+              style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", fontSize: "12px" }}
+            >
+              <input
+                type="checkbox"
+                checked={preference.autoTranslate}
+                onChange={(event) => setPreference((prev) => ({ ...prev, autoTranslate: event.target.checked }))}
+              />
+              Enable auto-translate prompts
+            </label>
+            <label style={{ ...labelStyle, marginBottom: "8px" }}>
+              <span>Always translate domains (one per line)</span>
+              <textarea
+                value={alwaysDomainsText}
+                onChange={(event) => setAlwaysDomainsText(event.target.value)}
+                style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
+                placeholder="news.example.com"
+              />
+            </label>
+            <label style={{ ...labelStyle, marginBottom: "8px" }}>
+              <span>Never translate domains (one per line)</span>
+              <textarea
+                value={neverDomainsText}
+                onChange={(event) => setNeverDomainsText(event.target.value)}
+                style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
+                placeholder="mail.example.com"
+              />
+            </label>
+            <label style={labelStyle}>
+              <span>Never translate languages (one per line, ex: ja)</span>
+              <textarea
+                value={neverLanguagesText}
+                onChange={(event) => setNeverLanguagesText(event.target.value)}
+                style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
+                placeholder="en"
+              />
+            </label>
+          </div>
           <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingBottom:"10px",
-            }}
+            // style={{ padding: "16px", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}
+            className="p-4 flex flex-col overflow-hidden min-h-0"
           >
-            <div style={{ fontWeight: 600, fontSize: "15px" }}>Selection Translate History</div>
-            <button
-              type="button"
-              onClick={closeWithCancel}
+            <div
               style={{
-                width: "24px",
-                height: "24px",
-                border: "1px solid #cbd5e1",
-                background: "#f8fafc",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "14px",
                 display: "flex",
+                justifyContent: "space-between",
                 alignItems: "center",
-                justifyContent: "center",
+                paddingBottom: "10px",
               }}
             >
-              ×
-            </button>
-          </div>
-          <div style={{ overflow: "auto", display: "flex", flexDirection: "column", gap: "8px", flex: 1 }}>
-            {!recentSelections.length && (
-              <div style={{ color: "#94a3b8", fontSize: "12px" }}>No selection translations yet.</div>
-            )}
-            {recentSelections.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  padding: "10px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "4px",
-                }}
-              >
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
-                  {item.sourceLanguage} -&gt; {item.targetLanguage}
-                </div>
-                <div style={{ fontSize: "12px", color: "#0f172a" }}>{item.sourceText}</div>
-                <div style={{ fontSize: "12px", color: "#4f46e5", fontWeight: 500 }}>{item.translatedText}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "10px" }}>
-            <button
-              type="button"
-              onClick={() => setRecentSelections([])}
-              style={{
-                height: "30px",
-                padding: "0 12px",
-                borderRadius: "8px",
-                border: "1px solid #fecaca",
-                background: "#fee2e2",
-                color: "#b91c1c",
-                cursor: "pointer",
-                fontSize: "12px",
-              }}
-            >
-              Clear History
-            </button>
-            <div style={{ display: "flex", gap: "8px" }}>
+              <div style={{ fontWeight: 600, fontSize: "15px" }}>Selection Translate History</div>
               <button
                 type="button"
                 onClick={closeWithCancel}
                 style={{
-                  height: "30px",
-                  padding: "0 12px",
-                  borderRadius: "8px",
+                  width: "24px",
+                  height: "24px",
                   border: "1px solid #cbd5e1",
-                  background: "#e2e8f0",
-                  color: "#334155",
+                  background: "#f8fafc",
+                  borderRadius: "6px",
                   cursor: "pointer",
-                  fontSize: "12px",
+                  fontSize: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={closeWithSave}
-                style={{
-                  height: "30px",
-                  padding: "0 12px",
-                  borderRadius: "8px",
-                  border: "1px solid transparent",
-                  background: "#4f46e5",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                }}
-              >
-                Save
+                ×
               </button>
             </div>
+            <div
+              className="overflow-auto flex flex-col gap-2 h-full flex-1"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "#94a3b8 transparent",
+                scrollbarGutter: "stable",
+              }}
+            >
+              {!recentSelections.length && (
+                <div style={{ color: "#94a3b8", fontSize: "12px" }}>No selection translations yet.</div>
+              )}
+              {recentSelections.map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "8px",
+                    padding: "10px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "4px",
+                  }}
+                >
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>
+                    {item.sourceLanguage} -&gt; {item.targetLanguage}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#0f172a" }}>{item.sourceText}</div>
+                  <div style={{ fontSize: "12px", color: "#4f46e5", fontWeight: 500 }}>{item.translatedText}</div>
+                </div>
+              ))}
+            </div>
           </div>
+        </div>
+        <div className="flex justify-end gap-4 shrink-0 p-2 border-t border-slate-200">
+          <button
+            type="button"
+            onClick={() => setRecentSelections([])}
+            style={{
+              height: "30px",
+              padding: "0 12px",
+              borderRadius: "8px",
+              border: "1px solid #fecaca",
+              background: "#fee2e2",
+              color: "#b91c1c",
+              cursor: "pointer",
+              fontSize: "12px",
+            }}
+          >
+            Clear History
+          </button>
+          <button
+            type="button"
+            onClick={closeWithCancel}
+            style={{
+              height: "30px",
+              padding: "0 12px",
+              borderRadius: "8px",
+              border: "1px solid #cbd5e1",
+              background: "#e2e8f0",
+              color: "#334155",
+              cursor: "pointer",
+              fontSize: "12px",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={closeWithSave}
+            style={{
+              height: "30px",
+              padding: "0 12px",
+              borderRadius: "8px",
+              border: "1px solid transparent",
+              background: "#4f46e5",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: "12px",
+            }}
+          >
+            Save
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-document.documentElement.style.opacity = "0";
-document.documentElement.style.transition = "opacity 90ms ease";
-
-const host = document.getElementById("root") as HTMLElement;
-const shadowRoot = host.attachShadow({ mode: "open" });
-const styleEl = document.createElement("style");
-styleEl.textContent = SHADOW_STYLES;
-shadowRoot.appendChild(styleEl);
-const mountPoint = document.createElement("div");
-shadowRoot.appendChild(mountPoint);
-createRoot(mountPoint).render(<App />);
+const root = createRoot(document.getElementById("root") as HTMLElement);
+root.render(<App />);

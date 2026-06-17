@@ -1,8 +1,12 @@
+import { BrowserWindow } from "electron";
 import { SpotlightService } from "../service";
 import { Tab } from "~/features/tabs/models/tab";
 
 export class SpotlightController {
   private service = new SpotlightService();
+  init(mainWindow: BrowserWindow) {
+    this.service.init(mainWindow);
+  }
   async open(payload?: { query?: string; tabs?: ReturnType<Tab["toJSON"]>[] }) {
     return this.service.openSpotlight(payload);
   }

@@ -45,7 +45,7 @@ const SideMenu = () => {
     <ErrorBoundary FallbackComponent={(fallbackProps) => <ComponentError {...fallbackProps} />}>
       <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={clsx(styles.sidebar)}>
         <div className="flex gap-1 flex-col flex-1 overflow-y-auto overflow-x-hidden h-full scrollbar ">
-          <div className={clsx("w-full flex gap-0.5 items-center h-8 sticky z-[1] top-0 bg-slate-100 pb-2")}>
+          <div className={clsx("w-full flex gap-0.5 items-center h-8 sticky z-1 top-0 bg-slate-100 pb-2")}>
             <button className={clsx("w-4 h-4 text-black", styles.appbar)}>
               <IconGripVertical size={14} />
             </button>
@@ -85,7 +85,7 @@ const SideMenu = () => {
           <div
             onClick={() => onAddNewTab({})}
             className={clsx(
-              `sticky z-[1] bottom-0 h-10 px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-500 shrink-0 bg-slate-100`,
+              `sticky z-1 bottom-0 h-10 px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-500 shrink-0 bg-slate-100`,
             )}
             title="New Tab"
           >
