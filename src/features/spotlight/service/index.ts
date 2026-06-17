@@ -7,6 +7,7 @@ import { minusSessionManager } from "~/features/system/services/session";
 type SpotlightOpenPayload = {
   query?: string;
   tabs?: ReturnType<Tab["toJSON"]>[];
+  activeTabId?: string;
 };
 
 const preloadPath = path.join(__dirname, "/preload.js");
@@ -68,6 +69,7 @@ export class SpotlightService {
     this.view.webContents.send("GET_TABS", payload?.tabs || []);
     this.view.webContents.send("SPOTLIGHT_OPEN", {
       query: payload?.query || "",
+      activeTabId: payload?.activeTabId,
     });
     this.view.webContents.focus();
 
