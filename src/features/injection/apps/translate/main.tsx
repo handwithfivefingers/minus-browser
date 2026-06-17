@@ -212,7 +212,7 @@ const App = () => {
             />
           </label>
         </div>
-        <div style={{ padding: "16px", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: "16px", display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
           <div
             style={{
               display: "flex",

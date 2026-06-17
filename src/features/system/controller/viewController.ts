@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, Notification, WebContentsView } from "electron";
 import log from "electron-log";
+import { adblocker } from "~/features/adblocker/plugin";
 import { cacheSystem } from "~/features/cacheSystem";
 import { SearchRoute, searchController as splitSearchController } from "~/features/search";
 import { TabController } from "~/features/tabs/controllers";
@@ -7,7 +8,7 @@ import { Tab } from "~/features/tabs/models/tab";
 import { TranslateRoute } from "~/features/translate/route-init";
 import { UserScriptRoute } from "~/features/userscript/route-init";
 import { VaultRoute } from "~/features/vault/route-init";
-import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
+import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
 import { IUserInterface } from "~/shared/types";
 import { IHandleResizeView, IPC, ITab } from "../interfaces";
 import { ErrorServices } from "../services/error.services";
@@ -30,11 +31,16 @@ export class ViewController {
   searchController = splitSearchController;
   private invokeHandlers: Record<string, (data?: any) => any> | undefined;
   private listenerHandlers: Record<string, (data?: any) => void> | undefined;
+  private initPromise: Promise<void>;
 
   constructor(window: BrowserWindow) {
     this.tabController = new TabController((payload) => this.onInvoke(payload));
     this.window = window;
-    this.init();
+    this.initPromise = this.init();
+  }
+
+  async ready(): Promise<void> {
+    return this.initPromise;
   }
 
   handleClickNotification(notification: Electron.ActivationArguments) {
@@ -55,30 +61,11 @@ export class ViewController {
         ...UserScriptRoute,
         ...SearchRoute,
         ...SpotlightRoute,
-        // [IPC_INVOKE_CHANNEL.SEARCH_PAGE]: (data) => this.searchController?.searchPage(data),
-        // [IPC_INVOKE_CHANNEL.GET_USERSCRIPTS]: () => this.getUserScripts(),
-        // [IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT]: (data) => this.saveUserScript(data),
-        // [IPC_INVOKE_CHANNEL.IMPORT_USERSCRIPT]: () => this.importUserScript(),
-        // [IPC_INVOKE_CHANNEL.DELETE_USERSCRIPT]: (data) => this.deleteUserScript(data),
-        // [IPC_INVOKE_CHANNEL.TOGGLE_USERSCRIPT]: (data) => this.toggleUserScript(data),
-        // [IPC_INVOKE_CHANNEL.VAULT_LIST]: () => this.vaultController.getVaults(),
-        // [IPC_INVOKE_CHANNEL.VAULT_ADD]: (data) => this.vaultController.addVault(data),
-        // [IPC_INVOKE_CHANNEL.VAULT_UPDATE]: (data: VaultUpdateParams) =>
-        //   this.vaultController.updateVault(data.id, data.patch || {}),
-
-        // [IPC_INVOKE_CHANNEL.VAULT_DELETE]: (data: { id: string }) => this.vaultController.removeVault(data.id),
-        // [IPC_INVOKE_CHANNEL.VAULT_FILL]: (data) => this.vaultFill(data),
-        // [IPC_INVOKE_CHANNEL.VAULT_SELECT_CREDENTIAL]: (data) => this.vaultSelectCredential(data),
-        // [IPC_INVOKE_CHANNEL.VAULT_CONFIRM_SAVE]: (data) => this.vaultConfirmSave(data),
-        // [IPC_INVOKE_CHANNEL.VAULT_OPEN_MANAGER]: (data) => this.vaultOpenManager(data),
-        // [IPC_INVOKE_CHANNEL.USERSCRIPT_OPEN_MANAGER]: (data) => this.userscriptOpenManager(data),
-        // [IPC_INVOKE_CHANNEL.TRANSLATE_GET_PREFERENCE]: () => this.translateGetPreference(),
-        // [IPC_INVOKE_CHANNEL.TRANSLATE_SAVE_PREFERENCE]: (data) => this.translateSavePreference(data),
-        // [IPC_INVOKE_CHANNEL.TRANSLATE_DETECT_LANGUAGE]: (data) => this.translateDetectLanguage(data),
-        // [IPC_INVOKE_CHANNEL.TRANSLATE_PAGE]: (data) => this.translatePage(data),
-        // [IPC_INVOKE_CHANNEL.TRANSLATE_SELECTION]: (data) => this.translateSelection(data),
-        // [IPC_INVOKE_CHANNEL.TRANSLATE_OPEN_MANAGER]: (data) => this.translateOpenManager(data),
-        // [IPC_INVOKE_CHANNEL.TRANSLATE_GET_SELECTION_HISTORY]: () => this.translateGetSelectionHistory(),
+        [IPC_INVOKE_CHANNEL.AI_GET_PAGE_TEXT]: () => this.getActiveTabPageText(),
+        [IPC_INVOKE_CHANNEL.AI_GET_SELECTED_TEXT]: () => this.getActiveTabSelectedText(),
+        [IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE]: (data) => {
+          this.window.webContents.send(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, data);
+        },
       };
 
       this.listenerHandlers = {
@@ -107,7 +94,7 @@ export class ViewController {
     this.window.webContents.send(channel, data);
   }
 
-  private syncTabsToWindows() {
+  syncTabsToWindows() {
     const tabs = this.getTabs() || [];
     this.window.webContents.send("GET_TABS", tabs);
     this.spotlightController.syncTabs(tabs);
@@ -122,6 +109,13 @@ export class ViewController {
       ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
       ipcMain.on("send", (event, args: IPC) => this.onListener(args));
 
+      await this.loadUserInterface();
+      await adblocker.initializeForSession(minusSessionManager.session, this.userInterface?.extension?.disabledFilters);
+      if (this.userInterface?.extension?.adblock) {
+        adblocker.enable();
+        this.watchAllTabWebContents();
+      }
+
       Notification.getHistory()
         .then((r) => {
           console.log("r", r);
@@ -132,7 +126,7 @@ export class ViewController {
     } catch (error) {
       console.log("[ERROR] View Controller -", error);
     } finally {
-      this.syncTabsToWindows();
+      spotlightController.init(this.window);
       spotlightController.warmup().catch(() => {});
     }
   }
@@ -150,12 +144,12 @@ export class ViewController {
   private onInvoke(args: IPC) {
     try {
       const { channel, data } = args;
-      log.info(`[IPC Invoke] channel: ${channel}`);
+      // log.info(`[IPC Invoke] channel: ${channel}`);
       const handler = this.invokeHandlers?.[channel];
       if (handler) {
         return handler(data);
       }
-      log.warn(`No invoke handler for channel: ${channel}`);
+      // log.warn(`No invoke handler for channel: ${channel}`);
     } catch (error) {
       console.log("[ERRROR] INVOKE :", error);
     }
@@ -176,17 +170,34 @@ export class ViewController {
     const newTab = await this.tabController?.addNewTab(tab);
     this.syncTabsToWindows();
     if (newTab?.id) {
+      const tabInstance = this.tabController?.getTabById(newTab.id);
+      if (tabInstance?.isAlive) {
+        adblocker.watch(tabInstance.webContents);
+      }
       this.forwardRendererEvent("OPEN_TAB_BY_ID", { id: newTab.id });
     }
     return newTab;
+  }
+
+  private watchAllTabWebContents() {
+    const tabs = this.tabController?.getTabInstances() || [];
+    for (const tab of tabs) {
+      if (tab.isAlive) {
+        adblocker.watch(tab.webContents);
+      }
+    }
   }
 
   async handleShowViewById(props: IHandleResizeView) {
     try {
       if (!props?.tab.id) throw new Error("Tab id not found");
       const currentTab = this.tabController?.getTabById(props.tab?.id) as Tab;
+      const wasNotAlive = !currentTab.isAlive;
       currentTab.show();
-      if (!currentTab.isAlive) currentTab.createView();
+      if (wasNotAlive) {
+        currentTab.createView();
+        adblocker.watch(currentTab.webContents);
+      }
       this.attachChildView(currentTab.view);
       const url1 = currentTab.url;
       const url2 = currentTab.webContents.getURL();
@@ -309,8 +320,8 @@ export class ViewController {
 
   async loadUserInterface() {
     const defaultData: IUserInterface = {
-      layout: "default",
-      mode: "default",
+      layout: "FLOATING",
+      mode: "light",
       dataSync: {
         intervalTime: "15",
         hardwareAcceleration: "1",
@@ -328,9 +339,9 @@ export class ViewController {
       const userInterface = await cacheSystem.get<IUserInterface>("interface", () =>
         this.interfaceStore.readFiles<IUserInterface>(),
       );
-      Object.assign(defaultData, userInterface);
-      this.userInterface = userInterface;
-      return userInterface;
+      const merged = { ...defaultData, ...userInterface };
+      this.userInterface = merged;
+      return merged;
     } catch (error) {
       return defaultData;
     }
@@ -372,6 +383,30 @@ export class ViewController {
 
   //   this.sessionPersistDebounce();
   // }
+
+  async getActiveTabPageText(): Promise<string> {
+    try {
+      const activeTab = this.tabController?.activeTab;
+      if (!activeTab?.isAlive) return "";
+      const result = await activeTab.webContents.executeJavaScript("document.body?.innerText || ''");
+      return result || "";
+    } catch (error) {
+      log.error("Failed to get page text:", error);
+      return "";
+    }
+  }
+
+  async getActiveTabSelectedText(): Promise<string> {
+    try {
+      const activeTab = this.tabController?.activeTab;
+      if (!activeTab?.isAlive) return "";
+      const result = await activeTab.webContents.executeJavaScript("window.getSelection()?.toString() || ''");
+      return result || "";
+    } catch (error) {
+      log.error("Failed to get selected text:", error);
+      return "";
+    }
+  }
 
   async persist() {
     try {
@@ -433,25 +468,37 @@ export class ViewController {
     cacheSystem.set("interface", data);
     this.interfaceStore.saveFiles(data);
 
-    // if (data.dataSync.hardwareAcceleration === "0") {
-    //   dialog
-    //     .showMessageBox({
-    //       title: "Warning",
-    //       message: "Hardware acceleration is disabled. This may cause some issues. Do you want to continue? ",
-    //       buttons: ["Yes", "No"],
-    //     })
-    //     .then((res) => {
-    //       if (res.response === 0) {
-    //         process.env.ELECTRON_DISABLE_GPU = "true";
-    //         app.relaunch({
-    //           args: process.argv.slice(1).concat(["--relaunch --disable-gpu"]),
-    //         });
-    //         app.exit(0);
-    //       } else {
-    //         process.env.ELECTRON_DISABLE_GPU = "";
-    //       }
-    //     });
-    // }
+    const prev = this.userInterface?.extension;
+    const next = data.extension;
+    this.userInterface = data;
+
+    if (prev && next) {
+      if (next.adblock && !prev.adblock) {
+        const filtersChanged =
+          JSON.stringify([...next.disabledFilters].sort()) !== JSON.stringify([...prev.disabledFilters].sort());
+        if (filtersChanged) {
+          adblocker.initialize(next.disabledFilters).then(() => {
+            adblocker.enable();
+            this.watchAllTabWebContents();
+          });
+        } else {
+          adblocker.enable();
+          this.watchAllTabWebContents();
+        }
+      } else if (!next.adblock && prev.adblock) {
+        adblocker.disable();
+      } else if (next.adblock && prev.adblock) {
+        const filtersChanged =
+          JSON.stringify([...next.disabledFilters].sort()) !== JSON.stringify([...prev.disabledFilters].sort());
+        if (filtersChanged) {
+          adblocker.disable();
+          adblocker.initialize(next.disabledFilters).then(() => {
+            adblocker.enable();
+            this.watchAllTabWebContents();
+          });
+        }
+      }
+    }
   }
 
   // clearCache({ tab }: { tab: ITab }) {

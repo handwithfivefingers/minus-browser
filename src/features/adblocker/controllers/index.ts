@@ -1,8 +1,10 @@
+import { ipcMain, WebContents } from "electron";
 import { FiltersEngine, Request } from "@ghostery/adblocker";
 import fetch from "cross-fetch";
-import { app, WebContentsView } from "electron";
+import path from "node:path";
 import log from "electron-log";
 import { AdblockService } from "../services";
+import { parse } from "tldts-experimental";
 
 const baseDir = `https://raw.githubusercontent.com/brave/adblock-lists-mirror/lists/lists/metadata.json`;
 
@@ -10,10 +12,13 @@ export class AdBlocker {
   engine: FiltersEngine | undefined;
   AdblockService = new AdblockService();
   isInitialize = false;
+  isEnabled = false;
   private initializing?: Promise<void>;
-  private activeSessions = new Set<Electron.Session>();
   private lastDisabledKey = "";
   private _disabledFilters: string[] = [];
+  private ipcHandlersRegistered = false;
+  private session: Electron.Session | null = null;
+  private watchedWebContents = new Map<number, () => void>();
 
   async initialize(disabledFilters?: string[]) {
     if (disabledFilters !== undefined) {
@@ -50,18 +55,83 @@ export class AdBlocker {
         loadCSPFilters: true,
       });
       this.isInitialize = true;
+      this.registerIPCHandlers();
     } catch (error) {
       console.log("Adblocker load error", error);
     }
   }
 
-  async setupAdvancedRequestBlocking(session: Electron.Session) {
-    await this.initialize();
-    if (!this.engine) return;
-    if (this.activeSessions.has(session)) return;
-    this.activeSessions.add(session);
+  private registerIPCHandlers() {
+    if (this.ipcHandlersRegistered) return;
+    this.ipcHandlersRegistered = true;
 
-    session.webRequest.onBeforeRequest({ urls: ["<all_urls>"] }, (details, callback) => {
+    ipcMain.handle("@adb/inject-cosmetic-filters", async (event, url: string, msg?: any) => {
+      if (!this.engine) return;
+
+      try {
+        const parsed = parse(url);
+        const hostname = parsed.hostname || "";
+        const domain = parsed.domain || "";
+        const isFirstRun = msg === undefined;
+
+        const { active, styles, scripts } = this.engine.getCosmeticsFilters({
+          url,
+          hostname,
+          domain,
+          classes: msg?.classes,
+          hrefs: msg?.hrefs,
+          ids: msg?.ids,
+          getBaseRules: isFirstRun,
+          getInjectionRules: isFirstRun,
+          getExtendedRules: false,
+          getRulesFromHostname: isFirstRun,
+          getRulesFromDOM: !isFirstRun,
+          callerContext: {
+            frameId: event.frameId,
+            processId: event.processId,
+            lifecycle: msg?.lifecycle,
+          },
+        });
+
+        if (active === false) return;
+
+        if (styles.length > 0) {
+          event.sender.insertCSS(styles, { cssOrigin: "user" });
+        }
+
+        for (const script of scripts) {
+          try {
+            event.sender.executeJavaScript(script, true);
+          } catch (e) {
+            console.error("@adb scriptlet crashed", e);
+          }
+        }
+      } catch (e) {
+        console.error("@adb inject-cosmetic-filters error", e);
+      }
+    });
+
+    ipcMain.handle("@adb/is-mutation-observer-enabled", async () => {
+      return true;
+    });
+  }
+
+  async initializeForSession(session: Electron.Session, disabledFilters?: string[]) {
+    this.session = session;
+    await this.initialize(disabledFilters);
+
+    session.registerPreloadScript({
+      type: "frame",
+      filePath: path.join(__dirname, "adblocker-preload.js"),
+    });
+  }
+
+  enable() {
+    if (!this.session || !this.engine) return;
+    if (this.isEnabled) return;
+    this.isEnabled = true;
+
+    this.session.webRequest.onBeforeRequest({ urls: ["<all_urls>"] }, (details, callback) => {
       if (!this.engine) return callback({});
       const request = Request.fromRawDetails({
         url: details.url,
@@ -86,7 +156,7 @@ export class AdBlocker {
       }
     });
 
-    session.webRequest.onHeadersReceived({ urls: ["<all_urls>"] }, (details, callback) => {
+    this.session.webRequest.onHeadersReceived({ urls: ["<all_urls>"] }, (details, callback) => {
       if (!this.engine) return callback({});
 
       const CSP_HEADER_NAME = "content-security-policy";
@@ -116,47 +186,52 @@ export class AdBlocker {
       }
       callback({});
     });
+
+    this.onShowADBlockRequest();
   }
 
-  async injectCosmeticFilters(webContents: Electron.WebContents, url: string) {
-    if (!this.engine) return;
+  disable() {
+    if (!this.session) return;
+    this.isEnabled = false;
 
-    try {
-      const parsed = new URL(url);
-      const hostname = parsed.hostname;
-      const domain = hostname.split(".").slice(-2).join(".");
+    this.session.webRequest.onBeforeRequest(null);
+    this.session.webRequest.onHeadersReceived(null);
+    this.unwatchAll();
+  }
 
-      const result = this.engine.getCosmeticsFilters({
-        url,
-        hostname,
-        domain,
-        getBaseRules: true,
-        getInjectionRules: true,
-        getExtendedRules: false,
-        getRulesFromDOM: false,
-        getRulesFromHostname: true,
-      });
+  injectYoutubeAdblockSponsor(webContents: WebContents) {
+    this.AdblockService.injectYoutubeAdblockSponsor(webContents);
+  }
 
-      if (result.active === false) return;
+  watch(webContents: WebContents) {
+    if (this.watchedWebContents.has(webContents.id)) return;
 
-      if (result.styles.length > 0) {
-        webContents.insertCSS(result.styles, { cssOrigin: "user" });
+    const handler = () => {
+      const url = webContents.getURL();
+      if (url.includes("youtube.com")) {
+        this.injectYoutubeAdblockSponsor(webContents);
       }
+    };
 
-      for (const script of result.scripts) {
-        try {
-          webContents.executeJavaScript(script);
-        } catch (e) {
-          console.error("Scriptlet injection failed", e);
-        }
-      }
-    } catch (e) {
-      console.error("Cosmetic filter injection error", e);
+    webContents.on("did-navigate", handler);
+    this.watchedWebContents.set(webContents.id, () => {
+      webContents.removeListener("did-navigate", handler);
+    });
+  }
+
+  unwatch(webContents: WebContents) {
+    const cleanup = this.watchedWebContents.get(webContents.id);
+    if (cleanup) {
+      cleanup();
+      this.watchedWebContents.delete(webContents.id);
     }
   }
 
-  injectYoutubeAdblockSponsor(webContents: WebContentsView["webContents"]) {
-    this.AdblockService.injectYoutubeAdblockSponsor(webContents);
+  private unwatchAll() {
+    for (const [, cleanup] of this.watchedWebContents) {
+      cleanup();
+    }
+    this.watchedWebContents.clear();
   }
 
   onShowADBlockRequest() {
@@ -180,11 +255,5 @@ export class AdBlocker {
       log.info("%cRed style-injected", style.length, url, "color: red");
     });
     this.engine.on("filter-matched", console.log.bind(console, "%cfilter-matched"));
-  }
-
-  disabled(session: Electron.Session) {
-    this.activeSessions.delete(session);
-    session.webRequest.onBeforeRequest(null);
-    session.webRequest.onHeadersReceived(null);
   }
 }

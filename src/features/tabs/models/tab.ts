@@ -1,7 +1,7 @@
 import { BrowserWindow, WebContentsAudioStateChangedEventParams, WebContentsView } from "electron";
 import { v7 as uuid_v7 } from "uuid";
-import { AdblockTabPlugin } from "~/features/adblocker/plugin";
 import { cacheSystem } from "~/features/cacheSystem";
+import { AiTabPlugin } from "~/features/ui/features/aiSider/plugin";
 import { SearchTabPlugin } from "~/features/search/plugin";
 import { StoreManager } from "~/features/system";
 import { ContextMenuController } from "~/features/system/controller/context";
@@ -100,6 +100,7 @@ export class Tab {
     this.requestPermissions();
     this.registerCommonEvent();
     this.isHibernated = false;
+    this.pluginReady ??= this.registerPlugin();
   }
 
   destroyView() {
@@ -135,27 +136,18 @@ export class Tab {
     const fallback = async () => {
       return this.interface.readFiles<{
         extension: {
-          adblock: boolean;
           translate: boolean;
           userscript: boolean;
           vault: boolean;
-          disabledFilters: string[];
         };
       }>();
     };
     const extensionManager = await cacheSystem.get<IUserInterface>("interface", fallback);
     if (extensionManager && "extension" in extensionManager) {
-      const { vault, translate, adblock, userscript, disabledFilters } = extensionManager.extension;
-      const adblockPlugin = new AdblockTabPlugin(
-        (channel: string, data: any) => this.eventEmitter({ channel, data }),
-        disabledFilters || [],
-      );
+      const { vault, translate, userscript } = extensionManager.extension;
       if (vault) {
         const vaulPlugin = new VaultTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }));
         this.pluginManager.register(vaulPlugin);
-      }
-      if (adblock) {
-        this.pluginManager.register(adblockPlugin);
       }
       if (userscript) {
         this.pluginManager.register(
@@ -170,6 +162,9 @@ export class Tab {
       this.pluginManager.register(
         new SearchTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
       );
+      this.pluginManager.register(
+        new AiTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+      );
     }
   }
 
@@ -178,8 +173,13 @@ export class Tab {
     this._webContents.on("page-favicon-updated", this.updateFavicon.bind(this));
     // @ts-ignore
     this._webContents.on("page-title-updated", this.updateTitle.bind(this));
-    this._webContents.on("did-navigate", (_event, url) => this.updateUrl(url));
-    this._webContents.on("did-navigate-in-page", (_event, url) => this.updateUrl(url));
+    // @ts-ignore
+    this._webContents.on("did-navigate", (_event, url, _httpStatus, _httpStatusText, isMainFrame) => {
+      if (isMainFrame) this.updateUrl(url);
+    });
+    this._webContents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
+      if (isMainFrame) this.updateUrl(url);
+    });
     this._webContents.on("audio-state-changed", this.updateAudioState.bind(this));
     this._webContents.on("did-start-loading", this.tabLoading.bind(this, true));
     this._webContents.on("did-stop-loading", this.tabLoading.bind(this, false));
@@ -212,89 +212,6 @@ export class Tab {
     const browser = BrowserWindow.getFocusedWindow();
     browser?.webContents?.send(`TAB_INFORMATION_UPDATED:${this.id}`, information);
   }
-
-  // async loadSession(url: string) {
-  //   // const domain = new URL(url).hostname;
-  //   // const { subDomains, domain, topLevelDomains } = parseDomain(fromUrl(url));
-
-  //   const domainData = await analyzeDomain(url);
-
-  //   if (!domainData.domain) {
-  //     console.log("URL không hợp lệ, bỏ qua load session");
-  //     return;
-  //   }
-  //   const targetDomain = domainData.domain;
-
-  //   let session = await cacheSystem.get<Electron.Cookie[]>("session");
-  //   if (!session?.length) return;
-  //   // let cookies = session?.filter(
-  //   //   (cookie) =>
-  //   //     (cookie.domain?.includes(domain) || (cookie?.domain && domain.includes(cookie?.domain))) &&
-  //   //     cookie?.expirationDate &&
-  //   //     cookie?.expirationDate * 1000 > Date.now(),
-  //   // );
-
-  //   let cookies = session.filter((cookie) => {
-  //     if (!cookie.domain || !cookie.expirationDate) return false;
-
-  //     // Kiểm tra hạn sử dụng (Electron expirationDate tính bằng giây)
-  //     const isExpired = cookie.expirationDate * 1000 <= Date.now();
-  //     if (isExpired) return false;
-
-  //     // Chuẩn hóa domain của cookie để so sánh (xóa dấu chấm đầu nếu có, ví dụ: .example.com -> example.com)
-  //     const cleanCookieDomain = cookie.domain.startsWith(".") ? cookie.domain.slice(1) : cookie.domain;
-  //     let currentHostname = "";
-  //     try {
-  //       currentHostname = new URL(url).hostname;
-  //     } catch (_) {
-  //       currentHostname = targetDomain;
-  //     }
-
-  //     // Khớp nếu cookie domain chứa target domain HOẶC ngược lại (hỗ trợ chia sẻ session giữa subdomains)
-  //     return currentHostname.endsWith(cleanCookieDomain) || cleanCookieDomain.endsWith(currentHostname);
-
-  //   });
-
-  //   if (!cookies?.length) return;
-  //   let uniqCookie = new Map<string, Electron.Cookie>();
-  //   for (let c of cookies) {
-  //     uniqCookie.set(c.name, c);
-  //   }
-  //   if (uniqCookie.size === 0) return;
-  //   let pm: Promise<any>[] = [];
-
-  //   let protocol = "https:";
-  //   try {
-  //     protocol = new URL(url).protocol;
-  //   } catch (_) {}
-
-  //   [...uniqCookie.values()].forEach((cookie) => {
-  //     if (cookie?.expirationDate && cookie?.expirationDate * 1000 > Date.now()) {
-  //       const cleanDomainForUrl = cookie.domain!.startsWith(".") ? cookie.domain!.slice(1) : cookie.domain;
-  //       const cookieUrl = `${protocol}//${cleanDomainForUrl}${cookie.path || "/"}`;
-  //       const cookieDetails: Electron.CookiesSetDetails = {
-  //         url: cookieUrl, // Sửa lỗi quan trọng: Phải truyền URL đầy đủ, không truyền độc domain
-  //         name: cookie.name,
-  //         value: cookie.value,
-  //         domain: cookie.domain, // Giữ nguyên domain gốc (ví dụ: .example.com) để bao phủ subdomain
-  //         expirationDate: cookie.expirationDate,
-  //         sameSite: cookie.sameSite,
-  //         secure: cookie.secure,
-  //         httpOnly: cookie.httpOnly,
-  //         path: cookie.path || "/",
-  //       };
-
-  //       pm.push(this.webContents.session.cookies.set(cookieDetails));
-  //     }
-  //   });
-  //   await Promise.all(pm)
-  //     .then(() => {
-  //       console.log("cookie loaded");
-  //     })
-  //     .catch((errr) => {
-  //       console.log("Err", errr);
-  //     });
-  // }
 
   updateTitle() {
     if (this._webContents) {

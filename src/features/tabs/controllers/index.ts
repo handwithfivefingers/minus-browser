@@ -115,6 +115,9 @@ export class TabController {
     const tabs = this.tabs.size > 0 ? [...this.tabs.values()].map((tab) => tab.toJSON()) : [];
     return tabs;
   }
+  getTabInstances(): Tab[] {
+    return [...this.tabs.values()];
+  }
   getTabById(id: string) {
     return this.tabs.get(id) || null;
   }

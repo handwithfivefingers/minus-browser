@@ -3,6 +3,7 @@ import log from "electron-log";
 import started from "electron-squirrel-startup";
 import path from "node:path";
 import { StoreManager } from "./features/system";
+import { findbarService } from "./features/findbar/service";
 import { CommandController, ViewController } from "./features/system/controller";
 import { menuApplication } from "./features/system/services/menu";
 import { minusSessionManager } from "./features/system/services/session";
@@ -96,6 +97,21 @@ class MinusBrowser {
 
       this.browser = browser;
 
+      const viewController = new ViewController(browser);
+      await viewController.ready();
+      this.viewController = viewController;
+      try {
+        findbarService.init(browser);
+      } catch (e) {
+        console.log("[ERROR] FindbarService init failed:", e);
+      }
+      this.registerNotification();
+      this.registerCommand(viewController);
+
+      browser.webContents.on("did-finish-load", () => {
+        viewController.syncTabsToWindows();
+      });
+
       /**@ts-ignore */
       if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
         /**@ts-ignore */
@@ -124,11 +140,6 @@ class MinusBrowser {
       });
       log.transports.console.format = "[LOGGER] - {h}:{i}:{s} > {text}";
       log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
-
-      const viewController = new ViewController(browser);
-      this.viewController = viewController;
-      this.registerNotification();
-      this.registerCommand(viewController);
     } catch (error) {
       console.log("[ERROR] Create Window Error - ", error);
     }
