@@ -13,4 +13,7 @@ export interface IUserInterface {
     userscript: boolean;
     disabledFilters: string[];
   };
+  historyRetentionDays?: string;
+  hibernateMode?: "fast" | "normal" | "slow" | "custom";
+  hibernateCustomMinutes?: number;
 }

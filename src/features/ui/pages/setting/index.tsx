@@ -1,4 +1,4 @@
-import { IconAdjustments, IconBrain, IconCode, IconPuzzle, IconShieldLock } from "@tabler/icons-react";
+import { IconAdjustments, IconBrain, IconCode, IconPuzzle, IconShieldLock, IconSnowflake } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useState } from "react";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
@@ -7,8 +7,9 @@ import { Extension } from "./components/Extension";
 import { Interface } from "./components/Interface";
 import { UserScriptSection } from "./components/UserScriptSection";
 import { VaultSection } from "./components/VaultSetting";
+import { HibernateSetting } from "./components/HibernateSetting";
 
-type SettingTab = "system" | "userscript" | "vault" | "extension" | "ai";
+type SettingTab = "system" | "userscript" | "vault" | "extension" | "ai" | "hibernate";
 
 const CLASSES = {
   BASIC: "bg-slate-50 w-full h-full p-6",
@@ -33,6 +34,11 @@ const Sidebar = ({ active, onChange }: { active: SettingTab; onChange: (tab: Set
       id: "ai",
       label: "AI Sidebar",
       icon: <IconBrain size={16} />,
+    },
+    {
+      id: "hibernate",
+      label: "Hibernate",
+      icon: <IconSnowflake size={16} />,
     },
   ];
 
@@ -76,6 +82,7 @@ const Setting = () => {
             {activeTab === "vault" && <VaultSection />}
             {activeTab === "extension" && <Extension />}
             {activeTab === "ai" && <AiSettings />}
+            {activeTab === "hibernate" && <HibernateSetting />}
           </main>
         </div>
       </div>

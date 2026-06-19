@@ -1,4 +1,4 @@
-import { IconArrowRight, IconPlus, IconSearch, IconSwitchHorizontal, IconX, IconWorld } from "@tabler/icons-react";
+import { IconArrowRight, IconClock, IconPlus, IconSearch, IconSwitchHorizontal, IconX, IconWorld } from "@tabler/icons-react";
 import clsx from "clsx";
 import { createRoot } from "react-dom/client";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,6 +7,15 @@ import { Tab } from "~/features/ui/interfaces";
 import { isValidDomainOrIP, navigateOrSearch } from "../../ui/libs";
 // @ts-ignore
 import "./assets/styles.css";
+
+interface IHistoryEntry {
+  id: string;
+  url: string;
+  title: string;
+  favicon: string;
+  timestamp: number;
+  visitCount: number;
+}
 
 interface SpotlightProps {
   query: string;
@@ -17,6 +26,14 @@ type SpotlightAction =
   | {
       id: string;
       kind: "tab";
+      label: string;
+      description: string;
+      onSelect: () => void;
+      score: number;
+    }
+  | {
+      id: string;
+      kind: "history";
       label: string;
       description: string;
       onSelect: () => void;
@@ -42,6 +59,7 @@ type SpotlightAction =
 const SpotlightApp = () => {
   const [query, setQuery] = useState("");
   const [tabs, setTabs] = useState<Tab[]>([]);
+  const [history, setHistory] = useState<IHistoryEntry[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [visible, setVisible] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | undefined>();
@@ -55,10 +73,8 @@ const SpotlightApp = () => {
       setActiveTabId(payload?.activeTabId);
       setActiveIndex(0);
       setVisible(true);
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      });
+      inputRef.current?.focus();
+      inputRef.current?.select();
     });
 
     window.api.LISTENER("SPOTLIGHT_CLOSE", () => {
@@ -67,6 +83,10 @@ const SpotlightApp = () => {
 
     window.api.LISTENER("GET_TABS", (payload?: Tab[]) => {
       setTabs(payload || []);
+    });
+
+    window.api.LISTENER("GET_HISTORY", (payload?: IHistoryEntry[]) => {
+      setHistory(payload || []);
     });
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -84,6 +104,12 @@ const SpotlightApp = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (!visible) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [visible]);
+
   const normalizedQuery = query.trim();
 
   const navigateCurrentTab = (url: string) => {
@@ -99,7 +125,7 @@ const SpotlightApp = () => {
     window.api.EMIT("SPOTLIGHT_CLOSE");
   };
 
-  const fuse = useMemo(
+  const fuseTabs = useMemo(
     () =>
       new Fuse(tabs, {
         keys: [
@@ -113,9 +139,23 @@ const SpotlightApp = () => {
     [tabs],
   );
 
+  const fuseHistory = useMemo(
+    () =>
+      new Fuse(history, {
+        keys: [
+          { name: "title", weight: 0.6 },
+          { name: "url", weight: 0.4 },
+        ],
+        threshold: 0.4,
+        distance: 100,
+        minMatchCharLength: 1,
+      }),
+    [history],
+  );
+
   const actions = useMemo<SpotlightAction[]>(() => {
     const queryText = normalizedQuery.toLowerCase();
-    const matchingTabs = (queryText ? fuse.search(queryText).map((r) => r.item) : tabs)
+    const matchingTabs = (queryText ? fuseTabs.search(queryText).map((r) => r.item) : tabs)
       .slice(0, 6)
       .map((tab, index) => ({
         id: `tab:${tab.id}`,
@@ -126,6 +166,21 @@ const SpotlightApp = () => {
         onSelect: () => {
           window.api.EMIT("OPEN_TAB_BY_ID", { id: tab.id });
           closeSpotlight();
+        },
+      }));
+
+    const historyEntries = (queryText ? fuseHistory.search(queryText).map((r) => r.item) : history)
+      .slice(0, 5)
+      .map((entry, index) => ({
+        id: `history:${entry.id}`,
+        kind: "history" as const,
+        label: entry.title || entry.url,
+        description: entry.url,
+        score: queryText ? Math.max(80 - index * 2, 1) : 0,
+        onSelect: () => {
+          window.api.INVOKE<{ id: string }>("CREATE_TAB", { url: entry.url })
+            // @ts-ignore
+            .finally(closeSpotlight);
         },
       }));
 
@@ -217,8 +272,8 @@ const SpotlightApp = () => {
       });
     }
 
-    return [...matchingTabs, ...extraActions].sort((a, b) => b.score - a.score);
-  }, [normalizedQuery, tabs, activeTabId]);
+    return [...matchingTabs, ...historyEntries, ...extraActions].sort((a, b) => b.score - a.score);
+  }, [normalizedQuery, tabs, history, activeTabId]);
 
   useEffect(() => {
     if (activeIndex >= actions.length) {
@@ -351,10 +406,12 @@ const SpotlightApp = () => {
                     <div
                       className={clsx(
                         "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 transition-all duration-150",
-                        action.kind === "tab"
-                          ? "bg-white/6 ring-white/8 text-white/60 group-hover:text-white/80"
-                          : action.kind === "search"
-                            ? "bg-emerald-500/10 ring-emerald-400/20 text-emerald-400/80"
+                      action.kind === "tab"
+                        ? "bg-white/6 ring-white/8 text-white/60 group-hover:text-white/80"
+                        : action.kind === "search"
+                          ? "bg-emerald-500/10 ring-emerald-400/20 text-emerald-400/80"
+                          : action.kind === "history"
+                            ? "bg-amber-500/10 ring-amber-400/20 text-amber-400/80"
                             : "bg-indigo-500/10 ring-indigo-400/20 text-indigo-400/80",
                       )}
                     >
@@ -362,6 +419,8 @@ const SpotlightApp = () => {
                         <IconSwitchHorizontal size={16} />
                       ) : action.kind === "search" ? (
                         <IconSearch size={16} />
+                      ) : action.kind === "history" ? (
+                        <IconClock size={16} />
                       ) : (
                         <IconPlus size={16} />
                       )}

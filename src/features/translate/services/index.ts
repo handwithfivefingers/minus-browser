@@ -1,15 +1,14 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { BrowserWindow, WebContentsView } from "electron";
+import { BrowserWindow, session, WebContentsView } from "electron";
 import { v7 as uuidv7 } from "uuid";
-import { minusSessionManager } from "~/features/system/services/session";
 import {
   ITranslateDetectResult,
   ITranslatePreference,
   ITranslateSelectionHistoryItem,
   ITranslateStore,
 } from "../types";
-import { StoreManager } from "~/features/system";
+import { StoreManager } from "~/core/stores";
 
 const SENTINEL = "__TRANSLATE_RESOLVE__:";
 const MAX_RECENT_SELECTIONS = 40;
@@ -258,14 +257,16 @@ export class TranslateService {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        session: minusSessionManager.session,
+        session: session.fromPartition("minus-translate"),
       },
     });
     translateView.setBounds(view.getBounds());
     translateView.setBackgroundColor("#00000000");
     win.contentView.addChildView(translateView);
 
-    translateView.webContents.openDevTools();
+    if (process.env.NODE_ENV === "development") {
+      translateView.webContents.openDevTools();
+    }
 
     return new Promise((resolve, reject) => {
       let isReady = false;

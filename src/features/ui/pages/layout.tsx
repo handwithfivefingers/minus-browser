@@ -44,6 +44,9 @@ const Layout = () => {
         navigate(`/${payload.id}`);
       }
     });
+    window.api.LISTENER("NAVIGATE_HISTORY", () => {
+      navigate("/history");
+    });
   }, []);
 
   useEffect(() => {

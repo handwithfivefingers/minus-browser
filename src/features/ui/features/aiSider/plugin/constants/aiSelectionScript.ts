@@ -126,6 +126,7 @@ export const AI_SELECTION_SCRIPT = `(() => {
           hideTip();
           hideContainer();
         }
+        isHovering = false;
       }, 180);
     };
     btn.addEventListener("mouseleave", onBtnLeave);
@@ -198,6 +199,7 @@ export const AI_SELECTION_SCRIPT = `(() => {
   });
 
   document.addEventListener("scroll", () => {
-    if (!isHovering) hideContainer();
+    const text = String(window.getSelection?.()?.toString?.() || "").trim();
+    if (!text && !isHovering) hideContainer();
   }, true);
 })();`;

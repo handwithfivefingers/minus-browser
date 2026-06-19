@@ -1,7 +1,6 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { BrowserWindow, WebContentsView } from "electron";
-import { minusSessionManager } from "~/features/system/services/session";
+import { BrowserWindow, session, WebContentsView } from "electron";
 // import { Tab } from "~/features/system/models/tab";
 const SENTINEL = "__VAULT_RESOLVE__:";
 
@@ -77,7 +76,7 @@ export class VaultServices {
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: false,
-        session: minusSessionManager.session,
+        session: session.fromPartition("persist:minus-vault", { cache: true }),
       },
     });
     vaultView.setBounds(tabBounds);

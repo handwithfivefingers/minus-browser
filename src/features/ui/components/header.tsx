@@ -11,6 +11,7 @@ import {
   IconRobot,
   IconSearch,
   IconStarFilled,
+  IconSnowflake,
 } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
@@ -34,6 +35,8 @@ interface IHeader {
   title?: string;
   isLoading: boolean;
   isBookmarked?: boolean;
+  preventHibernate?: boolean;
+  onTogglePreventHibernate?: () => void;
 }
 
 const LAYOUT_HEADER_CLASS = {
@@ -47,6 +50,7 @@ const Header = ({
   isLoading,
   url,
   isBookmarked,
+  preventHibernate,
   onBackWard,
   onToggleDevTools,
   onReload,
@@ -58,13 +62,14 @@ const Header = ({
   // onTranslateSelection,
   onOpenTranslateManager,
   onOpenSpotlight,
+  onTogglePreventHibernate,
 }: IHeader) => {
   const { layout, extension } = useMinusThemeStore();
   const onBookmark = () => {
     window.api.EMIT("TOGGLE_BOOKMARK", { url: url, id: id });
   };
   const openSpotlight = () => {
-    onOpenSpotlight(url || title || "");
+    onOpenSpotlight(title || url || "");
   };
   if (!id) return null;
   return (
@@ -78,9 +83,24 @@ const Header = ({
           <IconChevronLeft size={16} />
         </button>
       </div>
-      {/*<div className="bg-slate-200 px-4 rounded-full">
-        <Switch title={"Hibernate"} />
-      </div>*/}
+      <div className="flex items-center">
+        <button
+          onClick={onTogglePreventHibernate}
+          className={clsx(
+            "rounded-full p-1.5 cursor-pointer transition-all",
+            preventHibernate
+              ? "bg-cyan-500 text-white shadow-sm shadow-cyan-400 hover:shadow-md hover:shadow-cyan-400"
+              : "text-slate-400 hover:bg-slate-200 hover:text-slate-600",
+          )}
+          title={
+            preventHibernate
+              ? "Hibernation disabled — this tab will stay alive regardless of inactivity"
+              : "Hibernation allowed — tab will auto-hibernate when idle"
+          }
+        >
+          <IconSnowflake size={14} />
+        </button>
+      </div>
       <div
         className={[
           "flex gap-1 w-1/2 bg-white rounded-full border-2 transition-all relative mx-auto border-transparent",
@@ -109,13 +129,13 @@ const Header = ({
         <div className="flex px-12 items-center rounded-full gap-0.5 w-full">
           <input
             className="py-1 w-full transition-all outline-transparent outline bg-white text-xs cursor-pointer"
-            value={url || title || ""}
+            value={title || url || ""}
             onMouseDown={(event) => {
               event.preventDefault();
               openSpotlight();
             }}
             placeholder="Ctrl + K"
-            title={url || title}
+            title={title || url}
             readOnly
           />
         </div>

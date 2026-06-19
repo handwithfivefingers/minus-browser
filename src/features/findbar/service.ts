@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, IpcMainEvent, WebContentsView } from "elec
 import * as fs from "node:fs";
 import path from "node:path";
 import { searchController } from "~/features/search/controllers";
-import { eventStore } from "~/features/system/stores/minusEventEmitter";
+import { eventStore } from "~/core/stores";
 import { FINDBAR_HTML } from "./index.js";
 
 export class FindbarService {

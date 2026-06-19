@@ -7,6 +7,9 @@ export interface MinusThemeAction {
   initialize: (data: Partial<IUserInterface>) => void;
   setExtension: (extension: Partial<IUserInterface["extension"]>) => void;
   setCookieMode: (mode: "0" | "1") => void;
+  setHistoryRetentionDays: (days: string) => void;
+  setHibernateMode: (mode: "fast" | "normal" | "slow" | "custom") => void;
+  setHibernateCustomMinutes: (minutes: number) => void;
   saved: () => void;
 }
 export interface IMinusThemeStore extends IUserInterface, MinusThemeAction {}

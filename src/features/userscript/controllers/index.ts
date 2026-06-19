@@ -1,12 +1,12 @@
 import fs from "node:fs/promises";
 import { v7 as uuid_v7 } from "uuid";
-import { StoreManager } from "~/features/system";
+import { StoreManager } from "~/core/stores";
 import { IUserScript, IUserScriptStore } from "../types";
 import { UserScript } from "../models/userScript";
 import { isUrlMatchedByPatterns } from "~/shared/utils";
 import { cacheSystem } from "~/features/cacheSystem";
 import { UserScriptService } from "../services";
-import { eventStore } from "~/features/system/stores/minusEventEmitter";
+import { eventStore } from "~/core/stores";
 import { WebContentsView } from "electron";
 
 export class UserScriptController {

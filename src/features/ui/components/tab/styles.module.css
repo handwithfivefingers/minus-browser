@@ -20,18 +20,68 @@
   display: flex;
   position: relative;
   width: 100%;
-  & a:hover ~ .closeIcon {
-    display: block;
-  }
-  & .closeIcon {
-    display: block;
-  }
+  align-items: center;
+  opacity: 1;
+  transition: opacity 0.2s;
 }
-.tabItem .closeIcon {
-  display: none;
+
+.tabItem.dragging {
+  opacity: 0.5;
 }
-.tabItem:hover .closeIcon {
-  display: block;
+
+.actionsOverlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1px;
+  z-index: 10;
+  background: inherit;
+  padding: 1px;
+  background: #fff;
+  height: 100%;
+}
+.tabItem:hover .actionsOverlay {
+  display: flex;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #94a3b8;
+  border-radius: 4px;
+  transition: color 0.15s;
+  padding: 0;
+  flex-shrink: 0;
+}
+.actionButton:hover {
+  color: #6366f1;
+}
+.actionButton:active {
+  color: #4f46e5;
+}
+
+.dragHandle {
+  cursor: grab;
+  touch-action: none;
+}
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.closeBtn {
+  color: #cbd5e1;
+}
+.closeBtn:hover {
+  color: #ef4444;
 }
 
 @container sidebar (width <= 56px) {

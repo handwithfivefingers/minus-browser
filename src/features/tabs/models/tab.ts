@@ -3,14 +3,15 @@ import { v7 as uuid_v7 } from "uuid";
 import { cacheSystem } from "~/features/cacheSystem";
 import { AiTabPlugin } from "~/features/ui/features/aiSider/plugin";
 import { SearchTabPlugin } from "~/features/search/plugin";
-import { StoreManager } from "~/features/system";
-import { ContextMenuController } from "~/features/system/controller/context";
+import { StoreManager } from "~/core/stores";
+import { ContextMenuController } from "~/core/controller/context";
 import { TabPluginManager } from "~/features/tabPluginManager";
 import { TranslateTabPlugin } from "~/features/translate/plugin";
 import { UserScriptTabPlugin } from "~/features/userscript/plugin";
 import { VaultTabPlugin } from "~/features/vault";
 import { ITab, IUserInterface } from "~/shared/types";
-import { minusSessionManager } from "~/features/system/services/session";
+import { browserSession } from "~/core/services/session";
+import { historyController } from "~/core/controller/history";
 interface IDestroy {
   destroy?: () => void;
 }
@@ -55,10 +56,13 @@ export class Tab {
   timestamp: number = Date.now();
   isBookmarked: boolean = false;
   isHibernated: boolean = false;
+  preventHibernate: boolean = false;
   cookies?: Electron.Cookie[];
-  minusSession: Electron.Session = minusSessionManager.session;
+  minusSession: Electron.Session = browserSession;
   interface: StoreManager = new StoreManager("interface");
   lastUpdated?: number;
+  referrer?: string;
+  private scrollPosition?: { x: number; y: number };
   private pluginManager: TabPluginManager = new TabPluginManager();
   private pluginReady?: Promise<void>;
 
@@ -118,53 +122,95 @@ export class Tab {
     if (this.isHibernated || !this._view) return;
     this.url = this._webContents?.getURL() || this.url;
     this.title = this._webContents?.getTitle() || this.title;
+
+    this.saveScrollState();
+    this.saveReferrer();
+
     console.log("Tab will hibernate", this.title);
     this.destroyView();
     this.isHibernated = true;
   }
 
-  wake() {
+  private saveScrollState() {
+    if (!this._webContents) return;
+    this._webContents
+      .executeJavaScript("({ x: window.scrollX, y: window.scrollY })")
+      .then((pos: { x: number; y: number }) => {
+        this.scrollPosition = pos;
+      })
+      .catch(() => {});
+  }
+
+  private saveReferrer() {
+    if (!this._webContents) return;
+    this._webContents
+      .executeJavaScript("document.referrer || ''")
+      .then((ref: string) => {
+        if (ref) this.referrer = ref;
+      })
+      .catch(() => {});
+  }
+
+  wake(url?: string) {
     if (!this.isHibernated) return;
     this.createView();
     this.pluginReady = this.registerPlugin();
-    this.webContents.loadURL(this.url);
+    this.webContents.loadURL(url || this.url, {
+      httpReferrer: this.referrer || undefined,
+    });
     this.isHibernated = false;
+    this.restoreScrollState();
+  }
+
+  private restoreScrollState() {
+    const pos = this.scrollPosition;
+    if (!pos || !this._webContents) return;
+    this._webContents.once("did-finish-load", () => {
+      this._webContents!
+        .executeJavaScript(`window.scrollTo(${pos.x}, ${pos.y})`)
+        .catch(() => {});
+    });
+    this.scrollPosition = undefined;
   }
 
   async registerPlugin() {
-    this.pluginManager.unregister(this.id);
-    const fallback = async () => {
-      return this.interface.readFiles<{
-        extension: {
-          translate: boolean;
-          userscript: boolean;
-          vault: boolean;
-        };
-      }>();
-    };
-    const extensionManager = await cacheSystem.get<IUserInterface>("interface", fallback);
-    if (extensionManager && "extension" in extensionManager) {
-      const { vault, translate, userscript } = extensionManager.extension;
-      if (vault) {
-        const vaulPlugin = new VaultTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }));
-        this.pluginManager.register(vaulPlugin);
-      }
-      if (userscript) {
+    try {
+      this.pluginManager.unregister(this.id);
+      const fallback = async () => {
+        return this.interface.readFiles<{
+          extension: {
+            translate: boolean;
+            userscript: boolean;
+            vault: boolean;
+          };
+        }>();
+      };
+      const extensionManager = await cacheSystem.get<IUserInterface>("interface", fallback);
+      if (extensionManager && "extension" in extensionManager) {
+        const { vault, translate, userscript } = extensionManager.extension;
+        if (vault) {
+          const vaulPlugin = new VaultTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }));
+          this.pluginManager.register(vaulPlugin);
+        }
+        if (userscript) {
+          this.pluginManager.register(
+            new UserScriptTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+          );
+        }
+        if (translate) {
+          this.pluginManager.register(
+            new TranslateTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+          );
+        }
         this.pluginManager.register(
-          new UserScriptTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+          new SearchTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+        );
+        this.pluginManager.register(
+          new AiTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
         );
       }
-      if (translate) {
-        this.pluginManager.register(
-          new TranslateTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
-        );
-      }
-      this.pluginManager.register(
-        new SearchTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
-      );
-      this.pluginManager.register(
-        new AiTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
-      );
+    } catch (err) {
+      console.error("registerPlugin error", err);
     }
   }
 
@@ -173,12 +219,19 @@ export class Tab {
     this._webContents.on("page-favicon-updated", this.updateFavicon.bind(this));
     // @ts-ignore
     this._webContents.on("page-title-updated", this.updateTitle.bind(this));
-    // @ts-ignore
-    this._webContents.on("did-navigate", (_event, url, _httpStatus, _httpStatusText, isMainFrame) => {
-      if (isMainFrame) this.updateUrl(url);
+    this._webContents.on("did-navigate", (_event, url, _httpResponseCode, _httpStatusText) => {
+      this.updateUrl(url);
+      if (url && url !== "about:blank") {
+        historyController.addEntry(url, this.title, this.favicon);
+      }
     });
     this._webContents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
-      if (isMainFrame) this.updateUrl(url);
+      if (isMainFrame) {
+        this.updateUrl(url);
+        if (url && url !== "about:blank") {
+          historyController.addEntry(url, this.title, this.favicon);
+        }
+      }
     });
     this._webContents.on("audio-state-changed", this.updateAudioState.bind(this));
     this._webContents.on("did-start-loading", this.tabLoading.bind(this, true));
@@ -198,14 +251,18 @@ export class Tab {
 
   updateFavicon(event: any, favicons: string[]) {
     this.favicon = favicons[0];
+    const pageUrl = this._webContents?.getURL() || this.url;
     const metaData = {
       favicon: favicons[0],
-      url: this._webContents?.getURL() || this.url,
+      url: pageUrl,
       title: this._webContents?.getTitle() || this.title,
     };
     this.updateTitle();
-    this.updateUrl(this._webContents?.getURL() || this.url);
+    this.updateUrl(pageUrl);
     this.peristInformationToRenderer(metaData);
+    if (pageUrl && pageUrl !== "about:blank") {
+      historyController.updateEntryMetadata(pageUrl, undefined, this.favicon);
+    }
   }
 
   peristInformationToRenderer(information: Partial<ITab>) {
@@ -218,11 +275,14 @@ export class Tab {
       this.title = this._webContents.getTitle();
     }
     this.peristInformationToRenderer({ title: this.title });
+    if (this.url && this.url !== "about:blank") {
+      historyController.updateEntryMetadata(this.url, this.title);
+    }
   }
 
   async updateUrl(url: string) {
     this.url = url;
-    this.peristInformationToRenderer({ title: this.url });
+    this.peristInformationToRenderer({ url: this.url });
   }
 
   updateTab(tab: Partial<ITab>) {
@@ -296,7 +356,9 @@ export class Tab {
     if (this._view && "setVisible" in this._view && !this._view.getVisible()) {
       this._view.setVisible(true);
     }
-    this.pluginReady?.then(() => this.pluginManager.attachTo(this));
+    (this.pluginReady || Promise.resolve())?.then(() => this.pluginManager.attachTo(this)).catch(() => {
+      this.pluginManager.attachTo(this);
+    });
   }
   hide() {
     if (this._view && "setVisible" in this._view) this._view.setVisible(false);
@@ -320,6 +382,7 @@ export class Tab {
       timestamp: this.timestamp,
       isBookmarked: this.isBookmarked,
       isHibernated: this.isHibernated,
+      preventHibernate: this.preventHibernate,
       cookies: this.cookies,
       audible: this.audible,
     };

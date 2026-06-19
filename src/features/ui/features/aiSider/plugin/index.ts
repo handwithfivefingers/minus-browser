@@ -10,6 +10,13 @@ export class AiTabPlugin implements ITabPlugin {
   register(hooks: ITabLifecycleHooks, ctx: IExecutionContext) {
     hooks.onDidStopLoad = () => this.installAiSelectionCapture(ctx);
     hooks.onConsoleMessage = (_ctx, msg) => this.handleConsoleMessage(ctx, msg);
+    try {
+      if (!ctx.webContents.isLoading() && ctx.webContents.getURL()) {
+        this.installAiSelectionCapture(ctx);
+      }
+    } catch {
+      // best effort
+    }
   }
 
   private async installAiSelectionCapture(ctx: IExecutionContext) {

