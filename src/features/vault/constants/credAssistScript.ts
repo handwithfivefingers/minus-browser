@@ -55,12 +55,19 @@ export const CREDENTIAL_ASSIST_SCRIPT = `(function() {
             const name = String(el.getAttribute("name") || "").toLowerCase();
             const id = String(el.getAttribute("id") || "").toLowerCase();
             const placeholder = String(el.getAttribute("placeholder") || "").toLowerCase();
-            const joined = [type, name, id, placeholder].join(" ");
+            const className = String(el.getAttribute("class") || "").toLowerCase();
+            const joined = [type, name, id, placeholder, className].join(" ");
             return (
               joined.includes("email") ||
               joined.includes("user") ||
               joined.includes("name") ||
-              joined.includes("pass")
+              joined.includes("pass") ||
+              joined.includes("pwd") ||
+              joined.includes("login") ||
+              joined.includes("signin") ||
+              joined.includes("sign-in") ||
+              joined.includes("account") ||
+              type === "password"
             );
           };
 
@@ -97,15 +104,14 @@ export const CREDENTIAL_ASSIST_SCRIPT = `(function() {
           }, true);
 
           document.addEventListener("focusout", () => {
-          window.__minusCredentialAssistFocused = false;
+            const wasFocused = window.__minusCredentialAssistFocused;
+            window.__minusCredentialAssistFocused = false;
             setTimeout(() => {
               const active = document.activeElement;
-              const isIconActive = window.__minusCredentialAssistFocused
               if (!isTargetInput(active)) {
-                if (isIconActive) return;
+                if (wasFocused) return;
                 hideIcon();
                 window.__minusCredentialAssistTarget = null;
-                window.__minusCredentialAssistFocused = false;
               }
             }, 60);
           }, true);

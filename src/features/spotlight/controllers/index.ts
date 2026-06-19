@@ -1,13 +1,14 @@
 import { BrowserWindow } from "electron";
 import { SpotlightService } from "../service";
 import { Tab } from "~/features/tabs/models/tab";
+import { IHistoryEntry } from "~/core/controller/history";
 
 export class SpotlightController {
   private service = new SpotlightService();
   init(mainWindow: BrowserWindow) {
     this.service.init(mainWindow);
   }
-  async open(payload?: { query?: string; tabs?: ReturnType<Tab["toJSON"]>[] }) {
+  async open(payload?: { query?: string; tabs?: ReturnType<Tab["toJSON"]>[]; history?: IHistoryEntry[] }) {
     return this.service.openSpotlight(payload);
   }
 

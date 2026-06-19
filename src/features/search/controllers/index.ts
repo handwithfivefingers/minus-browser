@@ -1,5 +1,5 @@
 import { WebContentsView } from "electron";
-import { eventStore } from "~/features/system/stores/minusEventEmitter";
+import { eventStore } from "~/core/stores";
 import { SearchService } from "../services";
 
 export class SearchController {

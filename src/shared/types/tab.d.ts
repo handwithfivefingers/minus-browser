@@ -11,6 +11,7 @@ export interface ITab {
   isHibernated?: boolean;
   audible: boolean;
   isLoading?: boolean;
+  preventHibernate?: boolean;
 }
 
 export interface ITabManager {

@@ -56,7 +56,7 @@ const CustomApp = () => {
   const [loading, setLoading] = useState(false);
   const handledCredentialRef = useRef<Set<string>>(new Set());
   const latestSelectionRef = useRef<string>("");
-  const tab = useTabStore((s) => s.activeTab);
+  const tab = useTabStore((s) => s.tabs.find((t) => t.id === tabId));
   const updateTab = useTabStore((s) => s.updateTab);
   const setActiveTab = useTabStore((s) => s.setActiveTab);
   useEffect(() => {
@@ -332,6 +332,8 @@ const CustomApp = () => {
         onOpenTranslateManager={onOpenTranslateManager}
         onOpenSpotlight={(query) => window.api.EMIT("SPOTLIGHT_OPEN", { query })}
         isLoading={loading}
+        preventHibernate={tab?.preventHibernate}
+        onTogglePreventHibernate={() => window.api.INVOKE("TOGGLE_PREVENT_HIBERNATE", { id: tabId })}
       />
       <WebViewInstance id={tabId} />
     </div>

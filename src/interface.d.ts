@@ -16,7 +16,9 @@ type LISTENER_CHANNEL =
   | "FAVICON_UPDATED"
   | "SPOTLIGHT_OPEN"
   | "SPOTLIGHT_CLOSE"
-  | "OPEN_TAB_BY_ID";
+  | "OPEN_TAB_BY_ID"
+  | "NAVIGATE_HISTORY"
+  | "GET_HISTORY";
 
 export interface IElectronAPI {
   INVOKE: <T>(channel: IPCInvokeChannel, data?: any) => Promise<T> | T;

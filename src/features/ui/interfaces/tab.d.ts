@@ -29,6 +29,7 @@ export class Tab {
   isBookmarked: boolean = false;
   audible: boolean = false;
   isLoading: boolean = false;
+  preventHibernate: boolean = false;
   constructor(props: Partial<ITab>) {
     Object.assign(this, props);
   }

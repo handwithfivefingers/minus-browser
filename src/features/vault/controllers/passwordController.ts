@@ -1,7 +1,7 @@
 import { safeStorage } from "electron";
 import { v7 as uuid_v7 } from "uuid";
 import { IPasswordItem, IPasswordVaultPayload } from "../types/password";
-import { StoreManager } from "~/features/system";
+import { StoreManager } from "~/core/stores";
 import { cacheSystem } from "~/features/cacheSystem";
 
 interface IPasswordStore {

@@ -105,6 +105,7 @@ Key API mapping:
 | **95** | **"Go to" (navigate current tab)** | **Domain typed** |
 | 90–85 | Tab matches (when query exists) | Query typed |
 | 85 | "Open in new tab" | Domain typed |
+| 80–72 | History entries (when query exists) | Query typed |
 | 70 | "Search" (navigate current tab) | Non-domain query |
 | 55 | "Search in new tab" | Non-domain query |
 | 40 | "Create new tab" | Query typed |
@@ -114,6 +115,7 @@ Key API mapping:
 - Typed search text → searches in current tab (70)
 - No query → creates a new tab (110)
 - Tab matches appear below "Go to" but above "Open in new tab"
+- History entries appear above search actions (relevant visited URLs)
 
 ---
 

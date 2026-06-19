@@ -1,48 +1,72 @@
-import { BrowserWindow, screen } from "electron";
+import { app, BrowserWindow, screen } from "electron";
+import log from "electron-log";
 import path from "node:path";
-const preloadPath = path.join(__dirname, "/preload.js");
 
-class PrimaryWindow {
-  window: BrowserWindow;
-  constructor() {
-    const dimention = this.resolveDimension();
-    this.window = new BrowserWindow({
-      width: dimention.width,
-      height: dimention.height,
-      show: false,
-      frame: false,
-      transparent: false,
-      webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: true,
-        preload: preloadPath,
-        // session: this.minusSession,
-      },
-    });
-  }
+const preloadPath = path.join(__dirname, "preload.js");
 
-  resolveWindowURL() {
-    /**@ts-ignore */
-    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-      /**@ts-ignore */
-      return MAIN_WINDOW_VITE_DEV_SERVER_URL;
-    } else {
-      /**@ts-ignore */
-      return path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`);
-    }
-  }
+export interface CreateWindowOptions {
+  session?: Electron.Session;
+}
 
-  resolveDimension() {
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.workAreaSize;
-    return { width, height };
-  }
+export async function createMainWindow(options: CreateWindowOptions = {}): Promise<BrowserWindow> {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
 
-  setUserAgent() {
-    this.window.webContents.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/237.84.2.178 Safari/537.36",
-    );
+  const browser = new BrowserWindow({
+    width,
+    height,
+    show: false,
+    frame: false,
+    transparent: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: true,
+      preload: preloadPath,
+      ...(options.session ? { session: options.session } : {}),
+    },
+  });
+
+  return browser;
+}
+
+export function loadAppURL(browser: BrowserWindow) {
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    browser.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+  } else {
+    browser.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 }
 
-export const Browser = new PrimaryWindow();
+function buildUserAgent(): string {
+  const chromeVersion = process.versions.chrome;
+  return `Minus/${app.getVersion()} Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+}
+
+export function setupUserAgent(browser: BrowserWindow, session: Electron.Session) {
+  const userAgent = buildUserAgent();
+  session.webRequest.onBeforeSendHeaders((details, callback) => {
+    details.requestHeaders["User-Agent"] = userAgent;
+    callback({ cancel: false, requestHeaders: details.requestHeaders });
+  });
+}
+
+export function setupWindowCrashHandlers(browser: BrowserWindow) {
+  browser.webContents?.on("render-process-gone", function (event, detailed) {
+    log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
+    if (detailed.reason == "crashed") {
+      browser.webContents?.reload();
+    } else {
+      app.relaunch({ args: process.argv.slice(1).concat(["--relaunch"]) });
+      app.exit(0);
+    }
+  });
+
+  browser.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
+    console.log("Failed to load:", errorCode, errorDescription);
+  });
+}
+
+export function setupLogging() {
+  log.transports.console.format = "[LOGGER] - {h}:{i}:{s} > {text}";
+  log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
+}

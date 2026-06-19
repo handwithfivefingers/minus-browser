@@ -1,6 +1,6 @@
 import { BrowserWindow, WebContentsView } from "electron";
 import { IExecutionContext, ITabLifecycleHooks, ITabPlugin } from "~/shared/types";
-import { eventStore } from "~/features/system/stores/minusEventEmitter";
+import { eventStore } from "~/core/stores";
 import { SearchService } from "../services";
 
 export class SearchTabPlugin implements ITabPlugin {

@@ -1,13 +1,14 @@
-import { BrowserWindow, WebContentsView } from "electron";
+import { BrowserWindow, session, WebContentsView } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { Tab } from "~/features/tabs/models/tab";
-import { minusSessionManager } from "~/features/system/services/session";
+import { IHistoryEntry } from "~/core/controller/history";
 
 type SpotlightOpenPayload = {
   query?: string;
   tabs?: ReturnType<Tab["toJSON"]>[];
   activeTabId?: string;
+  history?: IHistoryEntry[];
 };
 
 const preloadPath = path.join(__dirname, "/preload.js");
@@ -47,7 +48,7 @@ export class SpotlightService {
         contextIsolation: true,
         preload: preloadPath,
         backgroundThrottling: false,
-        session: minusSessionManager.session,
+        session: session.fromPartition("minus-spotlight"),
       },
     });
     this.view.setBackgroundColor("#00000000");
@@ -67,6 +68,7 @@ export class SpotlightService {
     this.mainWindow.contentView.addChildView(this.view);
 
     this.view.webContents.send("GET_TABS", payload?.tabs || []);
+    this.view.webContents.send("GET_HISTORY", payload?.history || []);
     this.view.webContents.send("SPOTLIGHT_OPEN", {
       query: payload?.query || "",
       activeTabId: payload?.activeTabId,

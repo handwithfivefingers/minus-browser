@@ -1,4 +1,4 @@
-import { eventStore } from "~/features/system/stores/minusEventEmitter";
+import { eventStore } from "~/core/stores";
 import { VaultServices } from "../services";
 import { Vault } from "../types";
 import { IPasswordItem } from "../types/password";
@@ -63,9 +63,24 @@ export class VaultController {
         const newVaults: IPasswordItem[] | null = await this.vaultService.openManager(this.activeView, vaultList);
         console.log("newVaults", newVaults, Array.isArray(newVaults));
         if (Array.isArray(newVaults)) {
+          const originalIds = new Set(vaultList.map((v) => v.id));
+          const returnedIds = new Set(newVaults.map((v) => v.id));
           for (let vault of newVaults) {
-            console.log("vault", vault);
-            await this.passwordController.update(vault.id, vault);
+            if (!vault.id || vault.id.startsWith("new-")) {
+              await this.passwordController.add({
+                site: vault.site,
+                username: vault.username,
+                password: vault.password,
+                notes: vault.notes || "",
+              });
+            } else {
+              await this.passwordController.update(vault.id, vault);
+            }
+          }
+          for (const item of vaultList) {
+            if (!returnedIds.has(item.id)) {
+              await this.passwordController.remove(item.id);
+            }
           }
         }
         return new Notification({
@@ -134,24 +149,24 @@ export class VaultController {
     })();`;
   }
 
-  vaultConfirmSave(data: { username: string; site: string }) {
-    if (this.activeView) {
-      return this.vaultService.confirmSave(this.activeView.webContents, {
+  vaultConfirmSave(data: { username: string; site: string; tabId?: string }) {
+    const view = this.resolveView(data.tabId);
+    if (view) {
+      return this.vaultService.confirmSave(view.webContents, {
         username: data.username,
         site: data.site,
       });
     }
-    // if (!data?.tabId) throw new Error("Tab id is required");
-    //   const tab = this.tabController?.getTabById(data.tabId);
-    //   if (!tab) throw new Error("Tab not found");
-    //   return this.vaultServices.confirmSave(tab.webContents, {
-    //     username: data.username,
-    //     site: data.site,
-    //   });
   }
 
-  async vaultSelectCredential(data: { candidates: IPasswordItem[] }) {
-    if (!this.activeView) return null;
-    return this.vaultService.selectCredential(this.activeView.webContents, data.candidates || []);
+  async vaultSelectCredential(data: { candidates: IPasswordItem[]; tabId?: string }) {
+    const view = this.resolveView(data.tabId);
+    if (!view) return null;
+    return this.vaultService.selectCredential(view.webContents, data.candidates || []);
+  }
+
+  private resolveView(tabId?: string): WebContentsView | null {
+    if (this.activeView) return this.activeView;
+    return null;
   }
 }

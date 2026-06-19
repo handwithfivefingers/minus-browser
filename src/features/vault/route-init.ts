@@ -12,7 +12,7 @@ export const VaultRoute = {
   [IPC_INVOKE_CHANNEL.VAULT_DELETE]: (data: { id: string }) => vaultController.removeVault(data.id),
   [IPC_INVOKE_CHANNEL.VAULT_FILL]: (data: { credentialId: string }) => vaultController.fill(data),
   [IPC_INVOKE_CHANNEL.VAULT_OPEN_MANAGER]: ({ tabId }: { tabId: string }) => vaultController.openManager(tabId),
-  [IPC_INVOKE_CHANNEL.VAULT_CONFIRM_SAVE]: (data: { username: string; site: string }) =>
+  [IPC_INVOKE_CHANNEL.VAULT_CONFIRM_SAVE]: (data: { username: string; site: string; tabId?: string }) =>
     vaultController.vaultConfirmSave(data),
   [IPC_INVOKE_CHANNEL.VAULT_SELECT_CREDENTIAL]: (data: any) => vaultController.vaultSelectCredential(data),
 };

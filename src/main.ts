@@ -1,164 +1,70 @@
-import { app, BrowserWindow, Menu, Notification, screen } from "electron";
+import { app, BrowserWindow, Menu, Notification } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
-import path from "node:path";
-import { StoreManager } from "./features/system";
 import { findbarService } from "./features/findbar/service";
-import { CommandController, ViewController } from "./features/system/controller";
-import { menuApplication } from "./features/system/services/menu";
-import { minusSessionManager } from "./features/system/services/session";
+import { ViewController } from "./core/controller/viewController";
+import { CommandController } from "./core/controller/commandController";
+import { menuApplication } from "./core/services/menu";
+import { browserSession, sessionInitPromise } from "./core/services/session";
+import { createMainWindow, loadAppURL, setupUserAgent, setupWindowCrashHandlers, setupLogging } from "./core/window";
+
 Object.assign(console, log.functions);
-
-if (started) {
-  app.quit();
-}
-const preloadPath = path.join(__dirname, "/preload.js");
-
-process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
-
+if (started) app.quit();
 Menu.setApplicationMenu(null);
-class MinusBrowser {
-  browser: BrowserWindow | null = null;
-  interfaceStore: StoreManager = new StoreManager("interface");
-  minusSession: Electron.Session | undefined = undefined;
-  viewController: ViewController | null = null;
-  isPersistingBeforeQuit = false;
-  didRunBeforeQuit = false;
-  constructor() {
-    this.initialize();
-  }
 
-  private flushPersistenceOnQuit = async () => {
-    if (this.isPersistingBeforeQuit) return;
-    this.isPersistingBeforeQuit = true;
-    try {
-      await this.viewController?.persist();
-    } catch (error) {
-      log.error("flushPersistenceOnQuit failed", error);
+let browser: BrowserWindow | null = null;
+let viewController: ViewController | null = null;
+let isPersistingBeforeQuit = false;
+let didRunBeforeQuit = false;
+
+async function flushPersistenceOnQuit() {
+  if (isPersistingBeforeQuit) return;
+  isPersistingBeforeQuit = true;
+  try { await viewController?.persist(); } catch (error) { log.error("flushPersistenceOnQuit failed", error); }
+}
+
+async function createWindow() {
+  try {
+    const win = await createMainWindow({ session: browserSession });
+    setupUserAgent(win, browserSession);
+    browser = win;
+
+    viewController = new ViewController(win);
+    findbarService.init(win);
+    await viewController.ready();
+
+    if (Notification.isSupported()) {
+      new Notification({ title: "Minus Browser", body: "Welcome to Minus Browser!" }).show();
     }
-  };
 
-  async initialize() {
-    app.on("ready", () => {
-      log.initialize();
-      app.setAppUserModelId(`com.minusbrowser.localdev`);
-    });
-    app.on("before-quit", async (event) => {
-      if (this.didRunBeforeQuit) return;
-      this.didRunBeforeQuit = true;
-      event.preventDefault();
-      await this.flushPersistenceOnQuit();
-      app.quit();
-    });
-    app.on("will-quit", async () => {
-      await this.flushPersistenceOnQuit();
-    });
-    app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        this.createWindow();
-      }
-    });
-    app.on("render-process-gone", function (event, detailed) {
-      app.quit();
-    });
+    const commandController = new CommandController(viewController);
+    menuApplication.rebuild(commandController.menuItems);
 
-    app.whenReady().then(async () => {
-      await this.createWindow();
-      if (menuApplication?.menu) Menu.setApplicationMenu(menuApplication?.menu);
-    });
-  }
-  createWindow = async () => {
-    try {
-      const primaryDisplay = screen.getPrimaryDisplay();
-      const { width, height } = primaryDisplay.workAreaSize;
-      await minusSessionManager.load();
-      minusSessionManager.watch();
-
-      this.minusSession = minusSessionManager.session;
-      const browser = new BrowserWindow({
-        width,
-        height,
-        show: false,
-        frame: false,
-        transparent: false,
-        webPreferences: {
-          nodeIntegration: true,
-          contextIsolation: true,
-          preload: preloadPath,
-          session: this.minusSession,
-        },
-      });
-      this.minusSession.webRequest.onBeforeSendHeaders((details, callback) => {
-        details.requestHeaders["User-Agent"] =
-          // `Minus/${app.getVersion()} Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36`;
-          `Minus/${app.getVersion()} Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36`;
-        callback({ cancel: false, requestHeaders: details.requestHeaders });
-      });
-
-      this.browser = browser;
-
-      const viewController = new ViewController(browser);
-      await viewController.ready();
-      this.viewController = viewController;
-      try {
-        findbarService.init(browser);
-      } catch (e) {
-        console.log("[ERROR] FindbarService init failed:", e);
-      }
-      this.registerNotification();
-      this.registerCommand(viewController);
-
-      browser.webContents.on("did-finish-load", () => {
-        viewController.syncTabsToWindows();
-      });
-
-      /**@ts-ignore */
-      if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-        /**@ts-ignore */
-        browser.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-      } else {
-        /**@ts-ignore */
-        browser.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
-      }
-      browser.show();
-      if (process.env.NODE_ENV === "development") {
-        browser.webContents.openDevTools();
-      }
-
-      browser.webContents?.on("render-process-gone", function (event, detailed) {
-        log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
-        if (detailed.reason == "crashed") {
-          browser.webContents?.reload();
-        } else {
-          app.relaunch({ args: process.argv.slice(1).concat(["--relaunch"]) });
-          app.exit(0);
-        }
-      });
-
-      browser.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
-        console.log("Failed to load:", errorCode, errorDescription);
-      });
-      log.transports.console.format = "[LOGGER] - {h}:{i}:{s} > {text}";
-      log.transports.file.resolvePathFn = () => path.join(app.getPath("userData"), "logs/main.log");
-    } catch (error) {
-      console.log("[ERROR] Create Window Error - ", error);
-    }
-  };
-  registerCommand(viewController: ViewController) {
-    const controller = new CommandController(viewController);
-    menuApplication.rebuild(controller.menuItems);
-  }
-
-  registerNotification() {
-    const isSupport = Notification.isSupported();
-    if (!isSupport) return console.log("Notification is not supported");
-    this.showNotification();
-  }
-  showNotification() {
-    new Notification({
-      title: "Minus Browser",
-      body: "Welcome to Minus Browser!",
-    }).show();
+    win.webContents.on("did-finish-load", () => viewController?.syncTabsToWindows());
+    setupWindowCrashHandlers(win);
+    setupLogging();
+    loadAppURL(win);
+    win.show();
+    if (process.env.NODE_ENV === "development") win.webContents.openDevTools();
+  } catch (error) {
+    console.log("[ERROR] Create Window Error - ", error);
   }
 }
-new MinusBrowser();
+
+app.on("ready", () => { log.initialize(); app.setAppUserModelId("com.minusbrowser.localdev"); });
+app.on("before-quit", async (event) => {
+  if (didRunBeforeQuit) return;
+  didRunBeforeQuit = true;
+  event.preventDefault();
+  await flushPersistenceOnQuit();
+  app.quit();
+});
+app.on("will-quit", flushPersistenceOnQuit);
+app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+app.on("render-process-gone", () => app.quit());
+
+app.whenReady().then(async () => {
+  await sessionInitPromise;
+  await createWindow();
+  if (menuApplication?.menu) Menu.setApplicationMenu(menuApplication?.menu);
+});

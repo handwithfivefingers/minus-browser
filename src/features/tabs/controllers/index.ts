@@ -1,7 +1,7 @@
 import log from "electron-log";
 import { cacheSystem } from "~/features/cacheSystem";
-import { StoreManager } from "../../system/stores";
 import { Tab } from "../models/tab";
+import { StoreManager } from "~/core/stores";
 
 export class TabController {
   activeTab: Tab | null = null;
@@ -9,11 +9,11 @@ export class TabController {
   index: number = 0;
   tabs: Map<string, Tab> = new Map();
   userStore: StoreManager = new StoreManager("userData");
-  interface: StoreManager = new StoreManager("interface");
+  interfaceStore: StoreManager = new StoreManager("interface");
   eventEmitter: <T>(payload: { channel: string; data: T }) => void;
 
   private hibernateTimer: ReturnType<typeof setInterval> | null = null;
-  private readonly HIBERNATE_AFTER_MS = 60 * 60 * 1000;
+  private hibernateAfterMs: number = 60 * 60 * 1000;
   private readonly HIBERNATE_CHECK_MS = 60_000;
 
   constructor(eventEmitter: <T>(payload: { channel: string; data: T }) => void) {
@@ -81,13 +81,31 @@ export class TabController {
       for (const [, tab] of this.tabs) {
         if (tab.id === this.activeTab?.id) continue;
         if (tab.isPinned) continue;
+        if (tab.preventHibernate) continue;
         if (tab.isHibernated) continue;
         if (!tab.isAlive) continue;
-        if (now - tab.timestamp > this.HIBERNATE_AFTER_MS) {
+        if (now - tab.timestamp > this.hibernateAfterMs) {
           tab.hibernate();
         }
       }
     }, this.HIBERNATE_CHECK_MS);
+  }
+
+  setHibernateMode(mode: "fast" | "normal" | "slow" | "custom", customMinutes?: number) {
+    switch (mode) {
+      case "fast":
+        this.hibernateAfterMs = 15 * 60 * 1000;
+        break;
+      case "normal":
+        this.hibernateAfterMs = 60 * 60 * 1000;
+        break;
+      case "slow":
+        this.hibernateAfterMs = 4 * 60 * 60 * 1000;
+        break;
+      case "custom":
+        this.hibernateAfterMs = (customMinutes || 60) * 60 * 1000;
+        break;
+    }
   }
 
   private stopHibernateTimer() {
@@ -102,6 +120,14 @@ export class TabController {
     if (!tab || tab.id === this.activeTab?.id || tab.isPinned) return;
     tab.hibernate();
     this.syncCache();
+  }
+
+  togglePreventHibernate(id: string) {
+    const tab = this.tabs.get(id);
+    if (!tab) return;
+    tab.preventHibernate = !tab.preventHibernate;
+    this.syncCache();
+    return tab.toJSON();
   }
 
   restoreTab(id: string) {
@@ -175,6 +201,31 @@ export class TabController {
     this.syncCache();
     const result = this.getPreviousTab(id);
     return result;
+  }
+
+  togglePinTab(id: string) {
+    const tab = this.tabs.get(id);
+    if (!tab) return;
+    tab.isPinned = !tab.isPinned;
+    this.syncCache();
+    return tab.toJSON();
+  }
+
+  reorderTabs(orderedIds: string[]) {
+    const newTabs = new Map<string, Tab>();
+    for (const id of orderedIds) {
+      if (this.tabs.has(id)) {
+        newTabs.set(id, this.tabs.get(id)!);
+      }
+    }
+    for (const [id, tab] of this.tabs) {
+      if (!newTabs.has(id)) {
+        newTabs.set(id, tab);
+      }
+    }
+    this.tabs = newTabs;
+    this.syncCache();
+    return this.getTabs();
   }
 
   setActiveTab(id: string) {
