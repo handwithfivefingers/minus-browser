@@ -104,7 +104,7 @@ const UserScriptSection = () => {
       name: formRef.current.name.trim() || "New Script",
       matches: formRef.current.matches?.map((item) => item.trim()).filter(Boolean),
     };
-    console.log('"SAVE_USERSCRIPT", normalized', normalized);
+
 
     // await window.api.INVOKE("SAVE_USERSCRIPT", normalized);
     // setModalOpen(false);

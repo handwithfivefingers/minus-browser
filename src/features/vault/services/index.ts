@@ -88,8 +88,7 @@ export class VaultServices {
       let isReady = false;
 
       const onConsoleMessage = (_event: any, _level: any, message: string) => {
-        console.log("onConsoleMessage level", _level);
-        console.log("onConsoleMessage message", message);
+
         if (!message.startsWith(SENTINEL)) return;
         try {
           const json = message.slice(SENTINEL.length);

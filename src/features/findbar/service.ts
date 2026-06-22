@@ -69,7 +69,7 @@ export class FindbarService {
     try {
       fs.writeFileSync(this.htmlPath, FINDBAR_HTML, "utf-8");
     } catch (e) {
-      console.log("[ERROR] Failed to write findbar.html:", e);
+      console.error("[ERROR] Failed to write findbar.html:", e);
     }
 
     eventStore.listen("viewChanges", (view: WebContentsView | undefined) => {

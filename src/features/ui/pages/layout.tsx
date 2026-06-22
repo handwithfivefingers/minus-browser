@@ -28,7 +28,6 @@ const Layout = () => {
     }, 1000);
 
     window.api.LISTENER("GET_TABS", (v) => {
-      console.log("GET TABS", v);
       if (timeout) clearInterval(timeout);
       setTabs(v);
     });

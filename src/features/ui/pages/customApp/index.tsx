@@ -86,7 +86,7 @@ const CustomApp = () => {
       updateTab(tabId, { url: outputFormat });
       window.api.EMIT("VIEW_CHANGE_URL", { id: tabId, url: outputFormat });
     } catch (error) {
-      console.log("VIEW_CHANGE_URL error", error);
+      console.error("VIEW_CHANGE_URL error", error);
     }
   };
 
@@ -99,7 +99,7 @@ const CustomApp = () => {
     try {
       return window.api.EMIT("ON_BACKWARD", { data: tab });
     } catch (error) {
-      console.log("onBackWard error", error);
+      console.error("onBackWard error", error);
     }
   };
 
@@ -107,7 +107,7 @@ const CustomApp = () => {
     try {
       window.api.EMIT("TOGGLE_DEV_TOOLS", { id: tabId });
     } catch (error) {
-      console.log("onToggleDevTools error", error);
+      console.error("onToggleDevTools error", error);
     }
   };
 
@@ -115,7 +115,7 @@ const CustomApp = () => {
     try {
       window.api.EMIT("ON_RELOAD", tab);
     } catch (error) {
-      console.log("onToggleDevTools error", error);
+      console.error("onToggleDevTools error", error);
     }
   };
 
@@ -125,9 +125,7 @@ const CustomApp = () => {
 
   const onFillPassword = async () => {
     try {
-      console.log("coming onFillPassword ");
       const credentials = await window.api.INVOKE<IPasswordVaultItem[]>("VAULT_LIST");
-      console.log("credentials", credentials);
       if (!credentials?.length) return;
       const currentUrl = tab?.url || "";
       const host = (() => {
@@ -158,7 +156,7 @@ const CustomApp = () => {
       if (!selected) return;
       await fillByCredential(selected);
     } catch (error) {
-      console.log("onFillPassword error", error);
+      console.error("onFillPassword error", error);
     }
   };
 
@@ -171,7 +169,7 @@ const CustomApp = () => {
     try {
       await window.api.INVOKE("VAULT_OPEN_MANAGER", { tabId });
     } catch (error) {
-      console.log("onOpenVaultManager error", error);
+      console.error("onOpenVaultManager error", error);
     }
   };
 
@@ -179,7 +177,7 @@ const CustomApp = () => {
     try {
       await window.api.INVOKE("USERSCRIPT_OPEN_MANAGER", { tabId });
     } catch (error) {
-      console.log("onOpenUserscriptManager error", error);
+      console.error("onOpenUserscriptManager error", error);
     }
   };
 
@@ -187,7 +185,7 @@ const CustomApp = () => {
     try {
       await window.api.INVOKE("TRANSLATE_PAGE", { tabId });
     } catch (error) {
-      console.log("onTranslatePage error", error);
+      console.error("onTranslatePage error", error);
     }
   };
 
@@ -195,7 +193,7 @@ const CustomApp = () => {
     try {
       await window.api.INVOKE("TRANSLATE_OPEN_MANAGER", { tabId });
     } catch (error) {
-      console.log("onOpenTranslateManager error", error);
+      console.error("onOpenTranslateManager error", error);
     }
   };
 
@@ -207,7 +205,7 @@ const CustomApp = () => {
         text: selectedText,
       });
     } catch (error) {
-      console.log("onTranslateSelection error", error);
+      console.error("onTranslateSelection error", error);
     }
   };
 
@@ -266,7 +264,7 @@ const CustomApp = () => {
         });
       }
     } catch (error) {
-      console.log("onCredentialDetected error", error);
+      console.error("onCredentialDetected error", error);
     }
   };
 
@@ -373,7 +371,7 @@ const WebViewInstance = ({ id }: { id: string }) => {
       const data = { screen, tab: tab };
       await showViewByID(data);
     } catch (error) {
-      console.log("error", error);
+      console.error("error", error);
     }
   };
   useEffect(() => {

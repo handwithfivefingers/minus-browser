@@ -18,7 +18,6 @@ const ChatMode = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    console.log("messages", messages);
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }

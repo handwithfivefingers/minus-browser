@@ -15,7 +15,7 @@ export class PasswordController {
     try {
       const cb = () => this.store.readFiles<IPasswordStore>();
       const vaults = await cacheSystem.get<IPasswordStore>("passwordVault", cb);
-      console.log("vaults", vaults);
+
       const payload = vaults?.vault;
       if (!payload?.cipherText) {
         this.items = new Map();
@@ -27,7 +27,7 @@ export class PasswordController {
       const items = new Map(list.filter((item) => item?.id).map((item) => [item.id, item]));
       this.items = items;
     } catch (error) {
-      console.log("failed to init", error);
+      console.error("failed to init", error);
     }
   }
 
@@ -59,7 +59,7 @@ export class PasswordController {
       cacheSystem.set("passwordVault", { vault });
       await this.store.saveFiles({ vault });
     } catch (error) {
-      console.log("persit vault error", error);
+      console.error("persit vault error", error);
     }
   }
 
@@ -101,7 +101,7 @@ export class PasswordController {
       await this.persist();
       return next;
     } catch (error) {
-      console.log("update Vault Password ", error);
+      console.error("update Vault Password ", error);
     }
   }
 

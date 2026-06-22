@@ -22,7 +22,7 @@ export class CacheSystem {
       this.set(key, data);
       return data as T;
     } catch (error) {
-      console.log(`CacheSystem Get ${key} error`, error);
+      console.error(`CacheSystem Get ${key} error`, error);
     }
   }
 

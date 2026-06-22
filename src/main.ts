@@ -47,7 +47,7 @@ async function createWindow() {
     win.show();
     if (process.env.NODE_ENV === "development") win.webContents.openDevTools();
   } catch (error) {
-    console.log("[ERROR] Create Window Error - ", error);
+    console.error("[ERROR] Create Window Error - ", error);
   }
 }
 

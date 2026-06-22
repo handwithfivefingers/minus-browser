@@ -166,7 +166,7 @@ const SEARCH_BAR_SCRIPT = `
 export class SearchService {
   async showSearchBar(view: WebContentsView) {
     const result = await view.webContents.executeJavaScript(SEARCH_BAR_SCRIPT, true).catch((e) => {
-      console.warn("[Search] Failed to inject search bar:", e?.message || e);
+      console.error("[Search] Failed to inject search bar:", e?.message || e);
       return false;
     });
     return result !== false;

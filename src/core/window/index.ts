@@ -11,8 +11,7 @@ export interface CreateWindowOptions {
 export async function createMainWindow(options: CreateWindowOptions = {}): Promise<BrowserWindow> {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
-
-  const browser = new BrowserWindow({
+  const browserOption = {
     width,
     height,
     show: false,
@@ -24,15 +23,19 @@ export async function createMainWindow(options: CreateWindowOptions = {}): Promi
       preload: preloadPath,
       ...(options.session ? { session: options.session } : {}),
     },
-  });
+  };
+  const browser = new BrowserWindow(browserOption);
 
   return browser;
 }
 
 export function loadAppURL(browser: BrowserWindow) {
+  // @ts-ignore
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    // @ts-ignore
     browser.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
+    // @ts-ignore
     browser.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 }
@@ -52,7 +55,7 @@ export function setupUserAgent(browser: BrowserWindow, session: Electron.Session
 
 export function setupWindowCrashHandlers(browser: BrowserWindow) {
   browser.webContents?.on("render-process-gone", function (event, detailed) {
-    log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
+    log.error("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
     if (detailed.reason == "crashed") {
       browser.webContents?.reload();
     } else {
@@ -62,7 +65,7 @@ export function setupWindowCrashHandlers(browser: BrowserWindow) {
   });
 
   browser.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
-    console.log("Failed to load:", errorCode, errorDescription);
+    console.error("Failed to load:", errorCode, errorDescription);
   });
 }
 

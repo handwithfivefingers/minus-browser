@@ -156,9 +156,7 @@ export class UserScriptService {
             setTimeout(() => clearInterval(poll), 5000);
           })(${openPayload})`;
 
-          userScriptView.webContents.executeJavaScript(scriptToInject).catch((err) => {
-            console.log("error", err);
-          });
+          userScriptView.webContents.executeJavaScript(scriptToInject).catch(() => {});
         });
 
         userScriptView.webContents.loadURL(userScriptUrl).catch((err) => {
@@ -170,7 +168,7 @@ export class UserScriptService {
         });
       });
     } catch (error) {
-      console.log("user script error", error);
+      console.error("user script error", error);
     }
   }
 }

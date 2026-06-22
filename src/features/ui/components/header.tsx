@@ -69,7 +69,7 @@ const Header = ({
     window.api.EMIT("TOGGLE_BOOKMARK", { url: url, id: id });
   };
   const openSpotlight = () => {
-    onOpenSpotlight(title || url || "");
+    onOpenSpotlight(url || "");
   };
   if (!id) return null;
   return (
@@ -129,13 +129,13 @@ const Header = ({
         <div className="flex px-12 items-center rounded-full gap-0.5 w-full">
           <input
             className="py-1 w-full transition-all outline-transparent outline bg-white text-xs cursor-pointer"
-            value={title || url || ""}
+            value={title || ""}
             onMouseDown={(event) => {
               event.preventDefault();
               openSpotlight();
             }}
             placeholder="Ctrl + K"
-            title={title || url}
+            title={title || url || ""}
             readOnly
           />
         </div>

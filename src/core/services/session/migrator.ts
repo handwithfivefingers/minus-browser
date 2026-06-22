@@ -188,7 +188,7 @@ async function migrateSinglePath(
       partitionsMigrated = true;
       migrated = true;
     } else {
-      console.log(
+      console.error(
         `[Migration] Skipping Partitions/ from ${oldPath} — Electron major version changed (${oldMajor ?? "unknown"} → ${currentMajor})`,
       );
     }
@@ -218,7 +218,7 @@ export async function migrateUserData(): Promise<boolean> {
     const { migrated, partitionsMigrated } = await migrateSinglePath(oldPath, currentUserData);
     if (migrated) {
       migratedSources.push(oldPath);
-      console.log(`[Migration] Migrated data from ${oldPath}`);
+      console.error(`[Migration] Migrated data from ${oldPath}`);
     }
     if (partitionsMigrated) anyPartitionsMigrated = true;
   }
@@ -226,7 +226,7 @@ export async function migrateUserData(): Promise<boolean> {
   await writeMigrationSentinel(currentUserData, migratedSources, anyPartitionsMigrated);
 
   if (migratedSources.length > 0) {
-    console.log(`[Migration] Complete — migrated from ${migratedSources.length} old userData path(s)`);
+    console.error(`[Migration] Complete — migrated from ${migratedSources.length} old userData path(s)`);
   }
 
   return anyPartitionsMigrated;
@@ -265,7 +265,7 @@ export async function readLegacySessionCookies(currentUserData: string): Promise
 export async function removeLegacySessionFile(currentUserData: string): Promise<void> {
   try {
     await fs.unlink(path.join(currentUserData, "session.json"));
-    console.log("[Migration] Removed legacy session.json");
+    console.error("[Migration] Removed legacy session.json");
   } catch {
   }
 }

@@ -23,7 +23,6 @@ export const useTab = () => {
       CREATE_TAB: async (tab?: Partial<ITab>) => {
         try {
           const response = await window.api.INVOKE("CREATE_TAB", tab);
-          console.log("create tab ", response);
           return response;
         } catch (error) {
           console.error("Error creating tab:", error);

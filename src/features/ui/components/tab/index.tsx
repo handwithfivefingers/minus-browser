@@ -83,8 +83,8 @@ const TabItem = memo(({ id, className, onClose, isDragging, dragHandleProps, ...
   );
 });
 const ComponentError = ({ error }: FallbackProps) => {
-  console.log("Stack", ( error as Error)?.stack);
-  console.log("Name", ( error as Error)?.name);
+  console.error("Stack", ( error as Error)?.stack);
+  console.error("Name", ( error as Error)?.name);
   return (
     <div>
       <IconError404 />

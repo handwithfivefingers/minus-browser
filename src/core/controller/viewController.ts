@@ -44,9 +44,7 @@ export class ViewController {
     return this.initPromise;
   }
 
-  handleClickNotification(notification: Electron.ActivationArguments) {
-    console.log("notification", notification);
-  }
+  handleClickNotification(notification: Electron.ActivationArguments) {}
 
   private async initializeHandlers() {
     try {
@@ -67,6 +65,7 @@ export class ViewController {
         [IPC_INVOKE_CHANNEL.AI_GET_SELECTED_TEXT]: () => this.getActiveTabSelectedText(),
         [IPC_INVOKE_CHANNEL.TOGGLE_PIN_TAB]: (data) => this.togglePinTab(data),
         [IPC_INVOKE_CHANNEL.TOGGLE_PREVENT_HIBERNATE]: (data) => this.togglePreventHibernate(data),
+        [IPC_EMIT_CHANNEL.PIP_EXITED]: (data) => this.handleOpenTabById(data),
         [IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE]: (data) => {
           this.window.webContents.send(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, data);
         },
@@ -89,9 +88,8 @@ export class ViewController {
         [IPC_EMIT_CHANNEL.OPEN_TAB_BY_ID]: (data) => this.handleOpenTabById(data),
         [IPC_EMIT_CHANNEL.REORDER_TABS]: (data) => this.reorderTabs(data),
       };
-      console.log("initializeHandlers Completed");
     } catch (err) {
-      console.log("initializeHandlers Error");
+      console.error("initializeHandlers Error");
     }
   }
 
@@ -112,24 +110,21 @@ export class ViewController {
       ipcMain.on("send", (event, args: IPC) => this.onListener(args));
 
       await this.loadUserInterface();
+      this.tabController?.setUserInterface(this.userInterface!);
       await adblocker.initializeForSession(browserSession, this.userInterface?.extension?.disabledFilters);
       if (this.userInterface?.extension?.adblock) {
         adblocker.enable();
         this.watchAllTabWebContents();
       }
 
-      Notification.getHistory()
-        .then((r) => {
-          console.log("r", r);
-        })
-        .catch((e) => {
-          console.log("Notification error", e);
-        });
+      Notification.getHistory().catch((e) => {
+        console.error("Notification error", e);
+      });
     } catch (error) {
-      console.log("[ERROR] View Controller -", error);
+      console.error("[ERROR] View Controller -", error);
     } finally {
       spotlightController.init(this.window);
-      spotlightController.warmup().catch(() => {});
+      setImmediate(() => spotlightController.warmup().catch(() => {}));
     }
   }
 
@@ -151,18 +146,17 @@ export class ViewController {
         return handler(data);
       }
     } catch (error) {
-      console.log("[ERRROR] INVOKE :", error);
+      console.error("[ERRROR] INVOKE :", error);
     }
   }
 
   private onListener(args: IPC) {
     const { channel, data } = args;
-    log.info(`[IPC Listen] channel: ${channel}`);
     const handler = this.listenerHandlers?.[channel];
     if (handler) {
       handler(data);
     } else {
-      log.warn(`No listener handler for channel: ${channel}`);
+      log.error(`No listener handler for channel: ${channel}`);
     }
   }
 
@@ -313,8 +307,7 @@ export class ViewController {
     }
   }
 
-  handleToggleBookmark({ url, id }: { url: string; id: string }) {
-  }
+  handleToggleBookmark({ url, id }: { url: string; id: string }) {}
 
   async loadUserInterface() {
     const defaultData: IUserInterface = {
