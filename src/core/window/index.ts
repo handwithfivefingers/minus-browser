@@ -55,7 +55,7 @@ export function setupUserAgent(browser: BrowserWindow, session: Electron.Session
 
 export function setupWindowCrashHandlers(browser: BrowserWindow) {
   browser.webContents?.on("render-process-gone", function (event, detailed) {
-    log.info("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
+    log.error("!crashed, reason: " + detailed.reason + ", exitCode = " + detailed.exitCode);
     if (detailed.reason == "crashed") {
       browser.webContents?.reload();
     } else {
@@ -65,7 +65,7 @@ export function setupWindowCrashHandlers(browser: BrowserWindow) {
   });
 
   browser.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
-    console.log("Failed to load:", errorCode, errorDescription);
+    console.error("Failed to load:", errorCode, errorDescription);
   });
 }
 

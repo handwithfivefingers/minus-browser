@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { WebContentsView } from "electron";
 const SkipADSBlock = () => {
-  console.log("SkipADSBlock start initializing ...");
+
 
   function skipAds() {
     const pipMode = document.querySelector("ytd-pip-container, ytd-miniplayer-player-container");
@@ -57,7 +57,7 @@ const SponsorBlock = () => {
     document.head.appendChild(style);
   };
 
-  console.log("SponsorBlock start initializing ...");
+
 
   ("use strict");
 
@@ -1161,7 +1161,7 @@ export class AdblockService {
     //       });
     //   }
     // });
-    console.log("injectYoutubeAdblockSponsor");
+
     if (webContents) {
       webContents.executeJavaScript(`(${SponsorBlock.toString()})();(${SkipADSBlock.toString()})();`).catch((err) => {
         console.error("[YT Adblock] Injection failed:", err);

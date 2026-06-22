@@ -1,6 +1,7 @@
 import { app } from "electron";
 import log from "electron-log";
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 
 const devDataDir = path.resolve(process.cwd(), "appData");
@@ -52,23 +53,21 @@ export class StoreManager {
       throw new Error("Invalid props");
     }
     this.configFile = fileStorages[props];
-    this.initialize(props);
   }
-  initialize(fileName: StoreName) {
+
+  async ensureFile() {
     try {
-      const filePath = fileStorages[fileName];
-      fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      const isExist = fs.existsSync(fileStorages[fileName]);
-      if (!isExist) {
-        fs.writeFileSync(fileStorages[fileName], JSON.stringify([]), "utf-8");
-      }
-    } catch (error) {
-      console.log("[ERROR] StoreManager initialize -", error);
+      const dir = path.dirname(this.configFile);
+      await fsp.mkdir(dir, { recursive: true });
+      await fsp.access(this.configFile);
+    } catch {
+      await fsp.writeFile(this.configFile, JSON.stringify([]), "utf-8");
     }
   }
 
   readFiles = <T>(fallback = {} as T): Promise<T> => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+      await this.ensureFile();
       fs.readFile(this.configFile, "utf-8", (error, data) => {
         if (error) {
           log.error("Lỗi hệ thống khi đọc file:", error);
@@ -76,7 +75,7 @@ export class StoreManager {
         }
 
         if (!data || data.trim() === "") {
-          log.warn("File trống, trả về object rỗng");
+          log.error("File trống, trả về object rỗng");
           return resolve(fallback as T);
         }
 
@@ -91,17 +90,10 @@ export class StoreManager {
     });
   };
 
-  saveFiles: <T>(data: T) => void = (data) => {
-    return new Promise((resolve, reject) => {
-      fs.mkdirSync(path.dirname(this.configFile), { recursive: true });
-      const tmp = this.configFile.replace(/\.json$/, "-temp.json");
-      fs.writeFile(tmp, JSON.stringify(data), (error) => {
-        if (error) return reject(error);
-        fs.rename(tmp, this.configFile, (error) => {
-          if (error) return reject(error);
-          resolve(true);
-        });
-      });
-    });
+  saveFiles: <T>(data: T) => void = async (data) => {
+    await fsp.mkdir(path.dirname(this.configFile), { recursive: true });
+    const tmp = this.configFile.replace(/\.json$/, "-temp.json");
+    await fsp.writeFile(tmp, JSON.stringify(data));
+    await fsp.rename(tmp, this.configFile);
   };
 }

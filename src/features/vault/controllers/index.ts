@@ -20,7 +20,7 @@ export class VaultController {
     try {
       return await this.passwordController.list();
     } catch (error) {
-      console.log("error", error);
+      console.error("error", error);
       return [];
     }
   }
@@ -61,7 +61,7 @@ export class VaultController {
       if (this.activeView) {
         const vaultList = await this.getVaults();
         const newVaults: IPasswordItem[] | null = await this.vaultService.openManager(this.activeView, vaultList);
-        console.log("newVaults", newVaults, Array.isArray(newVaults));
+
         if (Array.isArray(newVaults)) {
           const originalIds = new Set(vaultList.map((v) => v.id));
           const returnedIds = new Set(newVaults.map((v) => v.id));
@@ -90,7 +90,7 @@ export class VaultController {
       }
       return false;
     } catch (error) {
-      console.log("Open Manager error", error);
+      console.error("Open Manager error", error);
     }
   }
 

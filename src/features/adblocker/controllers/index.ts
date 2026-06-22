@@ -1,12 +1,14 @@
-import { ipcMain, WebContents } from "electron";
+import { app, ipcMain, WebContents } from "electron";
 import { FiltersEngine, Request } from "@ghostery/adblocker";
 import fetch from "cross-fetch";
+import fs from "node:fs/promises";
 import path from "node:path";
-import log from "electron-log";
+import { createHash } from "node:crypto";
 import { AdblockService } from "../services";
 import { parse } from "tldts-experimental";
 
 const baseDir = `https://raw.githubusercontent.com/brave/adblock-lists-mirror/lists/lists/metadata.json`;
+const CACHE_TTL_MS = 86_400_000; // 24 hours
 
 export class AdBlocker {
   engine: FiltersEngine | undefined;
@@ -39,25 +41,57 @@ export class AdBlocker {
     return this.initializing;
   }
 
+  private getCacheKey(): string {
+    return [...this._disabledFilters].sort().join(",");
+  }
+
   private async load() {
     try {
-      const metaData = await fetch(baseDir).then((res) => res.text());
-      const fullList: Record<string, string> = JSON.parse(metaData);
-      const disabledSet = new Set(this._disabledFilters);
-      const fullLists = Object.keys(fullList)
-        .filter((key) => !disabledSet.has(key))
-        .map((key) => fullList[key]);
+      const cacheDir = path.join(app.getPath("userData"), "adblock-cache");
+      await fs.mkdir(cacheDir, { recursive: true });
 
-      this.engine = await FiltersEngine.fromLists(fetch, fullLists, {
-        enableCompression: true,
-        loadCosmeticFilters: true,
-        loadNetworkFilters: true,
-        loadCSPFilters: true,
-      });
+      const cacheKey = this.getCacheKey();
+      const cacheKeyHash = createHash("sha256").update(cacheKey).digest("hex");
+      const enginePath = path.join(cacheDir, `${cacheKeyHash}.bin`);
+      const metaPath = path.join(cacheDir, `${cacheKeyHash}.meta`);
+
+      let fromCache = false;
+      try {
+        const meta = JSON.parse(await fs.readFile(metaPath, "utf-8"));
+        if (Date.now() - meta.timestamp < CACHE_TTL_MS) {
+          const data = await fs.readFile(enginePath);
+          this.engine = FiltersEngine.deserialize(new Uint8Array(data));
+          fromCache = true;
+        }
+      } catch {
+        /* cache miss */
+      }
+
+      if (!fromCache) {
+        const metaData = await fetch(baseDir).then((res) => res.text());
+        const fullList: Record<string, string> = JSON.parse(metaData);
+        const disabledSet = new Set(this._disabledFilters);
+        const fullLists = Object.keys(fullList)
+          .filter((key) => !disabledSet.has(key))
+          .map((key) => fullList[key]);
+
+        this.engine = await FiltersEngine.fromLists(fetch, fullLists, {
+          enableCompression: true,
+          loadCosmeticFilters: true,
+          loadNetworkFilters: true,
+          loadCSPFilters: true,
+        });
+
+        await Promise.all([
+          fs.writeFile(enginePath, Buffer.from(this.engine.serialize())),
+          fs.writeFile(metaPath, JSON.stringify({ timestamp: Date.now() })),
+        ]);
+      }
+
       this.isInitialize = true;
       this.registerIPCHandlers();
     } catch (error) {
-      console.log("Adblocker load error", error);
+      console.error("Adblocker load error", error);
     }
   }
 
@@ -236,24 +270,5 @@ export class AdBlocker {
 
   onShowADBlockRequest() {
     if (!this.engine) return;
-    this.engine.on("request-blocked", (request: Request) => {
-      log.info("%crequest-blocked", request.tabId, request.url, "color: red");
-    });
-    this.engine.on("request-redirected", (request: Request) => {
-      log.info("%crequest-redirected", request.tabId, request.url, "color: red");
-    });
-    this.engine.on("request-whitelisted", (request: Request) => {
-      log.info("%crequest-whitelisted", request.tabId, request.url, "color: red");
-    });
-    this.engine.on("csp-injected", (request: Request, csps: string) => {
-      log.info("%ccsp-injected", request.url, csps, "color: red");
-    });
-    this.engine.on("script-injected", (script: string, url: string) => {
-      log.info("%cRed script-injected", script.length, url, "color: red");
-    });
-    this.engine.on("style-injected", (style: string, url: string) => {
-      log.info("%cRed style-injected", style.length, url, "color: red");
-    });
-    this.engine.on("filter-matched", console.log.bind(console, "%cfilter-matched"));
   }
 }

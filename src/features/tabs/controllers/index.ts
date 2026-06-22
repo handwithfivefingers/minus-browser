@@ -2,6 +2,7 @@ import log from "electron-log";
 import { cacheSystem } from "~/features/cacheSystem";
 import { Tab } from "../models/tab";
 import { StoreManager } from "~/core/stores";
+import { IUserInterface } from "~/shared/types";
 
 export class TabController {
   activeTab: Tab | null = null;
@@ -11,10 +12,18 @@ export class TabController {
   userStore: StoreManager = new StoreManager("userData");
   interfaceStore: StoreManager = new StoreManager("interface");
   eventEmitter: <T>(payload: { channel: string; data: T }) => void;
+  private _userInterface: IUserInterface | null = null;
 
   private hibernateTimer: ReturnType<typeof setInterval> | null = null;
   private hibernateAfterMs: number = 60 * 60 * 1000;
   private readonly HIBERNATE_CHECK_MS = 60_000;
+
+  setUserInterface(ui: IUserInterface) {
+    this._userInterface = ui;
+    for (const [, tab] of this.tabs) {
+      tab.setUserInterface(ui);
+    }
+  }
 
   constructor(eventEmitter: <T>(payload: { channel: string; data: T }) => void) {
     this.eventEmitter = eventEmitter;
@@ -77,7 +86,6 @@ export class TabController {
     this.stopHibernateTimer();
     this.hibernateTimer = setInterval(() => {
       const now = Date.now();
-      console.log("Check hibernate");
       for (const [, tab] of this.tabs) {
         if (tab.id === this.activeTab?.id) continue;
         if (tab.isPinned) continue;
@@ -169,7 +177,6 @@ export class TabController {
     }
   }
   async updateTab(id: string, tab: Partial<Tab>) {
-    log.info("Updated Tab ${id}:", tab);
     const currentTab = this.getTabById(id);
     if (!currentTab) return;
     const updatedTab = new Tab({
@@ -184,7 +191,7 @@ export class TabController {
       }
       return updatedTab;
     } catch (error) {
-      console.log("updateTab error", error);
+      console.error("updateTab error", error);
     } finally {
       this.syncCache();
     }

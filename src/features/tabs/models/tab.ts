@@ -26,9 +26,7 @@ const preloadScript = () => {
         }
         videoElement
           .requestPictureInPicture()
-          .then(() => {
-            console.log("Entered Picture-in-Picture mode.");
-          })
+          .then(() => {})
           // @ts-ignore
           .catch((error) => {
             console.error("Failed to enter Picture-in-Picture mode:", error);
@@ -68,7 +66,12 @@ export class Tab {
 
   private _view: WebContentsView | null = null;
   private _webContents: (Electron.WebContents & IDestroy) | null = null;
+  private _userInterface: IUserInterface | null = null;
   eventEmitter: <T>(payload: { channel: string; data: T }) => void;
+
+  setUserInterface(ui: IUserInterface) {
+    this._userInterface = ui;
+  }
 
   get view(): WebContentsView {
     return this._view!;
@@ -126,7 +129,6 @@ export class Tab {
     this.saveScrollState();
     this.saveReferrer();
 
-    console.log("Tab will hibernate", this.title);
     this.destroyView();
     this.isHibernated = true;
   }
@@ -166,9 +168,7 @@ export class Tab {
     const pos = this.scrollPosition;
     if (!pos || !this._webContents) return;
     this._webContents.once("did-finish-load", () => {
-      this._webContents!
-        .executeJavaScript(`window.scrollTo(${pos.x}, ${pos.y})`)
-        .catch(() => {});
+      this._webContents!.executeJavaScript(`window.scrollTo(${pos.x}, ${pos.y})`).catch(() => {});
     });
     this.scrollPosition = undefined;
   }
@@ -176,16 +176,17 @@ export class Tab {
   async registerPlugin() {
     try {
       this.pluginManager.unregister(this.id);
-      const fallback = async () => {
-        return this.interface.readFiles<{
-          extension: {
-            translate: boolean;
-            userscript: boolean;
-            vault: boolean;
-          };
-        }>();
-      };
-      const extensionManager = await cacheSystem.get<IUserInterface>("interface", fallback);
+      const extensionManager =
+        this._userInterface ??
+        (await cacheSystem.get<IUserInterface>("interface", async () => {
+          return this.interface.readFiles<{
+            extension: {
+              translate: boolean;
+              userscript: boolean;
+              vault: boolean;
+            };
+          }>();
+        }));
       if (extensionManager && "extension" in extensionManager) {
         const { vault, translate, userscript } = extensionManager.extension;
         if (vault) {
@@ -336,12 +337,18 @@ export class Tab {
     if (!this._webContents!.isFocused()) {
       this._webContents!.focus();
     }
-    this._webContents!.executeJavaScript(`(${preloadScript.toString()})()`)
+    const script = `(${preloadScript.toString()})();
+new Promise((resolve) => {
+  document.addEventListener('enterpictureinpicture', () => {
+    document.addEventListener('leavepictureinpicture', () => resolve(), { once: true });
+  }, { once: true });
+});`;
+    this._webContents!.executeJavaScript(script)
       .then(() => {
-        console.info("requestPIP success");
+        this.eventEmitter({ channel: 'PIP_EXITED', data: { id: this.id } });
       })
       .catch((error) => {
-        console.info("requestPIP error", error);
+        console.error("requestPIP error", error);
       });
   }
   onReload() {
@@ -356,9 +363,11 @@ export class Tab {
     if (this._view && "setVisible" in this._view && !this._view.getVisible()) {
       this._view.setVisible(true);
     }
-    (this.pluginReady || Promise.resolve())?.then(() => this.pluginManager.attachTo(this)).catch(() => {
-      this.pluginManager.attachTo(this);
-    });
+    (this.pluginReady || Promise.resolve())
+      ?.then(() => this.pluginManager.attachTo(this))
+      .catch(() => {
+        this.pluginManager.attachTo(this);
+      });
   }
   hide() {
     if (this._view && "setVisible" in this._view) this._view.setVisible(false);

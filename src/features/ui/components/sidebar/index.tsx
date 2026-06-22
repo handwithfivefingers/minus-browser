@@ -356,8 +356,8 @@ const ResizableSidebar = ({
   );
 };
 const ComponentError = ({ error }: FallbackProps) => {
-  console.log("Stack", (error as Error)?.stack);
-  console.log("Name", (error as Error)?.name);
+  console.error("Stack", (error as Error)?.stack);
+  console.error("Name", (error as Error)?.name);
   return <div>Error: {(error as Error)?.message}</div>;
 };
 export { SideMenu };

@@ -41,7 +41,7 @@ const useTabStore = create<TabStore>((set, get) => ({
       window.api.INVOKE("CLOUD_SAVE", { data: tabs });
       return;
     } catch (error) {
-      console.log("Syncing tabs Error:", error);
+      console.error("Syncing tabs Error:", error);
     }
   },
 }));

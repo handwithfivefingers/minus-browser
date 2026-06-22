@@ -44,11 +44,11 @@ export class UserScriptTabPlugin implements ITabPlugin {
           ctx.webContents.executeJavaScript(codeToInject, true).catch((err) => console.error("Execution failed:", err));
           // console.log(`[UserScript:${script.name}] executed (runAt=${runAt}) on ${url}`);
         } catch (error) {
-          console.log(`[UserScript:${script.name}] execution failed`, error);
+          console.error(`[UserScript:${script.name}] execution failed`, error);
         }
       }
     } catch (error) {
-      console.log("runMatchedUserScripts error", error);
+      console.error("runMatchedUserScripts error", error);
     }
   }
 }
