@@ -9,28 +9,26 @@ import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
 import { appBundleId } from "./package.json";
 
-const makers = [];
 const { PLATFORM } = (import.meta as any).env;
-if (PLATFORM === "WIN") {
-  makers.push(new MakerZIP({}, ["darwin", "win32"]));
-}
-if (PLATFORM === "MAC") {
+const platform = PLATFORM === "WIN" ? "win32" : PLATFORM === "MAC" ? "darwin" : process.platform;
+
+const makers = [];
+if (platform === "win32") {
   makers.push(
-    new MakerDMG({
+    new MakerSquirrel({
       name: "MinusBrowser",
-      format: "ULFO",
-      overwrite: true,
     }),
+    new MakerZIP({}, ["win32"]),
   );
 }
-if (!PLATFORM) {
-  makers.push(new MakerZIP({}, ["darwin", "win32"]));
+if (platform === "darwin") {
   makers.push(
     new MakerDMG({
       name: "MinusBrowser",
       format: "ULFO",
       overwrite: true,
     }),
+    new MakerZIP({}, ["darwin"]),
   );
 }
 

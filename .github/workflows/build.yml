@@ -38,6 +38,8 @@ jobs:
             out/make/**/*.exe
             out/make/**/*.dmg
             out/make/**/*.zip
+            out/make/**/*.nupkg
+            out/make/**/RELEASES
 
   publish:
     name: Create Release
@@ -58,6 +60,8 @@ jobs:
             ./dist/**/*.exe
             ./dist/**/*.dmg
             ./dist/**/*.zip
+            ./dist/**/*.nupkg
+            ./dist/**/RELEASES
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
