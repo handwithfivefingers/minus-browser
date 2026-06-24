@@ -45,7 +45,7 @@
 }
 
 .dropLine {
-  height: 2px;
+  height: 32px;
   background: #6366f1;
   border-radius: 2px;
   margin: 1px 8px;
@@ -66,13 +66,13 @@
 }
 
 .dragOverTop {
-  border-top: 2px solid #6366f1 !important;
+  /* border-top: 2px solid #6366f1 !important; */
   border-top-left-radius: 0 !important;
   border-top-right-radius: 0 !important;
 }
 
 .dragOverBottom {
-  border-bottom: 2px solid #6366f1 !important;
+  /* border-bottom: 2px solid #6366f1 !important; */
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
 }

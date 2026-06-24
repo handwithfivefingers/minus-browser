@@ -5,19 +5,29 @@ import { cacheSystem } from "~/features/cacheSystem";
 import { SearchRoute, searchController as splitSearchController } from "~/features/search";
 import { TabController } from "~/features/tabs/controllers";
 import { Tab } from "~/features/tabs/models/tab";
-import { TranslateRoute } from "~/features/translate/route-init";
-import { UserScriptRoute } from "~/features/userscript/route-init";
-import { VaultRoute } from "~/features/vault/route-init";
 import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
 import { IUserInterface } from "~/shared/types";
 import { IHandleResizeView, IPC, ITab } from "~/core/interfaces";
 import { ErrorServices } from "~/core/services/error.services";
-import { SpotlightRoute, spotlightController } from "~/features/spotlight";
 import { HistoryRoute, historyController } from "~/core/controller/history";
 import { browserSession } from "~/core/services/session";
 import { StoreManager } from "~/core/stores";
 import { eventStore } from "~/core/stores";
 import { isSameURl } from "~/core/utils";
+import { initAutoUpdate, checkForUpdates, quitAndInstall } from "~/features/autoUpdate/autoUpdate.init";
+import { tabGroupController } from "~/features/tabGroup";
+import { subWindowService } from "~/features/sub-window/service";
+import { SUB_WINDOW_RENDERER_EVENT } from "~/shared/constants/ipc/sub-window";
+import {
+  vaultInvokeHandlers,
+  translateInvokeHandlers,
+  userScriptInvokeHandlers,
+  spotlightInvokeHandlers,
+  spotlightEmitHandlers,
+  tabGroupInvokeHandlers,
+  tabGroupEmitHandlers,
+} from "~/features/sub-window/ipc";
+import { IPC_TAB_GROUP_INVOKE, IPC_TAB_GROUP_RENDERER_EVENT } from "~/shared/constants/ipc/tabGroup";
 
 export type EmitToRenderer = (channel: string, data?: unknown) => void;
 export class ViewController {
@@ -28,7 +38,6 @@ export class ViewController {
   minusSession: Electron.Session | undefined = browserSession;
   userInterface: IUserInterface | undefined = undefined;
   tabController: TabController | undefined;
-  spotlightController = spotlightController;
   searchController = splitSearchController;
   private invokeHandlers: Record<string, (data?: any) => any> | undefined;
   private listenerHandlers: Record<string, (data?: any) => void> | undefined;
@@ -55,16 +64,67 @@ export class ViewController {
         [IPC_INVOKE_CHANNEL.GET_USER_INTERFACE]: () => this.loadUserInterface(),
         [IPC_INVOKE_CHANNEL.CLOUD_SAVE]: () => this.persist(),
         [IPC_INVOKE_CHANNEL.INTERFACE_SAVE]: (data) => this.interfaceSave(data),
-        ...VaultRoute,
-        ...TranslateRoute,
-        ...UserScriptRoute,
+        ...vaultInvokeHandlers,
+        ...translateInvokeHandlers,
+        ...userScriptInvokeHandlers,
         ...SearchRoute,
-        ...SpotlightRoute,
         ...HistoryRoute,
+        ...spotlightInvokeHandlers,
+        ...tabGroupInvokeHandlers,
+        [IPC_TAB_GROUP_INVOKE.HIDE_GROUP]: async (id: string) => {
+          const group = tabGroupController.getGroups().find((g) => g.id === id);
+          if (!group) return { success: true };
+
+          const tabIds = group.tabIds;
+
+          // If active tab is in this group, switch to another tab first
+          const activeTab = this.tabController?.activeTab;
+          if (activeTab && tabIds.includes(activeTab.id)) {
+            const allTabs = this.tabController?.getTabInstances() || [];
+            const targetTab = allTabs.find((t) => t.id && !tabIds.includes(t.id));
+            if (targetTab) {
+              if (targetTab.isHibernated) targetTab.wake();
+              this.tabController?.setActiveTab(targetTab.id);
+              this.forwardRendererEvent("OPEN_TAB_BY_ID", { id: targetTab.id });
+            } else {
+              await this.createTab({});
+            }
+          }
+
+          // Hibernate all non-pinned tabs in the group
+          this.tabController?.hibernateTabs(tabIds);
+
+          // Hide the group (triggers onChanged → syncTabsToWindows)
+          await tabGroupController.hideGroup(id);
+
+          return { success: true };
+        },
+        // [IPC_TAB_GROUP_INVOKE.ADD_TAB_TO_GROUP]: async (data: { groupId: string; tabId: string }) => {
+        //   await tabGroupController.addTabToGroup(data.groupId, data.tabId);
+        //   this.tabController?.updateTab(data.tabId, { groupId: data.groupId });
+        //   return { success: true };
+        // },
+        // [IPC_TAB_GROUP_INVOKE.REMOVE_TAB_FROM_GROUP]: async (data: { groupId: string; tabId: string }) => {
+        //   await tabGroupController.removeTabFromGroup(data.groupId, data.tabId);
+        //   this.tabController?.updateTab(data.tabId, { groupId: undefined });
+        //   return { success: true };
+        // },
+        // [IPC_TAB_GROUP_INVOKE.OPEN_GROUP_TAB]: (data: { id: string }) => {
+        //   this.handleOpenTabById(data);
+        //   return { success: true };
+        // },
         [IPC_INVOKE_CHANNEL.AI_GET_PAGE_TEXT]: () => this.getActiveTabPageText(),
         [IPC_INVOKE_CHANNEL.AI_GET_SELECTED_TEXT]: () => this.getActiveTabSelectedText(),
         [IPC_INVOKE_CHANNEL.TOGGLE_PIN_TAB]: (data) => this.togglePinTab(data),
         [IPC_INVOKE_CHANNEL.TOGGLE_PREVENT_HIBERNATE]: (data) => this.togglePreventHibernate(data),
+        [IPC_INVOKE_CHANNEL.CHECK_FOR_UPDATE]: () => {
+          checkForUpdates();
+          return { success: true };
+        },
+        [IPC_INVOKE_CHANNEL.QUIT_AND_INSTALL_UPDATE]: () => {
+          quitAndInstall();
+          return { success: true };
+        },
         [IPC_EMIT_CHANNEL.PIP_EXITED]: (data) => this.handleOpenTabById(data),
         [IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE]: (data) => {
           this.window.webContents.send(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, data);
@@ -83,10 +143,12 @@ export class ViewController {
         [IPC_EMIT_CHANNEL.CLOSE_APP]: () => this.onCloseApp(),
         [IPC_EMIT_CHANNEL.REQUEST_PIP]: (data) => this.requestPIP(data),
         [IPC_EMIT_CHANNEL.TOGGLE_BOOKMARK]: (data) => this.handleToggleBookmark(data),
-        [IPC_EMIT_CHANNEL.SPOTLIGHT_OPEN]: (data) => this.openSpotlight(data),
-        [IPC_EMIT_CHANNEL.SPOTLIGHT_CLOSE]: () => this.closeSpotlight(),
+        ...spotlightEmitHandlers,
         [IPC_EMIT_CHANNEL.OPEN_TAB_BY_ID]: (data) => this.handleOpenTabById(data),
         [IPC_EMIT_CHANNEL.REORDER_TABS]: (data) => this.reorderTabs(data),
+        ...tabGroupEmitHandlers,
+        [IPC_EMIT_CHANNEL.SUB_WINDOW_CLOSE]: () => subWindowService.close(),
+        [SUB_WINDOW_RENDERER_EVENT.RESOLVE]: (data) => subWindowService.resolveRequest(data),
       };
     } catch (err) {
       console.error("initializeHandlers Error");
@@ -98,14 +160,21 @@ export class ViewController {
   }
 
   syncTabsToWindows() {
+    console.log("Sync Group to Window")
     const tabs = this.getTabs() || [];
     this.window.webContents.send("GET_TABS", tabs);
-    this.spotlightController.syncTabs(tabs);
+    this.window.webContents.send(IPC_TAB_GROUP_RENDERER_EVENT.TAB_GROUP_UPDATED, tabGroupController.getGroups());
   }
 
   async init() {
     try {
-      await Promise.all([this.initializeHandlers(), this.tabController?.initialize(), historyController.initialize()]);
+      await Promise.all([
+        this.initializeHandlers(),
+        this.tabController?.initialize(),
+        historyController.initialize(),
+        tabGroupController.initialize(),
+      ]);
+      tabGroupController.onChanged = () => this.syncTabsToWindows();
       ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));
       ipcMain.on("send", (event, args: IPC) => this.onListener(args));
 
@@ -123,8 +192,9 @@ export class ViewController {
     } catch (error) {
       console.error("[ERROR] View Controller -", error);
     } finally {
-      spotlightController.init(this.window);
-      setImmediate(() => spotlightController.warmup().catch(() => {}));
+      initAutoUpdate((channel, data) => this.forwardRendererEvent(channel, data));
+      subWindowService.init(this.window);
+      setImmediate(() => subWindowService.warmup().catch(() => {}));
     }
   }
 
@@ -142,6 +212,7 @@ export class ViewController {
     try {
       const { channel, data } = args;
       const handler = this.invokeHandlers?.[channel];
+      console.log("INVOKE :", channel, data);
       if (handler) {
         return handler(data);
       }
@@ -375,10 +446,11 @@ export class ViewController {
       const tabs = this.getTabs();
       const index = this.tabController?.index || 0;
       const activeTabId = this.tabController?.activeTab?.id || null;
+      const tabGroups = tabGroupController.getGroups();
       await Promise.all([
         this.minusSession?.cookies.flushStore(),
         this.minusSession?.flushStorageData(),
-        this.userStore.saveFiles({ tabs: tabs || [], index, activeTabId }),
+        this.userStore.saveFiles({ tabs: tabs || [], index, activeTabId, tabGroups }),
       ]);
       return this.window.webContents?.send("SYNC");
     } catch (error) {
@@ -387,16 +459,14 @@ export class ViewController {
   }
 
   openSpotlight(payload?: { query?: string }) {
-    spotlightController.open({
+    subWindowService.open("/spotlight", {
       query: payload?.query || this.tabController?.activeTab?.url || this.tabController?.activeTab?.title || "",
-      tabs: this.getTabs() || [],
       activeTabId: this.tabController?.activeTab?.id,
-      history: historyController.getRecent(20),
     });
   }
 
   closeSpotlight() {
-    spotlightController.close();
+    subWindowService.close();
   }
 
   togglePinTab(data: { id: string }) {
@@ -426,6 +496,9 @@ export class ViewController {
   attachChildView(view: WebContentsView) {
     eventStore.broadcast("viewChanges", view);
     this.window.contentView.addChildView(view);
+    if (subWindowService.isOpen) {
+      subWindowService.ensureOnTop();
+    }
   }
   detachChildView(view: WebContentsView) {
     eventStore.broadcast("viewChanges", undefined);

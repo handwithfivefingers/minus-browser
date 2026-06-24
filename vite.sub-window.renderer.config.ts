@@ -1,16 +1,19 @@
 import { defineConfig } from "vite";
 import tailwindcss from "./node_modules/@tailwindcss/vite/dist/index.mjs";
+import path from "node:path";
+
 export default defineConfig({
   plugins: [tailwindcss()],
-  root: "src/features/translate/overlay",
+  base: "",
+  root: "src/features/sub-window",
   build: {
-    outDir: "../../../../.vite/renderer/translate_injection",
+    outDir: "../../../.vite/renderer/sub_window",
   },
   resolve: {
     alias: [
       {
         find: "~",
-        replacement: "/src",
+        replacement: path.resolve(__dirname, "src"),
       },
     ],
   },

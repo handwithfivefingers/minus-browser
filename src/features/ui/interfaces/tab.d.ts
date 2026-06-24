@@ -30,6 +30,7 @@ export class Tab {
   audible: boolean = false;
   isLoading: boolean = false;
   preventHibernate: boolean = false;
+  groupId?: string;
   constructor(props: Partial<ITab>) {
     Object.assign(this, props);
   }

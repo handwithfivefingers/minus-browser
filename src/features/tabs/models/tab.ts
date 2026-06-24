@@ -55,6 +55,7 @@ export class Tab {
   isBookmarked: boolean = false;
   isHibernated: boolean = false;
   preventHibernate: boolean = false;
+  groupId?: string;
   cookies?: Electron.Cookie[];
   minusSession: Electron.Session = browserSession;
   interface: StoreManager = new StoreManager("interface");
@@ -392,6 +393,7 @@ new Promise((resolve) => {
       isBookmarked: this.isBookmarked,
       isHibernated: this.isHibernated,
       preventHibernate: this.preventHibernate,
+      groupId: this.groupId,
       cookies: this.cookies,
       audible: this.audible,
     };

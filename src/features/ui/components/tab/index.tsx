@@ -12,14 +12,16 @@ interface ITabItem extends Omit<ITab, "updateTitle" | "updateUrl" | "onFocus" | 
   id: string;
   className?: string;
   onClose: ({ id }: { id: string }) => void;
+  onContextMenu?: (e: React.MouseEvent, tabId: string) => void;
   isDragging?: boolean;
   dragHandleProps?: {
     onMouseDown: (e: React.MouseEvent) => void;
     onTouchStart: (e: React.TouchEvent) => void;
   };
+  groupColor?: string;
 }
 
-const TabItem = memo(({ id, className, onClose, isDragging, dragHandleProps, ...props }: ITabItem) => {
+const TabItem = memo(({ id, className, onClose, onContextMenu, isDragging, dragHandleProps, groupColor, ...props }: ITabItem) => {
   const location = useLocation();
   const setActiveTab = useTabStore((s) => s.setActiveTab);
   const tab = useTabStore((s) => s.tabs.find((item) => item.id === id));
@@ -33,10 +35,21 @@ const TabItem = memo(({ id, className, onClose, isDragging, dragHandleProps, ...
     [id],
   );
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onContextMenu?.(e, id);
+    },
+    [id, onContextMenu],
+  );
+
   return (
     <ErrorBoundary FallbackComponent={ComponentError}>
       <div
-        className={clsx(styles.tabItem, "group overflow-hidden rounded-md", { [styles.dragging]: isDragging })}
+        className={clsx(styles.tabItem, "group overflow-hidden rounded-md flex", { [styles.dragging]: isDragging })}
+        // style={groupColor ? { borderLeft: `3px solid ${groupColor}` } : undefined}
+        onContextMenu={handleContextMenu}
         {...dragHandleProps}
       >
         <Link

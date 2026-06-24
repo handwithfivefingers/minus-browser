@@ -1,11 +1,27 @@
-import { IconGripVertical, IconHistory, IconHome, IconPlus, IconSettings, IconX } from "@tabler/icons-react";
+import {
+  IconGripVertical,
+  IconHistory,
+  IconHome,
+  IconPlus,
+  IconSettings,
+  IconX,
+  IconFolderPlus,
+  IconComponents,
+} from "@tabler/icons-react";
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Tab } from "../../interfaces/tab";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
 import { useTabStore } from "../../stores/useTabStore";
+import { useTabGroupStore } from "../../stores/useTabGroupStore";
 import { TabItem } from "../tab";
+import { TabGroupContainer } from "../tabGroup";
+import {
+  IPC_TAB_GROUP_INVOKE,
+  IPC_TAB_GROUP_EMIT,
+  IPC_TAB_GROUP_RENDERER_EVENT,
+} from "~/shared/constants/ipc/tabGroup";
 /** @ts-ignore */
 import styles from "./styles.module.css";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
@@ -29,18 +45,54 @@ const SideMenu = () => {
   const pathname = useLocation().pathname;
   const tabs = useTabStore((s) => s.tabs);
 
+  const groups = useTabGroupStore((s) => s.groups);
+  const setGroups = useTabGroupStore((s) => s.setGroups);
+
   const pinnedTabs = useMemo(() => tabs.filter((t) => t.isPinned), [tabs]);
   const unpinnedTabs = useMemo(() => tabs.filter((t) => !t.isPinned), [tabs]);
+  const visibleGroups = useMemo(() => groups.filter((g) => !g.hidden), [groups]);
+  const groupedTabIds = useMemo(() => new Set(groups.flatMap((g) => g.tabIds)), [groups]);
+  console.log("visibleGroups",visibleGroups)
+  console.log("groupedTabIds",groupedTabIds)
+  const ungroupedTabs = useMemo(
+    () => unpinnedTabs.filter((t) => !groupedTabIds.has(t.id)),
+    [unpinnedTabs, groupedTabIds],
+  );
+  const groupedTabsByGroup = useMemo(() => {
+    const map = new Map<string, Tab[]>();
+    for (const group of groups) {
+      const groupTabs: Tab[] = [];
+      for (const tabId of group.tabIds) {
+        const tab = unpinnedTabs.find((t) => t.id === tabId);
+        if (tab) groupTabs.push(tab);
+      }
+      map.set(group.id, groupTabs);
+    }
+    return map;
+  }, [groups, unpinnedTabs]);
 
   const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
-  const [dropIndicator, setDropIndicator] = useState<{ tabId: string; position: "before" | "after" } | null>(null);
-  const dropTargetRef = useRef<{ tabId: string; position: "before" | "after" } | null>(null);
-  const dragState = useRef<DragState | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{
+    tabId: string;
+    position: "before" | "after";
+    groupId?: string;
+  } | null>(null);
+  // Group creation is handled by the overlay (SHOW_TAB_GROUP_CONTEXT_MENU)
+  const dropTargetRef = useRef<{ tabId: string; position: "before" | "after"; groupId?: string } | null>(null);
+  const dragState = useRef<(DragState & { groupId?: string }) | null>(null);
   const active = useRef(false);
 
   useEffect(() => {
+    (async () => {
+      const groups = await window.api.INVOKE<any>(IPC_TAB_GROUP_INVOKE.GET_TAB_GROUPS);
+      if (groups) setGroups(groups);
+    })();
     window.api.LISTENER("CREATE_TAB", (p) => {
       onAddNewTab(p);
+    });
+    window.api.LISTENER(IPC_TAB_GROUP_RENDERER_EVENT.TAB_GROUP_UPDATED, (data) => {
+      console.log("data", data);
+      setGroups(data as any);
     });
   }, []);
 
@@ -60,6 +112,30 @@ const SideMenu = () => {
     navigate(`/`);
   };
 
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent, tabId: string) => {
+      e.preventDefault();
+      const tab = tabs.find((t) => t.id === tabId);
+      const group = groups.find((g) => g.tabIds.includes(tabId));
+      window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU, {
+        tabId,
+        currentGroupId: group?.id || tab?.groupId,
+        x: e.clientX,
+        y: e.clientY,
+      });
+    },
+    [tabs, groups],
+  );
+
+  const handleGroupContextMenu = useCallback((e: React.MouseEvent, groupId: string) => {
+    e.preventDefault();
+    window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU, {
+      groupId,
+      x: e.clientX,
+      y: e.clientY,
+    });
+  }, []);
+
   // Unified drag system — one set of global listeners
   useEffect(() => {
     const handleMove = (e: MouseEvent | TouchEvent) => {
@@ -75,19 +151,26 @@ const SideMenu = () => {
 
       const el = document.elementFromPoint("touches" in e ? e.touches[0].clientX : e.clientX, clientY);
       const wrapper = el?.closest<HTMLElement>("[data-dnd-id]");
+      const groupHeader = el?.closest<HTMLElement>("[data-group-id]");
       if (wrapper) {
         const targetId = wrapper.dataset.dndId!;
+        const targetGroupId = wrapper.dataset.groupId || ds.groupId;
         if (targetId !== ds.id) {
           const rect = wrapper.getBoundingClientRect();
           const relY = clientY - rect.top;
           const position: "before" | "after" = relY < rect.height / 2 ? "before" : "after";
-          const next = { tabId: targetId, position };
+          const next = { tabId: targetId, position, groupId: targetGroupId };
           dropTargetRef.current = next;
           setDropIndicator(next);
         } else {
           dropTargetRef.current = null;
           setDropIndicator(null);
         }
+      } else if (groupHeader && ds.groupId && groupHeader.dataset.groupId !== ds.groupId) {
+        // Dragging a tab onto a different group header -> move to that group
+        const next = { tabId: ds.id, position: "after" as const, groupId: groupHeader.dataset.groupId };
+        dropTargetRef.current = next;
+        setDropIndicator(next);
       } else {
         dropTargetRef.current = null;
         setDropIndicator(null);
@@ -97,17 +180,34 @@ const SideMenu = () => {
     const handleUp = () => {
       const ds = dragState.current;
       const dt = dropTargetRef.current;
-      if (active.current && ds && dt && dt.tabId !== ds.id) {
-        const currentUnpinned = tabs.filter((t) => !t.isPinned);
-        const currentPinned = tabs.filter((t) => t.isPinned);
-        const draggedIdx = currentUnpinned.findIndex((t) => t.id === ds.id);
-        const targetIdx = currentUnpinned.findIndex((t) => t.id === dt.tabId);
-        if (draggedIdx !== -1 && targetIdx !== -1) {
-          const newUnpinned = [...currentUnpinned];
-          const [removed] = newUnpinned.splice(draggedIdx, 1);
-          newUnpinned.splice(targetIdx, 0, removed);
-          const orderedIds = [...currentPinned.map((t) => t.id), ...newUnpinned.map((t) => t.id)];
-          window.api.EMIT("REORDER_TABS", { orderedIds });
+      if (active.current && ds) {
+        if (dt && dt.tabId !== ds.id) {
+          const currentUnpinned = tabs.filter((t) => !t.isPinned);
+          const currentPinned = tabs.filter((t) => t.isPinned);
+
+          // Cross-group move
+          if (dt.groupId && ds.groupId !== dt.groupId) {
+            window.api.INVOKE(IPC_TAB_GROUP_INVOKE.ADD_TAB_TO_GROUP, { groupId: dt.groupId, tabId: ds.id });
+          }
+
+          // Remove from previous group if it was in one
+          if (ds.groupId && (!dt || dt.groupId !== ds.groupId)) {
+            window.api.INVOKE(IPC_TAB_GROUP_INVOKE.REMOVE_TAB_FROM_GROUP, { groupId: ds.groupId, tabId: ds.id });
+          }
+
+          // Reorder within the same context (grouped or ungrouped)
+          const draggedIdx = currentUnpinned.findIndex((t) => t.id === ds.id);
+          const targetIdx = currentUnpinned.findIndex((t) => t.id === dt.tabId);
+          if (draggedIdx !== -1 && targetIdx !== -1) {
+            const newUnpinned = [...currentUnpinned];
+            const [removed] = newUnpinned.splice(draggedIdx, 1);
+            newUnpinned.splice(targetIdx, 0, removed);
+            const orderedIds = [...currentPinned.map((t) => t.id), ...newUnpinned.map((t) => t.id)];
+            window.api.EMIT("REORDER_TABS", { orderedIds });
+          }
+        } else if (!dt && ds.groupId) {
+          // Dragged outside any group -> remove from group
+          window.api.INVOKE(IPC_TAB_GROUP_INVOKE.REMOVE_TAB_FROM_GROUP, { groupId: ds.groupId, tabId: ds.id });
         }
       }
       active.current = false;
@@ -130,13 +230,13 @@ const SideMenu = () => {
   }, [tabs]);
 
   const getDragHandleProps = useCallback(
-    (tabId: string, index: number) => ({
+    (tabId: string, index: number, groupId?: string) => ({
       onMouseDown: (e: React.MouseEvent) => {
         e.preventDefault();
-        dragState.current = { id: tabId, index, startY: e.clientY };
+        dragState.current = { id: tabId, index, startY: e.clientY, groupId };
       },
       onTouchStart: (e: React.TouchEvent) => {
-        dragState.current = { id: tabId, index, startY: e.touches[0].clientY };
+        dragState.current = { id: tabId, index, startY: e.touches[0].clientY, groupId };
       },
     }),
     [],
@@ -187,9 +287,31 @@ const SideMenu = () => {
             </div>
           )}
 
-          {/* Unpinned tabs section */}
+          {/* Tab groups section */}
+          {visibleGroups.map((group) => {
+            const groupTabs = groupedTabsByGroup.get(group.id) || [];
+            return (
+              <TabGroupContainer
+                data-group-id={group.id}
+                key={group.id}
+                group={group}
+                tabs={groupTabs}
+                onCloseTab={onCloseTab}
+                onContextMenu={handleContextMenu}
+                onGroupContextMenu={handleGroupContextMenu}
+                getDragHandleProps={(tabId, idx) => getDragHandleProps(tabId, idx, group.id)}
+              />
+            );
+          })}
+
+          {/* Ungrouped tabs section */}
+          {ungroupedTabs.length > 0 && groups.length > 0 && (
+            <span className={styles.pinnedLabel} style={{ marginTop: 4 }}>
+              Other tabs
+            </span>
+          )}
           <div className={styles.unpinnedGroup}>
-            {unpinnedTabs.map((tab, idx) => {
+            {ungroupedTabs.map((tab, idx) => {
               const handleProps = getDragHandleProps(tab.id, idx);
               return (
                 <div key={tab.id} className={styles.dndItemWrapper} data-dnd-id={tab.id}>
@@ -203,6 +325,7 @@ const SideMenu = () => {
                       [styles.dragOverBottom]: dropIndicator?.tabId === tab.id && dropIndicator?.position === "after",
                     })}
                     onClose={onCloseTab}
+                    onContextMenu={handleContextMenu}
                     isDragging={draggedTabId === tab.id}
                     dragHandleProps={handleProps}
                   />
@@ -213,6 +336,26 @@ const SideMenu = () => {
               );
             })}
           </div>
+
+          <button
+            onClick={() => {
+              if (tabs.length > 0) {
+                const activeId = tabs.find((t) => t.isFocused)?.id || tabs[0]?.id;
+                const group = groups.find((g) => g.tabIds.includes(activeId));
+                window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU, {
+                  // tabId: activeId,
+                  // currentGroupId: group?.id,
+                  x: 100,
+                  y: 100,
+                });
+              }
+            }}
+            className="sticky z-1 bottom-0 px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1"
+            title="Group tabs together — right-click any tab to add it to a group"
+          >
+            <IconComponents size={14} />
+            <span className="text-[10px] font-medium">Groups</span>
+          </button>
 
           <div
             onClick={() => onAddNewTab({})}

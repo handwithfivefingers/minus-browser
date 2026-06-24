@@ -8,6 +8,8 @@ import { useAiSidebarStore } from "../features/aiSider/stores/useAiSidebarStore"
 import { tabServices } from "../services/tab.service";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
 import { useTabStore } from "../stores/useTabStore";
+import { UpdateBanner } from "../components";
+import { setupUpdateListener } from "../stores/useUpdateStore";
 
 const LAYOUT_CLASS = {
   BASIC: "flex h-screen overflow-hidden bg-slate-800",
@@ -38,6 +40,7 @@ const Layout = () => {
   }, []);
 
   useEffect(() => {
+    setupUpdateListener();
     window.api.LISTENER("OPEN_TAB_BY_ID", (payload?: { id?: string }) => {
       if (payload?.id) {
         navigate(`/${payload.id}`);
@@ -66,14 +69,17 @@ const Layout = () => {
 
   return (
     <LayoutSideEffect>
-      <div className={LAYOUT_CLASS[layout as keyof typeof LAYOUT_CLASS]}>
-        <SideMenu />
-        <div className="h-full overflow-auto w-full">
-          <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
-            <Outlet />
-          </ErrorBoundary>
+      <div className="flex flex-col h-screen">
+        <UpdateBanner />
+        <div className={LAYOUT_CLASS[layout as keyof typeof LAYOUT_CLASS]}>
+          <SideMenu />
+          <div className="h-full overflow-auto w-full">
+            <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
+              <Outlet />
+            </ErrorBoundary>
+          </div>
+          <AiSidebar />
         </div>
-        <AiSidebar />
       </div>
       <SyncSideEffect />
     </LayoutSideEffect>
