@@ -3,6 +3,9 @@ import log from "electron-log";
 import { updateElectronApp } from "update-electron-app";
 import type { UpdateStatusEvent } from "./types";
 
+const GITHUB_OWNER = "handwithfivefingers";
+const GITHUB_REPO = "minus-browser";
+
 type EmitFn = (channel: string, data: unknown) => void;
 
 function statusEvent(data: UpdateStatusEvent): UpdateStatusEvent {
@@ -13,6 +16,10 @@ export function initAutoUpdate(emit: EmitFn) {
   updateElectronApp({
     logger: log,
     notifyUser: false,
+    updateSource: {
+      type: 1, // StaticStorage
+      baseUrl: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download`,
+    },
   });
 
   autoUpdater.on("checking-for-update", () => {
