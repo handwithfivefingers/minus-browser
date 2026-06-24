@@ -268,36 +268,6 @@ const CustomApp = () => {
     }
   };
 
-  // const onTranslateLanguageDetected = async (payload: { tabId: string; language?: string; url?: string }) => {
-  //   try {
-  //     if (!payload?.tabId || payload.tabId !== tabId) return;
-  //     const language = (payload.language || "").toLowerCase();
-  //     if (!language || language === "en") return;
-  //     const currentHost = (() => {
-  //       try {
-  //         return new URL(payload.url || tab?.url || "").hostname.toLowerCase();
-  //       } catch {
-  //         return "";
-  //       }
-  //     })();
-  //     const cacheKey = `${tabId}:${currentHost}:${language}`;
-  //     if (handledTranslateRef.current.has(cacheKey)) return;
-  //     handledTranslateRef.current.add(cacheKey);
-
-  //     const preference = await window.api.INVOKE<ITranslatePreference>("TRANSLATE_GET_PREFERENCE");
-  //     if (!preference?.autoTranslate) return;
-  //     if (preference?.neverTranslateLanguages?.includes(language)) return;
-  //     if (currentHost && preference?.neverTranslateDomains?.includes(currentHost)) return;
-  //     const shouldTranslate = window.confirm(
-  //       `This page appears to be in "${language}". Translate this page to ${preference?.targetLanguage || "en"}?`,
-  //     );
-  //     if (!shouldTranslate) return;
-  //     await onTranslatePage();
-  //   } catch (error) {
-  //     console.log("onTranslateLanguageDetected error", error);
-  //   }
-  // };
-
   const onTranslateSelectionAvailable = (payload: { tabId?: string; text?: string }) => {
     if (payload?.tabId && payload.tabId !== tabId) return;
     latestSelectionRef.current = String(payload.text || "").trim();

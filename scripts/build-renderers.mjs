@@ -7,10 +7,7 @@ const projectRoot = path.resolve(__dirname, "..");
 
 const renderers = [
   { name: "main_window", config: "vite.renderer.config.ts", outDir: ".vite/renderer/main_window" },
-  { name: "spotlight_window", config: "vite.spotlight.renderer.config.ts" },
-  { name: "translate_injection", config: "vite.injection.translate.config.ts" },
-  { name: "vault_injection", config: "vite.injection.vault.config.ts" },
-  { name: "userscript_injection", config: "vite.injection.userscript.config.ts" },
+  { name: "sub_window", config: "vite.sub-window.renderer.config.ts" },
 ];
 
 for (const { name, config, outDir } of renderers) {

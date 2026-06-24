@@ -1,6 +1,7 @@
 import { BrowserWindow, MenuItem } from "electron";
 import { findbarService } from "~/features/findbar/service";
 import { ViewController } from "~/core/controller/viewController";
+import { subWindowService } from "~/features/sub-window/service";
 
 export class CommandController {
   viewController: ViewController;
@@ -57,7 +58,7 @@ export class CommandController {
   }
 
   onOpenSpotlight() {
-    if (this.viewController.spotlightController.isOpen) {
+    if (subWindowService.isOpen) {
       this.viewController.closeSpotlight();
     } else {
       this.viewController.openSpotlight();

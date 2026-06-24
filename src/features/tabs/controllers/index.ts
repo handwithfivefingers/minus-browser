@@ -3,6 +3,7 @@ import { cacheSystem } from "~/features/cacheSystem";
 import { Tab } from "../models/tab";
 import { StoreManager } from "~/core/stores";
 import { IUserInterface } from "~/shared/types";
+import { tabGroupController } from "~/features/tabGroup";
 
 export class TabController {
   activeTab: Tab | null = null;
@@ -130,6 +131,15 @@ export class TabController {
     this.syncCache();
   }
 
+  hibernateTabs(ids: string[]) {
+    for (const id of ids) {
+      const tab = this.tabs.get(id);
+      if (!tab || tab.isPinned || tab.isHibernated) continue;
+      tab.hibernate();
+    }
+    this.syncCache();
+  }
+
   togglePreventHibernate(id: string) {
     const tab = this.tabs.get(id);
     if (!tab) return;
@@ -200,6 +210,9 @@ export class TabController {
   closeTab(id: string) {
     const tab = this.getTabById(id);
     if (!tab) return { nextIndex: undefined, nextTab: undefined };
+    if (tab.groupId) {
+      tabGroupController.removeTabFromGroupByTabId(id);
+    }
     if (tab.isAlive) {
       tab.hide();
       tab.destroyView();

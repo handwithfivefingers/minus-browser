@@ -1,0 +1,1 @@
+export { tabGroupController } from "./controllers";

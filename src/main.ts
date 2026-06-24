@@ -10,6 +10,9 @@ import { createMainWindow, loadAppURL, setupUserAgent, setupWindowCrashHandlers,
 
 Object.assign(console, log.functions);
 if (started) app.quit();
+
+
+
 Menu.setApplicationMenu(null);
 
 let browser: BrowserWindow | null = null;
@@ -20,7 +23,11 @@ let didRunBeforeQuit = false;
 async function flushPersistenceOnQuit() {
   if (isPersistingBeforeQuit) return;
   isPersistingBeforeQuit = true;
-  try { await viewController?.persist(); } catch (error) { log.error("flushPersistenceOnQuit failed", error); }
+  try {
+    await viewController?.persist();
+  } catch (error) {
+    log.error("flushPersistenceOnQuit failed", error);
+  }
 }
 
 async function createWindow() {
@@ -51,7 +58,10 @@ async function createWindow() {
   }
 }
 
-app.on("ready", () => { log.initialize(); app.setAppUserModelId("com.minusbrowser.localdev"); });
+app.on("ready", () => {
+  log.initialize();
+  app.setAppUserModelId("com.minusbrowser.localdev");
+});
 app.on("before-quit", async (event) => {
   if (didRunBeforeQuit) return;
   didRunBeforeQuit = true;
@@ -60,7 +70,9 @@ app.on("before-quit", async (event) => {
   app.quit();
 });
 app.on("will-quit", flushPersistenceOnQuit);
-app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
 app.on("render-process-gone", () => app.quit());
 
 app.whenReady().then(async () => {

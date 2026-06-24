@@ -12,6 +12,7 @@ export interface ITab {
   audible: boolean;
   isLoading?: boolean;
   preventHibernate?: boolean;
+  groupId?: string;
 }
 
 export interface ITabManager {

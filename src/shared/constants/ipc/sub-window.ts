@@ -1,0 +1,13 @@
+export const SUB_WINDOW_INVOKE = {
+  RESOLVE: "SUB_WINDOW_RESOLVE",
+} as const;
+
+export const SUB_WINDOW_EMIT = {
+  NAVIGATE: "SUB_WINDOW_NAVIGATE",
+  PAYLOAD: "SUB_WINDOW_PAYLOAD",
+} as const;
+
+export const SUB_WINDOW_RENDERER_EVENT = {
+  CLOSE: "SUB_WINDOW_CLOSE",
+  RESOLVE: "SUB_WINDOW_RESOLVE",
+} as const;

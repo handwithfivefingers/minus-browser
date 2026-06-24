@@ -1,6 +1,8 @@
-import { IconClock, IconDatabase, IconDeviceFloppy, IconLayoutGrid } from "@tabler/icons-react";
+import { IconClock, IconDatabase, IconDeviceFloppy, IconLayoutGrid, IconRefresh } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useMinusThemeStore } from "~/features/ui/stores/useMinusTheme";
+import { useUpdateStore } from "~/features/ui/stores/useUpdateStore";
+import { IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
 enum LayoutTemplate {
   BASIC = "BASIC",
   FLOATING = "FLOATING",
@@ -17,6 +19,7 @@ interface ISystemForm {
 
 export const Interface = () => {
   const { layout, dataSync, savedCookies, historyRetentionDays, setDataSyncTime, setCookieMode, setLayout, setHistoryRetentionDays, saved } = useMinusThemeStore();
+  const { status, checkForUpdate } = useUpdateStore();
   return (
     <>
       <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -106,6 +109,47 @@ export const Interface = () => {
             />
             <span className="text-xs text-slate-400">Entries older than this many days are automatically removed. Set to 0 to keep forever.</span>
           </label>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-5 mt-4">
+        <div className="flex items-center gap-2 mb-4">
+          <IconRefresh size={18} className="text-slate-700" />
+          <h2 className="text-lg font-semibold text-slate-900">Updates</h2>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-slate-600">
+            {status.status === "idle" && "Check for new versions"}
+            {status.status === "checking" && "Checking for updates..."}
+            {status.status === "available" && "Update found — downloading..."}
+            {status.status === "downloading" && `Downloading... ${status.info ? Math.round((status.info as Electron.ProgressInfo).percent) + "%" : ""}`}
+            {status.status === "downloaded" && "Update ready — restart to apply"}
+            {status.status === "not-available" && "You're up to date"}
+            {status.status === "error" && `Update failed: ${(status as { info: string }).info}`}
+          </span>
+          <div className="flex gap-2">
+            {(status.status === "error" || status.status === "not-available" || status.status === "idle") && (
+              <button
+                type="button"
+                onClick={checkForUpdate}
+                className="h-9 px-4 rounded-lg border border-slate-300 text-sm inline-flex items-center gap-2 hover:bg-slate-50 cursor-pointer"
+              >
+                <IconRefresh size={14} />
+                Check for Updates
+              </button>
+            )}
+            {status.status === "downloaded" && (
+              <button
+                type="button"
+                onClick={() => window.api.INVOKE(IPC_INVOKE_CHANNEL.QUIT_AND_INSTALL_UPDATE)}
+                className="h-9 px-4 rounded-lg bg-green-600 text-white text-sm inline-flex items-center gap-2 hover:bg-green-700 cursor-pointer"
+              >
+                <IconRefresh size={14} />
+                Restart & Update
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

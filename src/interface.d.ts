@@ -18,7 +18,8 @@ type LISTENER_CHANNEL =
   | "SPOTLIGHT_CLOSE"
   | "OPEN_TAB_BY_ID"
   | "NAVIGATE_HISTORY"
-  | "GET_HISTORY";
+  | "GET_HISTORY"
+  | "TAB_GROUP_UPDATED";
 
 export interface IElectronAPI {
   INVOKE: <T>(channel: IPCInvokeChannel, data?: any) => Promise<T> | T;

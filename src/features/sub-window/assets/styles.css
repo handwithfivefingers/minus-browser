@@ -1,0 +1,88 @@
+@import "tailwindcss";
+@source "../../spotlight/";
+@source "../../vault/";
+@source "../../translate/";
+@source "../../userscript/";
+@source "../../tabGroup/";
+
+@theme {
+  --animate-fade-in: fade-in 200ms ease-out;
+  --animate-slide-down: slide-down 250ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slide-down {
+    from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
+@font-face {
+  font-family: "lexend";
+  src: url("./font/lexend/Lexend-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "lexend";
+  src: url("./font/lexend/Lexend-Light.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "lexend";
+  src: url("./font/lexend/Lexend-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "lexend";
+  src: url("./font/lexend/Lexend-Bold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: "lexend", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+#root {
+  overflow: hidden;
+  height: 100svh;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+}

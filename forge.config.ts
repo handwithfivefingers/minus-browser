@@ -35,6 +35,21 @@ if (!PLATFORM) {
 }
 
 const config: ForgeConfig = {
+  makers: makers,
+  publishers: [
+    {
+      name: "@electron-forge/publisher-github",
+      config: {
+        repository: {
+          type: "git",
+          owner: "me",
+          name: "Minus Browser",
+          url: "https://github.com/handwithfivefingers/minus-browser",
+        },
+        prerelease: true,
+      },
+    },
+  ],
   packagerConfig: {
     name: "MinusBrowser",
     appBundleId: appBundleId,
@@ -47,11 +62,10 @@ const config: ForgeConfig = {
         };
       },
     },
-    icon: "./images/icon.icns",
+    icon: "./images/icon",
     asar: true,
   },
   rebuildConfig: {},
-  makers,
   plugins: [
     new VitePlugin({
       // `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
@@ -85,20 +99,8 @@ const config: ForgeConfig = {
           config: "vite.renderer.config.ts",
         },
         {
-          name: "spotlight_window",
-          config: "vite.spotlight.renderer.config.ts",
-        },
-        {
-          name: "vault_injection",
-          config: "vite.injection.vault.config.ts",
-        },
-        {
-          name: "userscript_injection",
-          config: "vite.injection.userscript.config.ts",
-        },
-        {
-          name: "translate_injection",
-          config: "vite.injection.translate.config.ts",
+          name: "sub_window",
+          config: "vite.sub-window.renderer.config.ts",
         },
       ],
     }),
