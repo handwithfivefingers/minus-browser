@@ -102,7 +102,7 @@ export class AdBlocker {
     this.ipcHandlersRegistered = true;
 
     ipcMain.handle("@adb/inject-cosmetic-filters", async (event, url: string, msg?: any) => {
-      if (!this.engine) return;
+      if (!this.engine || !this.isEnabled) return;
 
       try {
         const parsed = parse(url);
