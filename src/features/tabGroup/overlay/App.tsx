@@ -88,8 +88,6 @@ export function App() {
     }
   }, [view]);
 
-  console.log("view", view);
-
   useEffect(() => {
     if (!view) return;
     const handleOutsideClick = (e: MouseEvent) => {
@@ -175,7 +173,6 @@ export function App() {
   );
 
   if (!view) return null;
-  console.log(contextGroupId);
   const isGroupContext = !!contextGroupId && !tabId;
 
   const menuX = Math.min(position.x, window.innerWidth - 200);

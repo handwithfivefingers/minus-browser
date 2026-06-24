@@ -148,7 +148,6 @@ const SpotlightApp = () => {
 
   const closeSpotlight = () => {
     setVisible(false);
-    console.log("CLOSE SPOTLIGHT");
     window.api.EMIT(IPC_EMIT_CHANNEL.SPOTLIGHT_CLOSE);
   };
 

@@ -160,7 +160,6 @@ export class ViewController {
   }
 
   syncTabsToWindows() {
-    console.log("Sync Group to Window")
     const tabs = this.getTabs() || [];
     this.window.webContents.send("GET_TABS", tabs);
     this.window.webContents.send(IPC_TAB_GROUP_RENDERER_EVENT.TAB_GROUP_UPDATED, tabGroupController.getGroups());
@@ -184,6 +183,8 @@ export class ViewController {
       if (this.userInterface?.extension?.adblock) {
         adblocker.enable();
         this.watchAllTabWebContents();
+      } else {
+        adblocker.disable();
       }
 
       Notification.getHistory().catch((e) => {
@@ -212,7 +213,6 @@ export class ViewController {
     try {
       const { channel, data } = args;
       const handler = this.invokeHandlers?.[channel];
-      console.log("INVOKE :", channel, data);
       if (handler) {
         return handler(data);
       }
