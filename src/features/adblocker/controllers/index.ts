@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { AdblockService } from "../services";
 import { parse } from "tldts-experimental";
 import { userScriptController } from "~/features/userscript/controllers";
-import { SkipADSBlock, SponsorBlock } from "../scripts";
+// import { SkipADSBlock, SponsorBlock } from "../scripts";
 
 const baseDir = `https://raw.githubusercontent.com/brave/adblock-lists-mirror/lists/lists/metadata.json`;
 const CACHE_TTL_MS = 86_400_000; // 24 hours
@@ -243,18 +243,18 @@ export class AdBlocker {
     this.unwatchAll();
   }
 
-  injectYoutubeAdblockSponsor(webContents: WebContents) {
-    if (!this.isEnabled) return;
-    webContents.executeJavaScript(`
-      if (!window.__ytAdblockInjected) {
-        window.__ytAdblockInjected = true;
-        (${SponsorBlock.toString()})();
-        (${SkipADSBlock.toString()})();
-      }
-    `).catch((err) => {
-      console.error("[YT Adblock] Injection failed:", err);
-    });
-  }
+  // injectYoutubeAdblockSponsor(webContents: WebContents) {
+  //   if (!this.isEnabled) return;
+  //   webContents.executeJavaScript(`
+  //     if (!window.__ytAdblockInjected) {
+  //       window.__ytAdblockInjected = true;
+  //       (${SponsorBlock.toString()})();
+  //       (${SkipADSBlock.toString()})();
+  //     }
+  //   `).catch((err) => {
+  //     console.error("[YT Adblock] Injection failed:", err);
+  //   });
+  // }
 
   watch(webContents: WebContents) {
     if (!this.isEnabled) return;
@@ -264,7 +264,7 @@ export class AdBlocker {
       if (!this.isEnabled) return;
       const url = webContents.getURL();
       if (url.includes("youtube.com")) {
-        this.injectYoutubeAdblockSponsor(webContents);
+        // this.injectYoutubeAdblockSponsor(webContents);
       }
     };
 
