@@ -51,7 +51,6 @@ export const tabGroupInvokeHandlers = {
 
 export const tabGroupEmitHandlers = {
   [IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU]: (data: any) => {
-    console.log("data", data);
     subWindowService.open("/tabgroup", data);
   },
 };

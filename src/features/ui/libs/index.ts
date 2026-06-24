@@ -52,8 +52,7 @@ export const isValidDomainOrIP = (url: string) => {
 
 // IPv4 validation
 const isValidIPv4 = (ip: string): boolean => {
-  const ipv4Regex =
-    /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
   return ipv4Regex.test(ip);
 };
 
@@ -138,14 +137,8 @@ const allTestCases = [
   "landing.flodev.net/v4",
 ];
 
-// allTestCases.forEach((test) => {
-//   console.log(`${test.padEnd(40)} -> Advanced: ${isValidDomainOrIP(test)}, Simple: ${isValidDomainOrIPSimple(test)}`);
-// });
-
 // Utility function to determine what type of address it is
-export const getAddressType = (
-  url: string,
-): "domain" | "ipv4" | "ipv6" | "localhost" | "invalid" => {
+export const getAddressType = (url: string): "domain" | "ipv4" | "ipv6" | "localhost" | "invalid" => {
   try {
     let address = url.replace(/^https?:\/\//, "").split(":")[0];
 
@@ -165,17 +158,7 @@ export const getAddressType = (
   }
 };
 
-// Test address type detection
-// console.log("\n=== Address Type Detection ===");
-// const typeTestCases = ["domain.com", "192.168.1.1", "2001:db8::1", "localhost", "invalid"];
-// typeTestCases.forEach((test) => {
-//   console.log(`${test} -> ${getAddressType(test)}`);
-// });
-
-export const debounce = <A = unknown, R = void>(
-  callback: (args?: A) => R,
-  n: number,
-) => {
+export const debounce = <A = unknown, R = void>(callback: (args?: A) => R, n: number) => {
   let timer: NodeJS.Timeout | undefined | number = undefined;
   return (args?: A) => {
     if (timer) clearTimeout(timer);
@@ -183,10 +166,7 @@ export const debounce = <A = unknown, R = void>(
   };
 };
 
-export const navigateOrSearch = (
-  input: string,
-  searchEngineUrl = "https://google.com/search?q=",
-) => {
+export const navigateOrSearch = (input: string, searchEngineUrl = "https://google.com/search?q=") => {
   const query = input.trim();
   if (!query) return;
 
@@ -196,8 +176,7 @@ export const navigateOrSearch = (
   }
 
   // 2. Check for Localhost or IP Addresses (e.g., localhost:3000 or 127.0.0.1)
-  const localOrIpRegex =
-    /^(localhost|(\d{1,3}\.){3}\d{1,3}|\[[a-fA-F0-9:]+\])(:\d+)?(\/.*)?$/i;
+  const localOrIpRegex = /^(localhost|(\d{1,3}\.){3}\d{1,3}|\[[a-fA-F0-9:]+\])(:\d+)?(\/.*)?$/i;
   if (localOrIpRegex.test(query)) {
     return `http://${query}`; // Assume http for local
   }

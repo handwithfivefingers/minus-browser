@@ -6,6 +6,8 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { AdblockService } from "../services";
 import { parse } from "tldts-experimental";
+import { userScriptController } from "~/features/userscript/controllers";
+import { SkipADSBlock, SponsorBlock } from "../scripts";
 
 const baseDir = `https://raw.githubusercontent.com/brave/adblock-lists-mirror/lists/lists/metadata.json`;
 const CACHE_TTL_MS = 86_400_000; // 24 hours
@@ -165,6 +167,10 @@ export class AdBlocker {
     if (this.isEnabled) return;
     this.isEnabled = true;
 
+    // Enable built-in YouTube scripts when adblock is turned on
+    userScriptController.setBuiltInEnabled("builtin-skip-adsblock", true);
+    userScriptController.setBuiltInEnabled("builtin-sponsorblock", true);
+
     this.session.webRequest.onBeforeRequest({ urls: ["<all_urls>"] }, (details, callback) => {
       if (!this.engine) return callback({});
       const request = Request.fromRawDetails({
@@ -225,22 +231,37 @@ export class AdBlocker {
   }
 
   disable() {
-    if (!this.session) return;
     this.isEnabled = false;
 
+    // Disable built-in YouTube scripts when adblock is turned off
+    userScriptController.setBuiltInEnabled("builtin-skip-adsblock", false);
+    userScriptController.setBuiltInEnabled("builtin-sponsorblock", false);
+
+    if (!this.session) return;
     this.session.webRequest.onBeforeRequest(null);
     this.session.webRequest.onHeadersReceived(null);
     this.unwatchAll();
   }
 
   injectYoutubeAdblockSponsor(webContents: WebContents) {
-    this.AdblockService.injectYoutubeAdblockSponsor(webContents);
+    if (!this.isEnabled) return;
+    webContents.executeJavaScript(`
+      if (!window.__ytAdblockInjected) {
+        window.__ytAdblockInjected = true;
+        (${SponsorBlock.toString()})();
+        (${SkipADSBlock.toString()})();
+      }
+    `).catch((err) => {
+      console.error("[YT Adblock] Injection failed:", err);
+    });
   }
 
   watch(webContents: WebContents) {
+    if (!this.isEnabled) return;
     if (this.watchedWebContents.has(webContents.id)) return;
 
     const handler = () => {
+      if (!this.isEnabled) return;
       const url = webContents.getURL();
       if (url.includes("youtube.com")) {
         this.injectYoutubeAdblockSponsor(webContents);

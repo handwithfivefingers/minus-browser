@@ -52,8 +52,6 @@ const SideMenu = () => {
   const unpinnedTabs = useMemo(() => tabs.filter((t) => !t.isPinned), [tabs]);
   const visibleGroups = useMemo(() => groups.filter((g) => !g.hidden), [groups]);
   const groupedTabIds = useMemo(() => new Set(groups.flatMap((g) => g.tabIds)), [groups]);
-  console.log("visibleGroups",visibleGroups)
-  console.log("groupedTabIds",groupedTabIds)
   const ungroupedTabs = useMemo(
     () => unpinnedTabs.filter((t) => !groupedTabIds.has(t.id)),
     [unpinnedTabs, groupedTabIds],
@@ -91,7 +89,6 @@ const SideMenu = () => {
       onAddNewTab(p);
     });
     window.api.LISTENER(IPC_TAB_GROUP_RENDERER_EVENT.TAB_GROUP_UPDATED, (data) => {
-      console.log("data", data);
       setGroups(data as any);
     });
   }, []);
@@ -262,14 +259,15 @@ const SideMenu = () => {
             to={"/"}
             viewTransition
             className={clsx(
-              `h-10 shrink-0 px-0.5 transition-all rounded-md flex items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
+              `h-8 flex flex-col shrink-0 px-0.5 transition-all rounded-md flex items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
               {
                 [`bg-white text-slate-500 shadow-md`]: pathname === "/",
                 [`text-slate-500`]: pathname !== "/",
               },
             )}
           >
-            <IconHome />
+            <IconHome size={16} />
+            {/* <span className="text-[10px] font-medium">Home</span> */}
           </Link>
 
           {/* Pinned tabs section */}
@@ -287,56 +285,66 @@ const SideMenu = () => {
             </div>
           )}
 
-          {/* Tab groups section */}
-          {visibleGroups.map((group) => {
-            const groupTabs = groupedTabsByGroup.get(group.id) || [];
-            return (
-              <TabGroupContainer
-                data-group-id={group.id}
-                key={group.id}
-                group={group}
-                tabs={groupTabs}
-                onCloseTab={onCloseTab}
-                onContextMenu={handleContextMenu}
-                onGroupContextMenu={handleGroupContextMenu}
-                getDragHandleProps={(tabId, idx) => getDragHandleProps(tabId, idx, group.id)}
-              />
-            );
-          })}
-
-          {/* Ungrouped tabs section */}
-          {ungroupedTabs.length > 0 && groups.length > 0 && (
-            <span className={styles.pinnedLabel} style={{ marginTop: 4 }}>
-              Other tabs
-            </span>
-          )}
-          <div className={styles.unpinnedGroup}>
-            {ungroupedTabs.map((tab, idx) => {
-              const handleProps = getDragHandleProps(tab.id, idx);
+          <div
+            className="flex flex-col gap-0.5 h-full overflow-y-auto"
+            style={{
+              scrollbarWidth: "thin",
+              scrollbarColor: "rgba(99, 102, 241, 0.2) transparent",
+            }}
+          >
+            {/* Tab groups section */}
+            {visibleGroups.map((group) => {
+              const groupTabs = groupedTabsByGroup.get(group.id) || [];
               return (
-                <div key={tab.id} className={styles.dndItemWrapper} data-dnd-id={tab.id}>
-                  {dropIndicator?.tabId === tab.id && dropIndicator?.position === "before" && (
-                    <div className={styles.dropLine} />
-                  )}
-                  <TabItem
-                    {...tab}
-                    className={clsx("flex flex-col items-center", styles.tabItem, {
-                      [styles.dragOverTop]: dropIndicator?.tabId === tab.id && dropIndicator?.position === "before",
-                      [styles.dragOverBottom]: dropIndicator?.tabId === tab.id && dropIndicator?.position === "after",
-                    })}
-                    onClose={onCloseTab}
-                    onContextMenu={handleContextMenu}
-                    isDragging={draggedTabId === tab.id}
-                    dragHandleProps={handleProps}
-                  />
-                  {dropIndicator?.tabId === tab.id && dropIndicator?.position === "after" && (
-                    <div className={styles.dropLine} />
-                  )}
-                </div>
+                <TabGroupContainer
+                  data-group-id={group.id}
+                  key={group.id}
+                  group={group}
+                  tabs={groupTabs}
+                  onCloseTab={onCloseTab}
+                  onContextMenu={handleContextMenu}
+                  onGroupContextMenu={handleGroupContextMenu}
+                  getDragHandleProps={(tabId, idx) => getDragHandleProps(tabId, idx, group.id)}
+                />
               );
             })}
-          </div>
 
+            {/* Ungrouped tabs section */}
+            {ungroupedTabs.length > 0 && groups.length > 0 && (
+              <span className={styles.pinnedLabel} style={{ marginTop: 4 }}>
+                Other tabs
+              </span>
+            )}
+            <div className={styles.unpinnedGroup}>
+              {ungroupedTabs.map((tab, idx) => {
+                const handleProps = getDragHandleProps(tab.id, idx);
+                return (
+                  <div key={tab.id} className={styles.dndItemWrapper} data-dnd-id={tab.id}>
+                    {dropIndicator?.tabId === tab.id && dropIndicator?.position === "before" && (
+                      <div className={styles.dropLine} />
+                    )}
+                    <TabItem
+                      {...tab}
+                      className={clsx("flex flex-col items-center", styles.tabItem, {
+                        [styles.dragOverTop]: dropIndicator?.tabId === tab.id && dropIndicator?.position === "before",
+                        [styles.dragOverBottom]: dropIndicator?.tabId === tab.id && dropIndicator?.position === "after",
+                      })}
+                      onClose={onCloseTab}
+                      onContextMenu={handleContextMenu}
+                      isDragging={draggedTabId === tab.id}
+                      dragHandleProps={handleProps}
+                    />
+                    {dropIndicator?.tabId === tab.id && dropIndicator?.position === "after" && (
+                      <div className={styles.dropLine} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 border-t border-slate-300 flex flex-col items-center py-2">
           <button
             onClick={() => {
               if (tabs.length > 0) {
@@ -350,25 +358,22 @@ const SideMenu = () => {
                 });
               }
             }}
-            className="sticky z-1 bottom-0 px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1"
+            className=" z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1"
             title="Group tabs together — right-click any tab to add it to a group"
           >
-            <IconComponents size={14} />
+            <IconComponents size={16} />
             <span className="text-[10px] font-medium">Groups</span>
           </button>
 
-          <div
+          <button
             onClick={() => onAddNewTab({})}
-            className={clsx(
-              `sticky z-1 bottom-0 h-10 px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-500 shrink-0 bg-slate-100`,
-            )}
-            title="New Tab"
+            className=" z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1"
           >
-            <IconPlus />
-          </div>
-          {/* SUB MENU */}
+            <IconPlus size={16} />
+            <span className="text-[10px] font-medium">New Tab</span>
+          </button>
+          <SubMenuItem size={tabs?.length} />
         </div>
-        <SubMenuItem size={tabs?.length} />
       </ResizableSidebar>
     </ErrorBoundary>
   );
@@ -377,35 +382,35 @@ const SideMenu = () => {
 const SubMenuItem = ({ size }: { size: number }) => {
   const pathname = useLocation().pathname;
   return (
-    <div className="flex flex-col gap-2 shrink-0 rounded-full px-1">
+    <>
       <Link
         to="/history"
         className={clsx(
-          `h-10 px-0.5 transition-all rounded-md flex items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
+          " z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1",
           {
             [`bg-white text-slate-500 shadow-md`]: pathname === "/history",
             [`text-slate-500`]: pathname !== "/history",
           },
         )}
-        title="History"
       >
-        <IconHistory />
+        <IconHistory size={16} />
+        <span className="text-[10px] font-medium">History</span>
       </Link>
       <Link
         to="/setting"
         className={clsx(
-          `h-10 px-0.5 transition-all rounded-md flex items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
+          " z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1",
           {
             [`bg-white text-slate-500 shadow-md`]: pathname === "/setting",
             [`text-slate-500`]: pathname !== "/setting",
           },
         )}
-        title="Setting"
       >
-        <IconSettings />
+        <IconSettings size={16} />
+        <span className="text-[10px] font-medium">Setting</span>
       </Link>
-      <span className="font-normal text-xs text-center">Tab: {size > 0 ? size : "0"}</span>
-    </div>
+      {/* <span className="font-normal text-xs text-center">Tab: {size > 0 ? size : "0"}</span> */}
+    </>
   );
 };
 

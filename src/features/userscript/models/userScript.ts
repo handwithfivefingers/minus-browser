@@ -9,6 +9,7 @@ export interface IUserScript {
   enabled?: boolean;
   excludes?: string[];
   runAt?: UserScriptRunAt;
+  builtIn?: boolean;
   createdAt?: number;
   updatedAt?: number;
 }
@@ -20,6 +21,7 @@ export class UserScript implements IUserScript {
   enabled: boolean = false;
   excludes?: string[];
   runAt: UserScriptRunAt = "document-start";
+  builtIn: boolean = false;
   createdAt?: number = Date.now();
   updatedAt?: number = Date.now();
 
@@ -37,6 +39,7 @@ export class UserScript implements IUserScript {
       excludes: this.excludes,
       runAt: this.runAt,
       enabled: this.enabled,
+      builtIn: this.builtIn,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

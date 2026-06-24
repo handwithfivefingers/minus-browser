@@ -31,7 +31,6 @@ interface TabGroupContainerProps {
 
 const TabGroupContainer = memo(
   ({ group, tabs, onCloseTab, onContextMenu, onGroupContextMenu, getDragHandleProps }: TabGroupContainerProps) => {
-    console.log("group", group);
     const toggleCollapse = useCallback(() => {
       window.api.INVOKE(IPC_TAB_GROUP_INVOKE.TOGGLE_TAB_GROUP_COLLAPSE, group.id);
     }, [group.id]);

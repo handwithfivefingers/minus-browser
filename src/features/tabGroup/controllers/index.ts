@@ -112,11 +112,9 @@ export class TabGroupController {
 
   async unhideGroup(id: string) {
     const group = this.groups.get(id);
-    console.log("current group", group);
     if (!group) return;
     group.hidden = false;
     group.updatedAt = Date.now();
-    console.log("this.getGroups()", this.getGroups());
     await this.syncCache();
   }
 
