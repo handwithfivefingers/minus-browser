@@ -481,7 +481,7 @@
   resolved "https://registry.npmjs.org/@ghostery/adblocker-extended-selectors/-/adblocker-extended-selectors-2.18.0.tgz"
   integrity sha512-oeSb/1liYplCq76rrPDmR7A69kNB6WsWjPfcsJFkrPip+WUd83Xbc+I5fnZ36Id3IOyegozZG1ucr3ywwC7OyQ==
 
-"@ghostery/adblocker@^2.17.3":
+"@ghostery/adblocker@^2.18.0":
   version "2.18.0"
   resolved "https://registry.npmjs.org/@ghostery/adblocker/-/adblocker-2.18.0.tgz"
   integrity sha512-u0XWX+kZtBTqjfa+saNXMI2ZLzaoeT3tASjDuBqQ3WYKquLh15Z3nCBIPruT63nMRr41MZLwB8F6jZPIhsM3dA==
