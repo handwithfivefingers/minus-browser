@@ -14,14 +14,17 @@ const TabGroupHeader = memo(({ group, tabCount, onContextMenu }: TabGroupHeaderP
     window.api.INVOKE(IPC_TAB_GROUP_INVOKE.DELETE_TAB_GROUP, group.id);
   }, [group.id]);
 
-  const editGroup = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU, {
-      editGroup: { id: group.id, name: group.name, color: group.color },
-      x: e.clientX || 100,
-      y: e.clientY || 100,
-    });
-  }, [group]);
+  const editGroup = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU, {
+        editGroup: { id: group.id, name: group.name, color: group.color },
+        x: e.clientX || 100,
+        y: e.clientY || 100,
+      });
+    },
+    [group],
+  );
 
   const toggleHide = useCallback(() => {
     if (group.hidden) {
@@ -40,12 +43,10 @@ const TabGroupHeader = memo(({ group, tabCount, onContextMenu }: TabGroupHeaderP
       }}
     >
       <div className="relative min-w-0 flex-1 group/name">
-        <span
-          className="block text-[10px] font-semibold text-indigo-600/80 uppercase tracking-wide truncate group-hover/name:invisible transition-none px-0.5"
-        >
+        <span className="block text-[10px] font-semibold text-indigo-600/80 uppercase tracking-wide truncate group-hover/name:invisible transition-none px-0.5">
           {group.name}
         </span>
-        <div className="absolute inset-0 flex items-center gap-0.5 opacity-0 group-hover/name:opacity-100 transition-opacity px-0.5">
+        <div className="absolute inset-0 flex items-center  justify-center gap-0.5 opacity-0 group-hover/name:opacity-100 transition-opacity px-0.5">
           <button
             type="button"
             onClick={editGroup}
@@ -55,7 +56,10 @@ const TabGroupHeader = memo(({ group, tabCount, onContextMenu }: TabGroupHeaderP
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); deleteGroup(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteGroup();
+            }}
             className="flex items-center justify-center text-slate-400 hover:text-red-500 rounded shrink-0 cursor-pointer"
           >
             <IconTrash size={14} />
@@ -67,7 +71,10 @@ const TabGroupHeader = memo(({ group, tabCount, onContextMenu }: TabGroupHeaderP
         {group.hidden && <IconEyeOff size={16} className="text-slate-300" />}
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); toggleHide(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleHide();
+          }}
           className="w-3.5 h-3.5 flex items-center justify-center text-indigo-500 hover:text-indigo-800 rounded shrink-0 cursor-pointer"
           title={group.hidden ? "Show group" : "Hide group from sidebar"}
         >

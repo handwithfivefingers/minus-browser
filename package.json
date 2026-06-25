@@ -3,7 +3,7 @@
   "productName": "MinusBrowser",
   "appBundleId": "com.minusbrowser.localdev",
   "appId": "com.minusbrowser.localdev",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Lightweight Browser, cross platform, built with Electron and Vite",
   "main": ".vite/build/main.js",
   "scripts": {

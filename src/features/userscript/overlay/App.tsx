@@ -248,6 +248,8 @@ const App = () => {
   const [openState, setOpenState] = useState(false);
   const formRef = useRef<{ getValues: () => ScriptItem }>(null);
 
+  const originalIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     const raw = sessionStorage.getItem("subWindowPayload");
     sessionStorage.removeItem("subWindowPayload");
@@ -258,6 +260,7 @@ const App = () => {
         setItems(nextItems);
         setSelectedId(nextItems[0]?.id ?? null);
         setOpenState(true);
+        originalIdsRef.current = new Set(nextItems.map((i) => i.id));
       } catch {
         /* ignore */
       }
@@ -275,6 +278,12 @@ const App = () => {
   }, [openState]);
 
   const handleSave = async () => {
+    const currentIds = new Set(items.map((i) => i.id));
+    for (const originalId of originalIdsRef.current) {
+      if (!currentIds.has(originalId)) {
+        await window.api.INVOKE(IPC_INVOKE_CHANNEL.DELETE_USERSCRIPT, originalId);
+      }
+    }
     for (const script of items) {
       if (script?.id) {
         await window.api.INVOKE(IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT, script);
