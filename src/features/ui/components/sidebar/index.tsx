@@ -288,7 +288,7 @@ const SideMenu = () => {
           <div
             className="flex flex-col gap-0.5 h-full overflow-y-auto"
             style={{
-              scrollbarWidth: "thin",
+              scrollbarWidth: "none",
               scrollbarColor: "rgba(99, 102, 241, 0.2) transparent",
             }}
           >

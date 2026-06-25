@@ -80,12 +80,14 @@ const TabGroupContainer = memo(
           {!group.collapsed ? <IconChevronUp size={12} /> : <IconChevronDown size={12} />}
         </button>
 
-        <span
-          className="mask-[linear-gradient(0deg,black,transparent)] left-0 right-0 bottom-0 h-12 absolute rounded-b-md"
-          style={{
-            backgroundColor: `color-mix(in srgb, ${group.color}, transparent 50%)`,
-          }}
-        />
+        {!group.collapsed && tabs.length > MAX_TABS_VISIBLE && (
+          <span
+            className="mask-[linear-gradient(0deg,black,transparent)] left-0 right-0 bottom-0 h-8 absolute rounded-b-md"
+            style={{
+              backgroundColor: `color-mix(in srgb, ${group.color}, transparent 50%)`,
+            }}
+          />
+        )}
       </div>
     );
   },

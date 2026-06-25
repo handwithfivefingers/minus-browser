@@ -61,7 +61,6 @@ export function App() {
           setView("create-group");
           return;
         }
-
         setTabId(payload.tabId || null);
         setCurrentGroupId(payload.currentGroupId || null);
         setContextGroupId(payload.groupId || null);
@@ -171,91 +170,28 @@ export function App() {
     },
     [groups, hide],
   );
+  const onSwitchGroup = (targetGroupId: string) => {
+    removeFromGroup();
+    addToGroup(targetGroupId);
+  };
 
   if (!view) return null;
-  const isGroupContext = !!contextGroupId && !tabId;
+  const isGroupContext = !!contextGroupId && tabId;
 
   const menuX = Math.min(position.x, window.innerWidth - 200);
   const menuY = Math.min(position.y, window.innerHeight - 360);
   const createX = Math.max(8, Math.min(position.x, window.innerWidth - 272));
   const createY = Math.max(8, Math.min(position.y, window.innerHeight - 260));
-
+  // alert([`currentGroupId`, currentGroupId, `tabId`, tabId].join(", "));
   if (view === "context-menu") {
     return (
       <div className="fixed inset-0">
         <div
           ref={menuRef}
-          className="fixed bg-white rounded-lg shadow-xl border border-slate-200 py-1 min-w-[176px]"
+          className="fixed bg-white rounded-lg shadow-xl border border-slate-200 pt-1 min-w-44"
           style={{ left: menuX, top: menuY, pointerEvents: "auto" }}
         >
-          {/* {isGroupContext ? (
-            <>
-              <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                Group actions
-              </div>
-
-              <button
-                type="button"
-                onClick={closeGroup}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-label="Close"
-                >
-                  <path d="M9 13h6" />
-                  <path d="M4 6h16" />
-                  <path d="M6 6v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6" />
-                </svg>
-                Close all tabs
-              </button>
-
-              <button
-                type="button"
-                onClick={deleteGroup}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-label="Delete"
-                >
-                  <path d="M4 7h16" />
-                  <path d="M10 11v6" />
-                  <path d="M14 11v6" />
-                  <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12" />
-                  <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
-                </svg>
-                Delete group
-              </button>
-            </>
-          ) : (
-            groups.map((group) => (
-              <button
-                type="button"
-                key={group.id}
-                onClick={() => openGroupTabs(group.id)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left"
-              >
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
-                <span className="truncate">{group.name}</span>
-              </button>
-            ))
-          )} */}
-          {tabId && !contextGroupId ? (
+          {tabId && !currentGroupId ? (
             <>
               <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                 Add to group
@@ -303,12 +239,12 @@ export function App() {
                 New group
               </button>
             </>
-          ) : tabId && contextGroupId ? (
+          ) : tabId && currentGroupId ? (
             <>
               <button
                 type="button"
                 onClick={removeFromGroup}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left cursor-pointer"
               >
                 <svg
                   width="14"
@@ -327,29 +263,44 @@ export function App() {
                 </svg>
                 Remove from group
               </button>
-              <button
-                type="button"
-                onClick={() => openGroupTabs(contextGroupId!)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-label="Switch"
-                >
-                  <polyline points="15 3 21 3 21 9" />
-                  <line x1="9" y1="15" x2="21" y2="3" />
-                  <polyline points="9 21 3 21 3 15" />
-                  <line x1="15" y1="9" x2="3" y2="21" />
-                </svg>
-                Switch to Group
-              </button>
+
+              <div className="flex flex-col">
+                <span className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400  text-left">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-label="Switch"
+                  >
+                    <polyline points="15 3 21 3 21 9" />
+                    <line x1="9" y1="15" x2="21" y2="3" />
+                    <polyline points="9 21 3 21 3 15" />
+                    <line x1="15" y1="9" x2="3" y2="21" />
+                  </svg>
+                  Switch to Group
+                </span>
+                <div className="border-t border-slate-200 mt-1" />
+                <div className="rounded-b-md py-2">
+                  {groups
+                    ?.filter((item) => item.id !== currentGroupId)
+                    ?.map((group) => (
+                      <button
+                        type="button"
+                        key={group.id}
+                        onClick={() => onSwitchGroup(group.id)}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left cursor-pointer"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                        <span className="truncate">{group.name}</span>
+                      </button>
+                    ))}
+                </div>
+              </div>
             </>
           ) : (
             <>

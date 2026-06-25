@@ -19,9 +19,9 @@
   gap: 1px;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: thin;
   scrollbar-color: rgba(99, 102, 241, 0.2) transparent;
   padding: 1px 0;
+  scrollbar-width: none;
 }
 
 .tabList::-webkit-scrollbar {
