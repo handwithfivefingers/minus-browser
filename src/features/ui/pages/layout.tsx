@@ -3,12 +3,11 @@ import { ErrorBoundary } from "react-error-boundary";
 import { Outlet, useNavigate } from "react-router";
 import { IUserInterface } from "~/shared/types";
 import { IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
-import { AiSidebar, SideMenu } from "../components";
+import { AiSidebar, SideMenu, NotificationContainer, UpdateBanner } from "../components";
 import { useAiSidebarStore } from "../features/aiSider/stores/useAiSidebarStore";
 import { tabServices } from "../services/tab.service";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
 import { useTabStore } from "../stores/useTabStore";
-import { UpdateBanner } from "../components";
 import { setupUpdateListener } from "../stores/useUpdateStore";
 
 const LAYOUT_CLASS = {
@@ -70,6 +69,7 @@ const Layout = () => {
   return (
     <LayoutSideEffect>
       <div className="flex flex-col h-screen">
+        <NotificationContainer />
         <UpdateBanner />
         <div className={LAYOUT_CLASS[layout as keyof typeof LAYOUT_CLASS]}>
           <SideMenu />

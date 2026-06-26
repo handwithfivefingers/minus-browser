@@ -2,6 +2,7 @@ import { IconClock, IconDatabase, IconDeviceFloppy, IconLayoutGrid, IconRefresh 
 import clsx from "clsx";
 import { useMinusThemeStore } from "~/features/ui/stores/useMinusTheme";
 import { useUpdateStore } from "~/features/ui/stores/useUpdateStore";
+import { useNotificationStore } from "~/features/ui/stores/useNotificationStore";
 import { IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
 enum LayoutTemplate {
   BASIC = "BASIC",
@@ -18,8 +19,9 @@ interface ISystemForm {
 }
 
 export const Interface = () => {
-  const { layout, dataSync, savedCookies, historyRetentionDays, setDataSyncTime, setCookieMode, setLayout, setHistoryRetentionDays, saved } = useMinusThemeStore();
+  const { layout, dataSync, savedCookies, historyRetentionDays, autoDownload, setDataSyncTime, setCookieMode, setLayout, setHistoryRetentionDays, setAutoDownload, saved } = useMinusThemeStore();
   const { status, checkForUpdate } = useUpdateStore();
+  const { notify } = useNotificationStore();
   return (
     <>
       <div className="bg-white rounded-xl border border-slate-200 p-5">
@@ -118,37 +120,58 @@ export const Interface = () => {
           <h2 className="text-lg font-semibold text-slate-900">Updates</h2>
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-slate-600">
-            {status.status === "idle" && "Check for new versions"}
-            {status.status === "checking" && "Checking for updates..."}
-            {status.status === "available" && "Update found — downloading..."}
-            {status.status === "downloading" && `Downloading... ${status.info ? Math.round((status.info as Electron.ProgressInfo).percent) + "%" : ""}`}
-            {status.status === "downloaded" && "Update ready — restart to apply"}
-            {status.status === "not-available" && "You're up to date"}
-            {status.status === "error" && `Update failed: ${(status as { info: string }).info}`}
-          </span>
-          <div className="flex gap-2">
-            {(status.status === "error" || status.status === "not-available" || status.status === "idle") && (
-              <button
-                type="button"
-                onClick={checkForUpdate}
-                className="h-9 px-4 rounded-lg border border-slate-300 text-sm inline-flex items-center gap-2 hover:bg-slate-50 cursor-pointer"
-              >
-                <IconRefresh size={14} />
-                Check for Updates
-              </button>
-            )}
-            {status.status === "downloaded" && (
-              <button
-                type="button"
-                onClick={() => window.api.INVOKE(IPC_INVOKE_CHANNEL.QUIT_AND_INSTALL_UPDATE)}
-                className="h-9 px-4 rounded-lg bg-green-600 text-white text-sm inline-flex items-center gap-2 hover:bg-green-700 cursor-pointer"
-              >
-                <IconRefresh size={14} />
-                Restart & Update
-              </button>
-            )}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-sm text-slate-600">Auto-download updates</span>
+              <span className="text-xs text-slate-400">Download and prepare updates in the background</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={autoDownload ?? true}
+                onChange={(e) => setAutoDownload(e.target.checked)}
+              />
+              <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-green-500 peer-focus:outline-none after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+            <span className="text-sm text-slate-600">
+              {status.status === "idle" && "Check for new versions"}
+              {status.status === "checking" && "Checking for updates..."}
+              {status.status === "available" && "Update found — downloading..."}
+              {status.status === "downloading" && `Downloading... ${Math.round((status.info as any).percent)}%`}
+              {status.status === "downloaded" && "Update ready — restart to apply"}
+              {status.status === "not-available" && "You're up to date"}
+              {status.status === "error" && `Update failed: ${(status as { info: string }).info}`}
+            </span>
+            <div className="flex gap-2">
+              {(status.status === "error" || status.status === "not-available" || status.status === "idle") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    checkForUpdate();
+                    notify({ type: "info", title: "Checking for updates...", duration: 3000 });
+                  }}
+                  className="h-9 px-4 rounded-lg border border-slate-300 text-sm inline-flex items-center gap-2 hover:bg-slate-50 cursor-pointer"
+                >
+                  <IconRefresh size={14} />
+                  Check for Updates
+                </button>
+              )}
+              {status.status === "downloaded" && (
+                <button
+                  type="button"
+                  onClick={() => window.api.INVOKE(IPC_INVOKE_CHANNEL.QUIT_AND_INSTALL_UPDATE)}
+                  className="h-9 px-4 rounded-lg bg-green-600 text-white text-sm inline-flex items-center gap-2 hover:bg-green-700 cursor-pointer"
+                >
+                  <IconRefresh size={14} />
+                  Restart & Update
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

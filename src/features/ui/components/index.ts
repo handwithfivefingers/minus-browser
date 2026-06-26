@@ -4,5 +4,6 @@ export * from "./button";
 export * from "./avatar";
 export * from "./tab";
 export * from "./switch";
-export * from "./UpdateBanner";
+export { UpdateBanner } from "./UpdateBanner";
+export { NotificationContainer } from "./NotificationContainer";
 export { AiSidebar } from "../features/aiSider/components";

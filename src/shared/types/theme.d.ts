@@ -16,4 +16,5 @@ export interface IUserInterface {
   historyRetentionDays?: string;
   hibernateMode?: "fast" | "normal" | "slow" | "custom";
   hibernateCustomMinutes?: number;
+  autoDownload?: boolean;
 }

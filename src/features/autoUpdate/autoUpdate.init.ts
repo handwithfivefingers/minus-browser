@@ -12,15 +12,17 @@ function statusEvent(data: UpdateStatusEvent): UpdateStatusEvent {
   return data;
 }
 
-export function initAutoUpdate(emit: EmitFn) {
-  updateElectronApp({
-    logger: log,
-    notifyUser: false,
-    updateSource: {
-      type: 1, // StaticStorage
-      baseUrl: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download`,
-    },
-  });
+export function initAutoUpdate(emit: EmitFn, options?: { autoDownload?: boolean }) {
+  if (options?.autoDownload !== false) {
+    updateElectronApp({
+      logger: log,
+      notifyUser: false,
+      updateSource: {
+        type: 1, // StaticStorage
+        baseUrl: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download`,
+      },
+    });
+  }
 
   autoUpdater.on("checking-for-update", () => {
     emit("UPDATE_STATUS", statusEvent({ status: "checking" }));

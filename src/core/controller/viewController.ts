@@ -193,7 +193,9 @@ export class ViewController {
     } catch (error) {
       console.error("[ERROR] View Controller -", error);
     } finally {
-      initAutoUpdate((channel, data) => this.forwardRendererEvent(channel, data));
+      initAutoUpdate((channel, data) => this.forwardRendererEvent(channel, data), {
+        autoDownload: this.userInterface?.autoDownload,
+      });
       subWindowService.init(this.window);
       setImmediate(() => subWindowService.warmup().catch(() => {}));
     }
@@ -398,6 +400,7 @@ export class ViewController {
       },
       hibernateMode: "normal",
       hibernateCustomMinutes: 60,
+      autoDownload: true,
     };
     try {
       const userInterface = await cacheSystem.get<IUserInterface>("interface", () =>
