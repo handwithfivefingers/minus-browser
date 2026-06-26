@@ -12,6 +12,21 @@ import { userScriptController } from "~/features/userscript/controllers";
 const baseDir = `https://raw.githubusercontent.com/brave/adblock-lists-mirror/lists/lists/metadata.json`;
 const CACHE_TTL_MS = 86_400_000; // 24 hours
 
+function filterNameFromUrl(url: string): string {
+  const path = url.replace("https://raw.githubusercontent.com/", "").replace("https://", "");
+  const parts = path.replace(".txt", "").split("/");
+  const file = parts[parts.length - 1]
+    .replace(/-/g, " ")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const repo = parts.length > 1 ? parts[0] : "";
+  if (repo.match(/^(easylist|fanboy|adguard|ublockorigin|brave)/i)) {
+    const prefix = repo.charAt(0).toUpperCase() + repo.slice(1).replace(/origin/i, "Origin");
+    return `${prefix} - ${file}`;
+  }
+  return file;
+}
+
 export class AdBlocker {
   engine: FiltersEngine | undefined;
   AdblockService = new AdblockService();
@@ -23,6 +38,16 @@ export class AdBlocker {
   private ipcHandlersRegistered = false;
   private session: Electron.Session | null = null;
   private watchedWebContents = new Map<number, () => void>();
+  isCosmeticFilteringEnabled = true;
+  private _fullList: Record<string, string> = {};
+
+  getFilterMetadata() {
+    return Object.entries(this._fullList).map(([key, url]) => ({
+      key,
+      url,
+      name: filterNameFromUrl(url),
+    }));
+  }
 
   async initialize(disabledFilters?: string[]) {
     if (disabledFilters !== undefined) {
@@ -69,13 +94,14 @@ export class AdBlocker {
         /* cache miss */
       }
 
+      const metaData = await fetch(baseDir).then((res) => res.text());
+      this._fullList = JSON.parse(metaData);
+
       if (!fromCache) {
-        const metaData = await fetch(baseDir).then((res) => res.text());
-        const fullList: Record<string, string> = JSON.parse(metaData);
         const disabledSet = new Set(this._disabledFilters);
-        const fullLists = Object.keys(fullList)
+        const fullLists = Object.keys(this._fullList)
           .filter((key) => !disabledSet.has(key))
-          .map((key) => fullList[key]);
+          .map((key) => this._fullList[key]);
 
         this.engine = await FiltersEngine.fromLists(fetch, fullLists, {
           enableCompression: true,
@@ -149,6 +175,18 @@ export class AdBlocker {
 
     ipcMain.handle("@adb/is-mutation-observer-enabled", async () => {
       return true;
+    });
+
+    ipcMain.handle("@adb/is-cosmetic-filtering-enabled", async () => {
+      return this.isCosmeticFilteringEnabled;
+    });
+
+    ipcMain.handle("@adb/get-filter-metadata", async () => {
+      return Object.entries(this._fullList).map(([key, url]) => ({
+        key,
+        url,
+        name: filterNameFromUrl(url),
+      }));
     });
   }
 

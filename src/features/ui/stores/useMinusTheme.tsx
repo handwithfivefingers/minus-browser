@@ -14,6 +14,7 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
     vault: true,
     translate: true,
     userscript: true,
+    cosmeticFiltering: true,
     disabledFilters: [],
   },
   historyRetentionDays: "30",

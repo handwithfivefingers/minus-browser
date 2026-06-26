@@ -11,6 +11,7 @@ export interface IUserInterface {
     vault: boolean;
     translate: boolean;
     userscript: boolean;
+    cosmeticFiltering: boolean;
     disabledFilters: string[];
   };
   historyRetentionDays?: string;
