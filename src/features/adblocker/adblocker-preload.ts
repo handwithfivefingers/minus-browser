@@ -15,25 +15,29 @@ if (window === window.top && !window.location.href.startsWith("devtools://")) {
     }
   };
 
-  injectCosmeticFilters();
+  ipcRenderer.invoke("@adb/is-cosmetic-filtering-enabled").then((enabled) => {
+    if (!enabled) return;
 
-  window.addEventListener(
-    "DOMContentLoaded",
-    () => {
-      domMonitor = new DOMMonitor((update) => {
-        if (update.type === "features") {
-          injectCosmeticFilters(update);
-        }
-      });
+    injectCosmeticFilters();
 
-      domMonitor.queryAll(window);
+    window.addEventListener(
+      "DOMContentLoaded",
+      () => {
+        domMonitor = new DOMMonitor((update) => {
+          if (update.type === "features") {
+            injectCosmeticFilters(update);
+          }
+        });
 
-      ipcRenderer
-        .invoke("@adb/is-mutation-observer-enabled")
-        .then((enabled) => enabled && domMonitor?.start(window));
-    },
-    { once: true, passive: true },
-  );
+        domMonitor.queryAll(window);
 
-  window.addEventListener("unload", unload, { once: true, passive: true });
+        ipcRenderer
+          .invoke("@adb/is-mutation-observer-enabled")
+          .then((enabled) => enabled && domMonitor?.start(window));
+      },
+      { once: true, passive: true },
+    );
+
+    window.addEventListener("unload", unload, { once: true, passive: true });
+  });
 }

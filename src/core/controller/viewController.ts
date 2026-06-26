@@ -71,6 +71,7 @@ export class ViewController {
         ...HistoryRoute,
         ...spotlightInvokeHandlers,
         ...tabGroupInvokeHandlers,
+        "@adb/get-filter-metadata": () => adblocker.getFilterMetadata(),
         [IPC_TAB_GROUP_INVOKE.HIDE_GROUP]: async (id: string) => {
           const group = tabGroupController.getGroups().find((g) => g.id === id);
           if (!group) return { success: true };
@@ -181,6 +182,7 @@ export class ViewController {
       this.tabController?.setUserInterface(this.userInterface!);
       await adblocker.initializeForSession(browserSession, this.userInterface?.extension?.disabledFilters);
       if (this.userInterface?.extension?.adblock) {
+        adblocker.isCosmeticFilteringEnabled = this.userInterface?.extension?.cosmeticFiltering ?? true;
         adblocker.enable();
         this.watchAllTabWebContents();
       } else {
@@ -193,7 +195,9 @@ export class ViewController {
     } catch (error) {
       console.error("[ERROR] View Controller -", error);
     } finally {
-      initAutoUpdate((channel, data) => this.forwardRendererEvent(channel, data));
+      initAutoUpdate((channel, data) => this.forwardRendererEvent(channel, data), {
+        autoDownload: this.userInterface?.autoDownload,
+      });
       subWindowService.init(this.window);
       setImmediate(() => subWindowService.warmup().catch(() => {}));
     }
@@ -394,10 +398,12 @@ export class ViewController {
         vault: true,
         translate: true,
         userscript: true,
+        cosmeticFiltering: true,
         disabledFilters: [],
       },
       hibernateMode: "normal",
       hibernateCustomMinutes: 60,
+      autoDownload: true,
     };
     try {
       const userInterface = await cacheSystem.get<IUserInterface>("interface", () =>
@@ -528,6 +534,8 @@ export class ViewController {
     this.userInterface = data;
 
     if (prev && next) {
+      adblocker.isCosmeticFilteringEnabled = next.cosmeticFiltering ?? true;
+
       if (next.adblock && !prev.adblock) {
         const filtersChanged =
           JSON.stringify([...next.disabledFilters].sort()) !== JSON.stringify([...prev.disabledFilters].sort());

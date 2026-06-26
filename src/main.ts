@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Notification } from "electron";
+import { app, BrowserWindow, Menu, Notification, systemPreferences } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
 import { findbarService } from "./features/findbar/service";
@@ -10,8 +10,6 @@ import { createMainWindow, loadAppURL, setupUserAgent, setupWindowCrashHandlers,
 
 Object.assign(console, log.functions);
 if (started) app.quit();
-
-
 
 Menu.setApplicationMenu(null);
 
@@ -76,6 +74,15 @@ app.on("activate", () => {
 app.on("render-process-gone", () => app.quit());
 
 app.whenReady().then(async () => {
+  if (process.platform === "darwin") {
+    const status = systemPreferences.getMediaAccessStatus("microphone");
+    if (status === "not-determined") {
+      const granted = await systemPreferences.askForMediaAccess("microphone");
+      if (granted) {
+        console.log("Microphone access granted!");
+      }
+    }
+  }
   await sessionInitPromise;
   await createWindow();
   if (menuApplication?.menu) Menu.setApplicationMenu(menuApplication?.menu);

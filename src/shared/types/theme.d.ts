@@ -11,9 +11,11 @@ export interface IUserInterface {
     vault: boolean;
     translate: boolean;
     userscript: boolean;
+    cosmeticFiltering: boolean;
     disabledFilters: string[];
   };
   historyRetentionDays?: string;
   hibernateMode?: "fast" | "normal" | "slow" | "custom";
   hibernateCustomMinutes?: number;
+  autoDownload?: boolean;
 }
