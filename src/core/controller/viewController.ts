@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Notification, WebContentsView } from "electron";
+import { app, BrowserWindow, clipboard, ipcMain, Notification, WebContentsView } from "electron";
 import log from "electron-log";
 import { adblocker } from "~/features/adblocker/plugin";
 import { cacheSystem } from "~/features/cacheSystem";
@@ -27,6 +27,8 @@ import {
   tabGroupInvokeHandlers,
   tabGroupEmitHandlers,
 } from "~/features/sub-window/ipc";
+import { capturePage } from "~/features/capture/services";
+import { CAPTURE_SELECTION_SCRIPT } from "~/features/capture/plugin/selectionScript";
 import { IPC_TAB_GROUP_INVOKE, IPC_TAB_GROUP_RENDERER_EVENT } from "~/shared/constants/ipc/tabGroup";
 
 export type EmitToRenderer = (channel: string, data?: unknown) => void;
@@ -42,6 +44,7 @@ export class ViewController {
   private invokeHandlers: Record<string, (data?: any) => any> | undefined;
   private listenerHandlers: Record<string, (data?: any) => void> | undefined;
   private initPromise: Promise<void>;
+  private lastCaptureImage: Electron.NativeImage | null = null;
 
   constructor(window: BrowserWindow) {
     this.tabController = new TabController((payload) => this.onInvoke(payload));
@@ -71,6 +74,60 @@ export class ViewController {
         ...HistoryRoute,
         ...spotlightInvokeHandlers,
         ...tabGroupInvokeHandlers,
+        [IPC_INVOKE_CHANNEL.CAPTURE_PAGE]: async () => {
+          try {
+            const activeTab = this.tabController?.activeTab;
+            if (!activeTab?.isAlive) return { success: false, error: "No active tab" };
+            const { nativeImage, dataURL } = await capturePage(activeTab.webContents);
+            this.lastCaptureImage = nativeImage;
+            clipboard.writeImage(nativeImage);
+            subWindowService.open("/capture", { image: dataURL, type: "page", copied: true });
+            this.forwardRendererEvent("CAPTURE_RESULT", { image: dataURL, tabId: activeTab.id });
+            return { success: true, image: dataURL };
+          } catch {
+            return { success: false, error: "Capture failed" };
+          }
+        },
+        [IPC_INVOKE_CHANNEL.CAPTURE_SELECTION]: async () => {
+          try {
+            const activeTab = this.tabController?.activeTab;
+            if (!activeTab?.isAlive) return { success: false, error: "No active tab" };
+            await activeTab.webContents.executeJavaScript(CAPTURE_SELECTION_SCRIPT, true);
+            return { success: true };
+          } catch {
+            return { success: false, error: "Failed to inject selection script" };
+          }
+        },
+        ["CAPTURE_SELECTION_RESULT"]: async (data: {
+          rect: { x: number; y: number; w: number; h: number };
+          tabId: string;
+        }) => {
+          try {
+            const tab = this.tabController?.getTabById(data.tabId);
+            if (!tab?.isAlive) return { success: false, error: "Tab not found" };
+            const rect: Electron.Rectangle = {
+              x: data.rect.x,
+              y: data.rect.y,
+              width: data.rect.w,
+              height: data.rect.h,
+            };
+            const { nativeImage, dataURL } = await capturePage(tab.webContents, rect);
+            this.lastCaptureImage = nativeImage;
+            clipboard.writeImage(nativeImage);
+            subWindowService.open("/capture", { image: dataURL, type: "selection", copied: true });
+            this.forwardRendererEvent("CAPTURE_RESULT", { image: dataURL, tabId: data.tabId });
+            return { success: true, image: dataURL };
+          } catch {
+            return { success: false, error: "Capture failed" };
+          }
+        },
+        [IPC_INVOKE_CHANNEL.CAPTURE_COPY_CLIPBOARD]: () => {
+          if (this.lastCaptureImage) {
+            clipboard.writeImage(this.lastCaptureImage);
+            return { success: true };
+          }
+          return { success: false, error: "No captured image" };
+        },
         "@adb/get-filter-metadata": () => adblocker.getFilterMetadata(),
         [IPC_TAB_GROUP_INVOKE.HIDE_GROUP]: async (id: string) => {
           const group = tabGroupController.getGroups().find((g) => g.id === id);
@@ -100,20 +157,6 @@ export class ViewController {
 
           return { success: true };
         },
-        // [IPC_TAB_GROUP_INVOKE.ADD_TAB_TO_GROUP]: async (data: { groupId: string; tabId: string }) => {
-        //   await tabGroupController.addTabToGroup(data.groupId, data.tabId);
-        //   this.tabController?.updateTab(data.tabId, { groupId: data.groupId });
-        //   return { success: true };
-        // },
-        // [IPC_TAB_GROUP_INVOKE.REMOVE_TAB_FROM_GROUP]: async (data: { groupId: string; tabId: string }) => {
-        //   await tabGroupController.removeTabFromGroup(data.groupId, data.tabId);
-        //   this.tabController?.updateTab(data.tabId, { groupId: undefined });
-        //   return { success: true };
-        // },
-        // [IPC_TAB_GROUP_INVOKE.OPEN_GROUP_TAB]: (data: { id: string }) => {
-        //   this.handleOpenTabById(data);
-        //   return { success: true };
-        // },
         [IPC_INVOKE_CHANNEL.AI_GET_PAGE_TEXT]: () => this.getActiveTabPageText(),
         [IPC_INVOKE_CHANNEL.AI_GET_SELECTED_TEXT]: () => this.getActiveTabSelectedText(),
         [IPC_INVOKE_CHANNEL.TOGGLE_PIN_TAB]: (data) => this.togglePinTab(data),

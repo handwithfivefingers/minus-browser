@@ -1,5 +1,6 @@
 import {
   IconBrain,
+  IconCamera,
   IconChevronLeft,
   IconCloudUp,
   IconCode,
@@ -32,6 +33,8 @@ interface IHeader {
   // onTranslateSelection: () => void;
   onOpenTranslateManager: () => void;
   onOpenSpotlight: (query?: string) => void;
+  onCapturePage?: () => void;
+  onCaptureSelection?: () => void;
   title?: string;
   isLoading: boolean;
   isBookmarked?: boolean;
@@ -62,6 +65,8 @@ const Header = ({
   // onTranslateSelection,
   onOpenTranslateManager,
   onOpenSpotlight,
+  onCapturePage,
+  onCaptureSelection,
   onTogglePreventHibernate,
 }: IHeader) => {
   const { layout, extension } = useMinusThemeStore();
@@ -164,6 +169,14 @@ const Header = ({
           title="Dev tools"
         >
           <IconCode size={16} />
+        </button>
+
+        <button
+          className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
+          onClick={onCapturePage}
+          title="Capture Page"
+        >
+          <IconCamera size={16} />
         </button>
 
         {extension.vault ? (

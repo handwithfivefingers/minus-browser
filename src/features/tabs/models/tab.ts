@@ -2,6 +2,7 @@ import { BrowserWindow, WebContentsAudioStateChangedEventParams, WebContentsView
 import { v7 as uuid_v7 } from "uuid";
 import { cacheSystem } from "~/features/cacheSystem";
 import { AiTabPlugin } from "~/features/ui/features/aiSider/plugin";
+import { CaptureTabPlugin } from "~/features/capture";
 import { SearchTabPlugin } from "~/features/search/plugin";
 import { StoreManager } from "~/core/stores";
 import { ContextMenuController } from "~/core/controller/context";
@@ -209,6 +210,9 @@ export class Tab {
         );
         this.pluginManager.register(
           new AiTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+        );
+        this.pluginManager.register(
+          new CaptureTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
         );
       }
     } catch (err) {

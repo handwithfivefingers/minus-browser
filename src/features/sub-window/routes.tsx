@@ -3,7 +3,6 @@ import OverlayPage from "./pages/overlay-page";
 // import SpotlightPage from "../spotlight/overlay/App";
 export function buildRoutes() {
   const entries = getRegistered();
-  console.log("entries", entries);
   return [
     {
       path: "/",
@@ -14,10 +13,5 @@ export function buildRoutes() {
       path: entry.path,
       element: <OverlayPage register={entry} />,
     })),
-    // {
-    //   path: "/spotlight",
-    //   name: "Spotlight",
-    //   component: SpotlightPage,
-    // },
   ];
 }

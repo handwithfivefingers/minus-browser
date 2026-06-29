@@ -1,8 +1,8 @@
-import { IconBrain, IconBrandWechat, IconFileText, IconLanguage, IconPencil, IconQuestionMark, IconX } from "@tabler/icons-react";
+import { IconBrain, IconBrandWechat, IconCamera, IconFileText, IconLanguage, IconPencil, IconQuestionMark, IconX } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { AiSidebarMode, useAiSidebarStore } from "../stores/useAiSidebarStore";
-import { ChatMode, SummaryMode, GenerateMode, ExplainMode } from "../modes";
+import { ChatMode, SummaryMode, GenerateMode, ExplainMode, CaptureMode } from "../modes";
 import { LANGUAGE_MAP } from "../services/promptTemplates";
 import { useAiSettingsStore } from "../stores/useAiSettingsStore";
 /** @ts-ignore */
@@ -13,6 +13,7 @@ const MODE_TABS: { key: AiSidebarMode; label: string; icon: React.ReactNode }[] 
   { key: "summarize", label: "Summarize", icon: <IconFileText size={16} /> },
   { key: "generate", label: "Generate", icon: <IconPencil size={16} /> },
   { key: "explain", label: "Explain", icon: <IconQuestionMark size={16} /> },
+  { key: "capture", label: "Capture", icon: <IconCamera size={16} /> },
 ];
 
 const LANGUAGE_OPTIONS = Object.entries(LANGUAGE_MAP).map(([value, label]) => ({ value, label }));
@@ -145,6 +146,7 @@ const AiSidebar = () => {
         {activeMode === "summarize" && <SummaryMode />}
         {activeMode === "generate" && <GenerateMode />}
         {activeMode === "explain" && <ExplainMode />}
+        {activeMode === "capture" && <CaptureMode />}
       </div>
     </div>
   );

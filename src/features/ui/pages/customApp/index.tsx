@@ -302,6 +302,8 @@ const CustomApp = () => {
         isLoading={loading}
         preventHibernate={tab?.preventHibernate}
         onTogglePreventHibernate={() => window.api.INVOKE("TOGGLE_PREVENT_HIBERNATE", { id: tabId })}
+        onCapturePage={() => window.api.INVOKE("CAPTURE_PAGE")}
+        onCaptureSelection={() => window.api.INVOKE("CAPTURE_SELECTION")}
       />
       <WebViewInstance id={tabId} />
     </div>
