@@ -24,6 +24,25 @@ export class ContextMenuController {
 
     template.push({ type: "separator" });
 
+    template.push(
+      {
+        label: "Capture Page",
+        click: () => {
+          const window = BrowserWindow.getFocusedWindow();
+          window?.webContents?.send("CAPTURE_PAGE", {});
+        },
+      },
+      {
+        label: "Capture Selection",
+        click: () => {
+          const window = BrowserWindow.getFocusedWindow();
+          window?.webContents?.send("CAPTURE_SELECTION", {});
+        },
+      },
+    );
+
+    template.push({ type: "separator" });
+
     if (params.mediaType === "image") {
       template.unshift({
         label: "Save Image As...",

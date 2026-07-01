@@ -3,10 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { MessageBubble } from "../components/MessageBubble";
 import { ModelSelector } from "../components/ModelSelector";
 import { useAiChat } from "../hooks/useAiChat";
+import { useAiSidebarStore } from "../stores/useAiSidebarStore";
 
 const ChatMode = () => {
   const { messages, isLoading, error, sendMessage, clearMessages, stopGeneration } = useAiChat();
   const [input, setInput] = useState("");
+  const { pendingText, clearPendingText } = useAiSidebarStore();
   const [model, setModel] = useState(() => {
     try {
       const raw = localStorage.getItem("minus_ai_settings");
@@ -16,6 +18,14 @@ const ChatMode = () => {
   });
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!pendingText) return;
+    const text = pendingText;
+    clearPendingText();
+    setInput("");
+    sendMessage(text);
+  }, [pendingText]);
 
   useEffect(() => {
     if (listRef.current) {

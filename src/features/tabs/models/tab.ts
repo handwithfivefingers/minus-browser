@@ -2,6 +2,7 @@ import { BrowserWindow, WebContentsAudioStateChangedEventParams, WebContentsView
 import { v7 as uuid_v7 } from "uuid";
 import { cacheSystem } from "~/features/cacheSystem";
 import { AiTabPlugin } from "~/features/ui/features/aiSider/plugin";
+import { CaptureTabPlugin } from "~/features/capture";
 import { SearchTabPlugin } from "~/features/search/plugin";
 import { StoreManager } from "~/core/stores";
 import { ContextMenuController } from "~/core/controller/context";
@@ -12,6 +13,7 @@ import { VaultTabPlugin } from "~/features/vault";
 import { ITab, IUserInterface } from "~/shared/types";
 import { browserSession } from "~/core/services/session";
 import { historyController } from "~/core/controller/history";
+import { YoutubeEmbeddingPlugin } from "~/features/youtubeEmbed";
 interface IDestroy {
   destroy?: () => void;
 }
@@ -204,11 +206,17 @@ export class Tab {
             new TranslateTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
           );
         }
+        // this.pluginManager.register(
+        //   new YoutubeEmbeddingPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+        // );
         this.pluginManager.register(
           new SearchTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
         );
         this.pluginManager.register(
           new AiTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+        );
+        this.pluginManager.register(
+          new CaptureTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
         );
       }
     } catch (err) {
@@ -346,7 +354,7 @@ new Promise((resolve) => {
 });`;
     this._webContents!.executeJavaScript(script)
       .then(() => {
-        this.eventEmitter({ channel: 'PIP_EXITED', data: { id: this.id } });
+        this.eventEmitter({ channel: "PIP_EXITED", data: { id: this.id } });
       })
       .catch((error) => {
         console.error("requestPIP error", error);

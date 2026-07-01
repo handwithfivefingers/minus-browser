@@ -11,6 +11,7 @@ import "~/features/vault/overlay.register";
 import "~/features/translate/overlay.register";
 import "~/features/userscript/overlay.register";
 import "~/features/tabGroup/overlay.register";
+import "~/features/capture/overlay.register";
 
 if (typeof window !== "undefined") {
   window.api.LISTENER(SUB_WINDOW_EMIT.NAVIGATE, (payload: { route: string }) => {

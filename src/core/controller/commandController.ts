@@ -53,8 +53,12 @@ export class CommandController {
     this.viewController.createTab();
   }
   onToggleDevTools() {
-    let view = BrowserWindow.getFocusedWindow();
-    view?.webContents?.send("TOGGLE_DEV_TOOLS");
+    // let view = BrowserWindow.getFocusedWindow();
+    // view?.webContents?.send("TOGGLE_DEV_TOOLS");
+    const view = this.viewController?.tabController?.activeTab;
+    if (view) {
+      view.webContents.openDevTools();
+    }
   }
 
   onOpenSpotlight() {
@@ -66,7 +70,9 @@ export class CommandController {
   }
 
   onReloadPage() {
-    let view = BrowserWindow.getFocusedWindow();
-    view?.webContents?.send("ON_RELOAD");
+    const view = this.viewController?.tabController?.activeTab;
+    if (view) {
+      view.webContents.reload();
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type AiSidebarMode = "chat" | "summarize" | "generate" | "explain";
+export type AiSidebarMode = "chat" | "summarize" | "generate" | "explain" | "capture";
 
 function getDefaultMode(): AiSidebarMode {
   try {
@@ -8,7 +8,7 @@ function getDefaultMode(): AiSidebarMode {
     if (raw) {
       const settings = JSON.parse(raw);
       const mode = settings.defaultMode;
-      if (["chat", "summarize", "generate", "explain"].includes(mode)) return mode;
+      if (["chat", "summarize", "generate", "explain", "capture"].includes(mode)) return mode;
     }
   } catch {}
   return "chat";
@@ -26,6 +26,7 @@ interface IAiSidebarStore {
   width: number;
   pendingText: string;
   chatMessages: ChatMessage[];
+  capturedImage: string | null;
   toggle: () => void;
   open: () => void;
   close: () => void;
@@ -35,6 +36,7 @@ interface IAiSidebarStore {
   clearPendingText: () => void;
   setChatMessages: (messages: ChatMessage[]) => void;
   clearChatMessages: () => void;
+  setCapturedImage: (image: string | null) => void;
 }
 
 const useAiSidebarStore = create<IAiSidebarStore>((set) => ({
@@ -43,6 +45,7 @@ const useAiSidebarStore = create<IAiSidebarStore>((set) => ({
   width: 380,
   pendingText: "",
   chatMessages: [],
+  capturedImage: null,
   toggle: () => set((state) => ({ isOpen: !state.isOpen })),
   open: () => set({ isOpen: true }),
   close: () => set({ isOpen: false }),
@@ -52,6 +55,7 @@ const useAiSidebarStore = create<IAiSidebarStore>((set) => ({
   clearPendingText: () => set({ pendingText: "" }),
   setChatMessages: (messages) => set({ chatMessages: messages }),
   clearChatMessages: () => set({ chatMessages: [] }),
+  setCapturedImage: (image) => set({ capturedImage: image }),
 }));
 
 export { useAiSidebarStore };

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet, useNavigate } from "react-router";
 import { IUserInterface } from "~/shared/types";
-import { IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
+import { IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
 import { AiSidebar, SideMenu, NotificationContainer, UpdateBanner } from "../components";
 import { useAiSidebarStore } from "../features/aiSider/stores/useAiSidebarStore";
 import { tabServices } from "../services/tab.service";
@@ -51,6 +51,12 @@ const Layout = () => {
   }, []);
 
   useEffect(() => {
+    window.api.LISTENER("CAPTURE_PAGE", () => {
+      window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_PAGE);
+    });
+    window.api.LISTENER("CAPTURE_SELECTION", () => {
+      window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION);
+    });
     window.api.LISTENER(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, (payload?: { text?: string; action?: string }) => {
       const text = payload?.text?.trim();
       if (!text) return;

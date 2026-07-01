@@ -1,4 +1,11 @@
 export const AI_SELECTION_SCRIPT = `(() => {
+  const trustPolicy = window.trustedTypes?.createPolicy(
+    "forceInner",
+    {
+      createHTML: (to_escape) => to_escape,
+    },
+  );
+
   if (window.__minusAiSelectionMounted) return;
   window.__minusAiSelectionMounted = true;
 
@@ -81,7 +88,7 @@ export const AI_SELECTION_SCRIPT = `(() => {
 
     ACTIONS.forEach((action) => {
       const chip = document.createElement("button");
-      chip.innerHTML = action.icon + '<span style="margin-left:4px">' + action.label + "</span>";
+      chip.innerHTML = trustPolicy.createHTML(action.icon + '<span style="margin-left:4px">' + action.label + "</span>");
       Object.assign(chip.style, {
         display: "inline-flex",
         alignItems: "center",
@@ -192,9 +199,12 @@ export const AI_SELECTION_SCRIPT = `(() => {
   document.addEventListener("mousedown", (e) => {
     const btn = document.getElementById(CONTAINER_ID);
     if (btn && btn !== e.target && !btn.contains(e.target)) {
-      hideTimeout = setTimeout(() => {
-        if (!isHovering) hideContainer();
-      }, 180);
+      const currentText = String(window.getSelection?.()?.toString?.() || "").trim();
+      if (!currentText) {
+        hideTimeout = setTimeout(() => {
+          if (!isHovering) hideContainer();
+        }, 180);
+      }
     }
   });
 

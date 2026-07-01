@@ -7,6 +7,7 @@ export interface ITabLifecycleHooks {
   onDestroy?: (ctx: IExecutionContext) => void;
   onDidNavigate?: (ctx: IExecutionContext) => void;
   onFoundInPage?: (ctx: IExecutionContext, result: any) => void;
+  onUpdateTargetUrl?: (ctx: IExecutionContext, url: string) => void;
 }
 
 export interface ITabPlugin {

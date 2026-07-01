@@ -66,6 +66,16 @@ export class TabPluginManager {
       wc.on("found-in-page", callback);
       this.saveUnsubscribe(tab.id, "found-in-page", () => wc.off("found-in-page", callback));
     }
+    if (hooks.onUpdateTargetUrl) {
+      const callback = (_event: any, url: string) => {
+        console.log(_event);
+        console.log(url);
+        hooks.onUpdateTargetUrl!(ctx, url);
+      };
+      // @ts-ignore
+      wc.on("dom-ready", callback);
+      this.saveUnsubscribe(tab.id, "update-target-url", () => wc.off("update-target-url", callback));
+    }
 
     if (hooks.onDestroy) {
       this.saveUnsubscribe(tab.id, `destroy:${ctx.tabId}`, () => hooks.onDestroy!(ctx));

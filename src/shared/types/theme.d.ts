@@ -13,6 +13,9 @@ export interface IUserInterface {
     userscript: boolean;
     cosmeticFiltering: boolean;
     disabledFilters: string[];
+    customFilters: string[];
+    adblockAutoUpdate: boolean;
+    adblockAutoUpdateInterval: number;
   };
   historyRetentionDays?: string;
   hibernateMode?: "fast" | "normal" | "slow" | "custom";
