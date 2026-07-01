@@ -1,30 +1,29 @@
 import {
+  IconComponents,
   IconGripVertical,
   IconHistory,
   IconHome,
   IconPlus,
   IconSettings,
   IconX,
-  IconFolderPlus,
-  IconComponents,
 } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { Tab } from "../../interfaces/tab";
-import { useMinusThemeStore } from "../../stores/useMinusTheme";
-import { useTabStore } from "../../stores/useTabStore";
-import { useTabGroupStore } from "../../stores/useTabGroupStore";
-import { TabItem } from "../tab";
-import { TabGroupContainer } from "../tabGroup";
 import {
-  IPC_TAB_GROUP_INVOKE,
   IPC_TAB_GROUP_EMIT,
+  IPC_TAB_GROUP_INVOKE,
   IPC_TAB_GROUP_RENDERER_EVENT,
 } from "~/shared/constants/ipc/tabGroup";
+import { Tab } from "../../interfaces/tab";
+import { useMinusThemeStore } from "../../stores/useMinusTheme";
+import { useTabGroupStore } from "../../stores/useTabGroupStore";
+import { useTabStore } from "../../stores/useTabStore";
+import { TabItem } from "../tab";
+import { TabGroupContainer } from "../tabGroup";
+import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 /** @ts-ignore */
 import styles from "./styles.module.css";
-import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 
 type DragState = {
   id: string;
@@ -267,7 +266,6 @@ const SideMenu = () => {
             )}
           >
             <IconHome size={16} />
-            {/* <span className="text-[10px] font-medium">Home</span> */}
           </Link>
 
           {/* Pinned tabs section */}
@@ -351,14 +349,12 @@ const SideMenu = () => {
                 const activeId = tabs.find((t) => t.isFocused)?.id || tabs[0]?.id;
                 const group = groups.find((g) => g.tabIds.includes(activeId));
                 window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU, {
-                  // tabId: activeId,
-                  // currentGroupId: group?.id,
                   x: 100,
                   y: 100,
                 });
               }
             }}
-            className=" z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1"
+            className=" z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-500 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1"
             title="Group tabs together — right-click any tab to add it to a group"
           >
             <IconComponents size={16} />
@@ -367,7 +363,7 @@ const SideMenu = () => {
 
           <button
             onClick={() => onAddNewTab({})}
-            className=" z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1"
+            className=" z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-500 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1"
           >
             <IconPlus size={16} />
             <span className="text-[10px] font-medium">New Tab</span>
