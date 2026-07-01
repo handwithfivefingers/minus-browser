@@ -10,7 +10,6 @@ export interface IUserScript {
   excludes?: string[];
   runAt: UserScriptRunAt;
   enabled: boolean;
-  builtIn?: boolean;
   createdAt?: number;
   updatedAt?: number;
 }

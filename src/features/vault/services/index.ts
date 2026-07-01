@@ -688,7 +688,7 @@ export const openVaultManagerDialog = (input: any[]) => {
       };
 
       const done = document.createElement("button");
-      done.innerHTML = icon.disk + "<span>Done</span>";
+      done.innerHTML = trustPolicy.createHTML(icon.disk + "<span>Done</span>");
       applyButtonBase(done);
       styleButton(done, "#4f46e5", "#4338ca", "#fff");
       done.onclick = () => {

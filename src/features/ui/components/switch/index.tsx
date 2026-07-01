@@ -9,23 +9,9 @@ interface Props {
 }
 export const Switch = ({ title, className, onCheck, value = false }: Props) => {
   return (
-    <div
-      className={clsx("relative items-center w-6 h-full flex cursor-pointer", className)}
-      title={title}
-      onClick={() => onCheck?.(!value)}
-    >
-      <div
-        className={clsx("w-full h-1 rounded-full transition-all", {
-          ["bg-slate-400"]: !value,
-          ["bg-indigo-500"]: value,
-        })}
-      ></div>
-      <span
-        className={clsx("left-0 w-3 h-3 rounded-full absolute top-1/2 -translate-y-1/2 transition-all ", {
-          ["bg-slate-400"]: !value,
-          ["translate-x-full bg-indigo-500"]: value,
-        })}
-      />
-    </div>
+    <label className="relative inline-flex items-center cursor-pointer">
+      <input type="checkbox" className="sr-only peer" checked={value ?? true} onChange={(e) => onCheck?.(!value)} />
+      <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-indigo-500 peer-focus:outline-none after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
+    </label>
   );
 };

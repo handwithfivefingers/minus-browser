@@ -231,6 +231,10 @@ export class ViewController {
       } else {
         adblocker.disable();
       }
+      if (this.userInterface?.extension?.adblockAutoUpdate !== false) {
+        const interval = (this.userInterface?.extension?.adblockAutoUpdateInterval ?? 360) * 60 * 1000;
+        adblocker.startAutoUpdate(interval);
+      }
 
       Notification.getHistory().catch((e) => {
         console.error("Notification error", e);
@@ -443,6 +447,9 @@ export class ViewController {
         userscript: true,
         cosmeticFiltering: true,
         disabledFilters: [],
+        customFilters: [],
+        adblockAutoUpdate: true,
+        adblockAutoUpdateInterval: 360,
       },
       hibernateMode: "normal",
       hibernateCustomMinutes: 60,
@@ -564,7 +571,7 @@ export class ViewController {
     }
   }
 
-  interfaceSave(data: IUserInterface) {
+  async interfaceSave(data: IUserInterface) {
     cacheSystem.set("interface", data);
     this.interfaceStore.saveFiles(data);
 
@@ -579,29 +586,37 @@ export class ViewController {
     if (prev && next) {
       adblocker.isCosmeticFilteringEnabled = next.cosmeticFiltering ?? true;
 
+      const filtersChanged =
+        JSON.stringify([...next.disabledFilters].sort()) !== JSON.stringify([...prev.disabledFilters].sort()) ||
+        JSON.stringify(next.customFilters ?? []) !== JSON.stringify(prev.customFilters ?? []);
+
       if (next.adblock && !prev.adblock) {
-        const filtersChanged =
-          JSON.stringify([...next.disabledFilters].sort()) !== JSON.stringify([...prev.disabledFilters].sort());
-        if (filtersChanged) {
-          adblocker.initialize(next.disabledFilters).then(() => {
-            adblocker.enable();
-            this.watchAllTabWebContents();
-          });
-        } else {
-          adblocker.enable();
-          this.watchAllTabWebContents();
+        if (next.customFilters?.length) {
+          await adblocker.setCustomFilters(next.customFilters);
         }
+        await adblocker.initialize(next.disabledFilters);
+        adblocker.enable();
+        this.watchAllTabWebContents();
       } else if (!next.adblock && prev.adblock) {
         adblocker.disable();
       } else if (next.adblock && prev.adblock) {
-        const filtersChanged =
-          JSON.stringify([...next.disabledFilters].sort()) !== JSON.stringify([...prev.disabledFilters].sort());
         if (filtersChanged) {
           adblocker.disable();
-          adblocker.initialize(next.disabledFilters).then(() => {
-            adblocker.enable();
-            this.watchAllTabWebContents();
-          });
+          if (next.customFilters?.length) {
+            await adblocker.setCustomFilters(next.customFilters);
+          }
+          await adblocker.initialize(next.disabledFilters);
+          adblocker.enable();
+          this.watchAllTabWebContents();
+        }
+      }
+
+      if (next.adblockAutoUpdate !== prev.adblockAutoUpdate || next.adblockAutoUpdateInterval !== prev.adblockAutoUpdateInterval) {
+        if (next.adblockAutoUpdate !== false) {
+          const interval = (next.adblockAutoUpdateInterval ?? 360) * 60 * 1000;
+          adblocker.startAutoUpdate(interval);
+        } else {
+          adblocker.stopAutoUpdate();
         }
       }
     }

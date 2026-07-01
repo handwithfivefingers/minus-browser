@@ -1,4 +1,4 @@
-import { app, ipcMain, WebContents } from "electron";
+import { app, ipcMain, WebContents, BrowserWindow } from "electron";
 import { FiltersEngine, Request } from "@ghostery/adblocker";
 import fetch from "cross-fetch";
 import fs from "node:fs/promises";
@@ -6,15 +6,14 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { AdblockService } from "../services";
 import { parse } from "tldts-experimental";
-import { userScriptController } from "~/features/userscript/controllers";
-// import { SkipADSBlock, SponsorBlock } from "../scripts";
 
 const baseDir = `https://raw.githubusercontent.com/brave/adblock-lists-mirror/lists/lists/metadata.json`;
 const CACHE_TTL_MS = 86_400_000; // 24 hours
+const DEFAULT_AUTO_UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 function filterNameFromUrl(url: string): string {
-  const path = url.replace("https://raw.githubusercontent.com/", "").replace("https://", "");
-  const parts = path.replace(".txt", "").split("/");
+  const p = url.replace("https://raw.githubusercontent.com/", "").replace("https://", "");
+  const parts = p.replace(".txt", "").split("/");
   const file = parts[parts.length - 1]
     .replace(/-/g, " ")
     .replace(/_/g, " ")
@@ -25,6 +24,25 @@ function filterNameFromUrl(url: string): string {
     return `${prefix} - ${file}`;
   }
   return file;
+}
+
+function filterGroupFromUrl(url: string): string {
+  const p = url.replace("https://raw.githubusercontent.com/", "").replace("https://", "");
+  const parts = p.split("/");
+  const repo = parts[0] || "";
+  if (repo.match(/^easylist/i)) return "EasyList";
+  if (repo.match(/^adguard/i)) return "AdGuard";
+  if (repo.match(/^ublockorigin/i)) return "uBlock Origin";
+  if (repo.match(/^brave/i)) return "Brave";
+  if (repo.match(/^fanboy/i)) return "FanBoy";
+  if (url.includes("annoyance") || url.includes("annoying")) return "Annoyances";
+  if (url.includes("privacy") || url.includes("tracking") || url.includes("tracker")) return "Privacy";
+  if (url.includes("youtube") || url.includes("yt-")) return "YouTube";
+  if (url.includes("cookie")) return "Cookies";
+  if (url.includes("malware") || url.includes("security") || url.includes("phishing")) return "Security";
+  if (url.includes("social")) return "Social";
+  if (repo) return repo.charAt(0).toUpperCase() + repo.slice(1);
+  return "Other";
 }
 
 export class AdBlocker {
@@ -41,11 +59,18 @@ export class AdBlocker {
   isCosmeticFilteringEnabled = true;
   private _fullList: Record<string, string> = {};
 
+  private autoUpdateTimer: ReturnType<typeof setInterval> | null = null;
+  private autoUpdateIntervalMs = DEFAULT_AUTO_UPDATE_INTERVAL_MS;
+  private lastAutoUpdateCheck = 0;
+  private _blockedRequestsCount = 0;
+  private _customFilters: string[] = [];
+
   getFilterMetadata() {
     return Object.entries(this._fullList).map(([key, url]) => ({
       key,
       url,
       name: filterNameFromUrl(url),
+      group: filterGroupFromUrl(url),
     }));
   }
 
@@ -69,7 +94,12 @@ export class AdBlocker {
   }
 
   private getCacheKey(): string {
-    return [...this._disabledFilters].sort().join(",");
+    const parts = [...this._disabledFilters].sort();
+    if (this._customFilters.length > 0) {
+      const customHash = createHash("sha256").update(this._customFilters.join("\n")).digest("hex").slice(0, 12);
+      parts.push(`custom:${customHash}`);
+    }
+    return parts.join(",");
   }
 
   private async load() {
@@ -97,13 +127,27 @@ export class AdBlocker {
       const metaData = await fetch(baseDir).then((res) => res.text());
       this._fullList = JSON.parse(metaData);
 
+      const customPath = path.join(app.getPath("userData"), "adblock-cache", "custom-filters.json");
+      try {
+        const customRaw = await fs.readFile(customPath, "utf-8");
+        this._customFilters = JSON.parse(customRaw);
+      } catch {
+        /* no custom filters */
+      }
+
       if (!fromCache) {
         const disabledSet = new Set(this._disabledFilters);
         const fullLists = Object.keys(this._fullList)
           .filter((key) => !disabledSet.has(key))
           .map((key) => this._fullList[key]);
 
-        this.engine = await FiltersEngine.fromLists(fetch, fullLists, {
+        const lists = [...fullLists];
+
+        if (this._customFilters.length > 0) {
+          lists.push(...this._customFilters);
+        }
+
+        this.engine = await FiltersEngine.fromLists(fetch, lists, {
           enableCompression: true,
           loadCosmeticFilters: true,
           loadNetworkFilters: true,
@@ -121,6 +165,102 @@ export class AdBlocker {
     } catch (error) {
       console.error("Adblocker load error", error);
     }
+  }
+
+  async clearCache() {
+    const cacheDir = path.join(app.getPath("userData"), "adblock-cache");
+    try {
+      await fs.rm(cacheDir, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+    this.isInitialize = false;
+    this.engine = undefined;
+    await this.initialize();
+  }
+
+  async getCacheInfo() {
+    const cacheDir = path.join(app.getPath("userData"), "adblock-cache");
+    let size = 0;
+    let timestamp = 0;
+    try {
+      await fs.mkdir(cacheDir, { recursive: true });
+      const entries = await fs.readdir(cacheDir);
+      for (const entry of entries) {
+        if (entry.endsWith(".bin")) {
+          const stat = await fs.stat(path.join(cacheDir, entry));
+          size += stat.size;
+        }
+        if (entry.endsWith(".meta")) {
+          try {
+            const meta = JSON.parse(await fs.readFile(path.join(cacheDir, entry), "utf-8"));
+            if (meta.timestamp > timestamp) timestamp = meta.timestamp;
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+    } catch {
+      /* cache dir not found */
+    }
+    return { size, timestamp, filterCount: Object.keys(this._fullList).length };
+  }
+
+  async setCustomFilters(filters: string[]) {
+    this._customFilters = filters.filter((f) => f.trim() && !f.trim().startsWith("!"));
+    const customPath = path.join(app.getPath("userData"), "adblock-cache", "custom-filters.json");
+    await fs.mkdir(path.dirname(customPath), { recursive: true });
+    await fs.writeFile(customPath, JSON.stringify(this._customFilters, null, 2));
+  }
+
+  async setCustomFiltersAndReload(filters: string[]) {
+    await this.setCustomFilters(filters);
+    this.isInitialize = false;
+    await this.initialize();
+  }
+
+  async getCustomFilters(): Promise<string[]> {
+    return [...this._customFilters];
+  }
+
+  startAutoUpdate(intervalMs?: number) {
+    this.stopAutoUpdate();
+    this.autoUpdateIntervalMs = intervalMs ?? DEFAULT_AUTO_UPDATE_INTERVAL_MS;
+    this.autoUpdateTimer = setInterval(async () => {
+      this.lastAutoUpdateCheck = Date.now();
+      console.debug("[AdBlocker] Auto-updating filter lists...");
+      this.isInitialize = false;
+      await this.initialize();
+      const windows = BrowserWindow.getAllWindows();
+      for (const win of windows) {
+        try {
+          win.webContents.send("@adb/filters-updated");
+        } catch {
+          /* window closed */
+        }
+      }
+    }, this.autoUpdateIntervalMs);
+  }
+
+  stopAutoUpdate() {
+    if (this.autoUpdateTimer) {
+      clearInterval(this.autoUpdateTimer);
+      this.autoUpdateTimer = null;
+    }
+  }
+
+  getAutoUpdateStatus() {
+    return {
+      enabled: this.autoUpdateTimer !== null,
+      intervalMs: this.autoUpdateIntervalMs,
+      lastCheck: this.lastAutoUpdateCheck,
+    };
+  }
+
+  getStats() {
+    return {
+      blockedRequests: this._blockedRequestsCount,
+    };
   }
 
   private registerIPCHandlers() {
@@ -186,7 +326,43 @@ export class AdBlocker {
         key,
         url,
         name: filterNameFromUrl(url),
+        group: filterGroupFromUrl(url),
       }));
+    });
+
+    ipcMain.handle("@adb/get-stats", async () => {
+      return this.getStats();
+    });
+
+    ipcMain.handle("@adb/clear-cache", async () => {
+      await this.clearCache();
+      return true;
+    });
+
+    ipcMain.handle("@adb/get-cache-info", async () => {
+      return this.getCacheInfo();
+    });
+
+    ipcMain.handle("@adb/get-custom-filters", async () => {
+      return this.getCustomFilters();
+    });
+
+    ipcMain.handle("@adb/set-custom-filters", async (_event, filters: string[]) => {
+      await this.setCustomFiltersAndReload(filters);
+      return true;
+    });
+
+    ipcMain.handle("@adb/get-auto-update-status", async () => {
+      return this.getAutoUpdateStatus();
+    });
+
+    ipcMain.handle("@adb/set-auto-update", async (_event, enabled: boolean, intervalMs?: number) => {
+      if (enabled) {
+        this.startAutoUpdate(intervalMs);
+      } else {
+        this.stopAutoUpdate();
+      }
+      return true;
     });
   }
 
@@ -206,9 +382,6 @@ export class AdBlocker {
     this.isEnabled = true;
 
     // Enable built-in YouTube scripts when adblock is turned on
-    userScriptController.setBuiltInEnabled("builtin-skip-adsblock", true);
-    userScriptController.setBuiltInEnabled("builtin-sponsorblock", true);
-
     this.session.webRequest.onBeforeRequest({ urls: ["<all_urls>"] }, (details, callback) => {
       if (!this.engine) return callback({});
       const request = Request.fromRawDetails({
@@ -226,8 +399,10 @@ export class AdBlocker {
       const { redirect, match } = this.engine.match(request);
 
       if (redirect) {
+        this._blockedRequestsCount++;
         callback({ redirectURL: redirect.dataUrl });
       } else if (match) {
+        this._blockedRequestsCount++;
         callback({ cancel: true });
       } else {
         callback({});
@@ -272,8 +447,6 @@ export class AdBlocker {
     this.isEnabled = false;
 
     // Disable built-in YouTube scripts when adblock is turned off
-    userScriptController.setBuiltInEnabled("builtin-skip-adsblock", false);
-    userScriptController.setBuiltInEnabled("builtin-sponsorblock", false);
 
     if (!this.session) return;
     this.session.webRequest.onBeforeRequest(null);

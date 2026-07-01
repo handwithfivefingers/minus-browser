@@ -8,6 +8,7 @@ const projectRoot = path.resolve(__dirname, "..");
 const renderers = [
   { name: "main_window", config: "vite.renderer.config.ts", outDir: ".vite/renderer/main_window" },
   { name: "sub_window", config: "vite.sub-window.renderer.config.ts" },
+  { name: "youtube_embed", config: "vite.youtube-embed.renderer.config.ts" },
 ];
 
 for (const { name, config, outDir } of renderers) {

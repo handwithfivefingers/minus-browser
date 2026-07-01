@@ -13,6 +13,7 @@ import { VaultTabPlugin } from "~/features/vault";
 import { ITab, IUserInterface } from "~/shared/types";
 import { browserSession } from "~/core/services/session";
 import { historyController } from "~/core/controller/history";
+import { YoutubeEmbeddingPlugin } from "~/features/youtubeEmbed";
 interface IDestroy {
   destroy?: () => void;
 }
@@ -205,6 +206,9 @@ export class Tab {
             new TranslateTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
           );
         }
+        // this.pluginManager.register(
+        //   new YoutubeEmbeddingPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+        // );
         this.pluginManager.register(
           new SearchTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
         );
@@ -350,7 +354,7 @@ new Promise((resolve) => {
 });`;
     this._webContents!.executeJavaScript(script)
       .then(() => {
-        this.eventEmitter({ channel: 'PIP_EXITED', data: { id: this.id } });
+        this.eventEmitter({ channel: "PIP_EXITED", data: { id: this.id } });
       })
       .catch((error) => {
         console.error("requestPIP error", error);
