@@ -1,4 +1,4 @@
-import { app, ipcMain, WebContents, BrowserWindow } from "electron";
+import { app, ipcMain, WebContents, BrowserWindow, IpcMainInvokeEvent } from "electron";
 import { FiltersEngine, Request } from "@ghostery/adblocker";
 import fetch from "cross-fetch";
 import fs from "node:fs/promises";
@@ -75,16 +75,24 @@ export class AdBlocker {
   }
 
   async initialize(disabledFilters?: string[]) {
+    console.log("[AdBlocker] initialize called, disabledFilters count:", disabledFilters?.length);
     if (disabledFilters !== undefined) {
       this._disabledFilters = disabledFilters;
     }
     const key = [...this._disabledFilters].sort().join(",");
-    if (this.isInitialize && this.lastDisabledKey === key) return;
+    if (this.isInitialize && this.lastDisabledKey === key) {
+      console.log("[AdBlocker] initialize: already initialized with same key, skipping");
+      return;
+    }
 
     if (this.initializing) {
+      console.log("[AdBlocker] initialize: waiting for pending initialization...");
       await this.initializing;
       this.initializing = undefined;
-      if (this.isInitialize && this.lastDisabledKey === key) return;
+      if (this.isInitialize && this.lastDisabledKey === key) {
+        console.log("[AdBlocker] initialize: already initialized after waiting, skipping");
+        return;
+      }
     }
 
     this.isInitialize = false;
@@ -103,8 +111,10 @@ export class AdBlocker {
   }
 
   private async load() {
+    console.log("[AdBlocker] load: starting engine load...");
     try {
       const cacheDir = path.join(app.getPath("userData"), "adblock-cache");
+      console.log("[AdBlocker] load: cache dir =", cacheDir);
       await fs.mkdir(cacheDir, { recursive: true });
 
       const cacheKey = this.getCacheKey();
@@ -115,27 +125,35 @@ export class AdBlocker {
       let fromCache = false;
       try {
         const meta = JSON.parse(await fs.readFile(metaPath, "utf-8"));
+        console.log("[AdBlocker] load: cache meta found, timestamp =", meta.timestamp);
         if (Date.now() - meta.timestamp < CACHE_TTL_MS) {
           const data = await fs.readFile(enginePath);
           this.engine = FiltersEngine.deserialize(new Uint8Array(data));
           fromCache = true;
+          console.log("[AdBlocker] load: loaded from cache");
+        } else {
+          console.log("[AdBlocker] load: cache expired");
         }
       } catch {
-        /* cache miss */
+        console.log("[AdBlocker] load: cache miss");
       }
 
+      console.log("[AdBlocker] load: fetching metadata...");
       const metaData = await fetch(baseDir).then((res) => res.text());
       this._fullList = JSON.parse(metaData);
+      console.log("[AdBlocker] load: metadata loaded,", Object.keys(this._fullList).length, "lists available");
 
       const customPath = path.join(app.getPath("userData"), "adblock-cache", "custom-filters.json");
       try {
         const customRaw = await fs.readFile(customPath, "utf-8");
         this._customFilters = JSON.parse(customRaw);
+        console.log("[AdBlocker] load: loaded", this._customFilters.length, "custom filters from disk");
       } catch {
-        /* no custom filters */
+        console.log("[AdBlocker] load: no custom filters on disk");
       }
 
       if (!fromCache) {
+        console.log("[AdBlocker] load: building engine from lists...");
         const disabledSet = new Set(this._disabledFilters);
         const fullLists = Object.keys(this._fullList)
           .filter((key) => !disabledSet.has(key))
@@ -147,42 +165,50 @@ export class AdBlocker {
           lists.push(...this._customFilters);
         }
 
+        console.log("[AdBlocker] load: fetching", lists.length, "filter lists...");
         this.engine = await FiltersEngine.fromLists(fetch, lists, {
           enableCompression: true,
           loadCosmeticFilters: true,
           loadNetworkFilters: true,
           loadCSPFilters: true,
         });
+        console.log("[AdBlocker] load: engine built successfully");
 
         await Promise.all([
           fs.writeFile(enginePath, Buffer.from(this.engine.serialize())),
           fs.writeFile(metaPath, JSON.stringify({ timestamp: Date.now() })),
         ]);
+        console.log("[AdBlocker] load: engine cached to disk");
       }
 
       this.isInitialize = true;
-      this.registerIPCHandlers();
+      this.registerPreloadHandlers();
+      console.log("[AdBlocker] load: complete, engine ready");
     } catch (error) {
-      console.error("Adblocker load error", error);
+      console.error("[AdBlocker] load error", error);
     }
   }
 
   async clearCache() {
+    console.log("[AdBlocker] clearCache: deleting cache...");
     const cacheDir = path.join(app.getPath("userData"), "adblock-cache");
     try {
       await fs.rm(cacheDir, { recursive: true, force: true });
+      console.log("[AdBlocker] clearCache: deleted");
     } catch {
-      /* ignore */
+      console.log("[AdBlocker] clearCache: nothing to delete");
     }
     this.isInitialize = false;
     this.engine = undefined;
     await this.initialize();
+    console.log("[AdBlocker] clearCache: done");
   }
 
   async getCacheInfo() {
     const cacheDir = path.join(app.getPath("userData"), "adblock-cache");
     let size = 0;
     let timestamp = 0;
+
     try {
       await fs.mkdir(cacheDir, { recursive: true });
       const entries = await fs.readdir(cacheDir);
@@ -207,16 +233,20 @@ export class AdBlocker {
   }
 
   async setCustomFilters(filters: string[]) {
+    console.log("[AdBlocker] setCustomFilters: saving", filters.length, "raw rules");
     this._customFilters = filters.filter((f) => f.trim() && !f.trim().startsWith("!"));
     const customPath = path.join(app.getPath("userData"), "adblock-cache", "custom-filters.json");
     await fs.mkdir(path.dirname(customPath), { recursive: true });
     await fs.writeFile(customPath, JSON.stringify(this._customFilters, null, 2));
+    console.log("[AdBlocker] setCustomFilters: saved", this._customFilters.length, "rules");
   }
 
   async setCustomFiltersAndReload(filters: string[]) {
+    console.log("[AdBlocker] setCustomFiltersAndReload...");
     await this.setCustomFilters(filters);
     this.isInitialize = false;
     await this.initialize();
+    console.log("[AdBlocker] setCustomFiltersAndReload done");
   }
 
   async getCustomFilters(): Promise<string[]> {
@@ -224,17 +254,20 @@ export class AdBlocker {
   }
 
   startAutoUpdate(intervalMs?: number) {
+    console.log("[AdBlocker] startAutoUpdate...");
     this.stopAutoUpdate();
     this.autoUpdateIntervalMs = intervalMs ?? DEFAULT_AUTO_UPDATE_INTERVAL_MS;
+    console.log("[AdBlocker] startAutoUpdate: interval =", this.autoUpdateIntervalMs, "ms");
     this.autoUpdateTimer = setInterval(async () => {
       this.lastAutoUpdateCheck = Date.now();
-      console.debug("[AdBlocker] Auto-updating filter lists...");
+      console.log("[AdBlocker] auto-update tick: refreshing filters...");
       this.isInitialize = false;
       await this.initialize();
       const windows = BrowserWindow.getAllWindows();
       for (const win of windows) {
         try {
           win.webContents.send("@adb/filters-updated");
+          console.log("[AdBlocker] auto-update: notified window");
         } catch {
           /* window closed */
         }
@@ -244,6 +277,7 @@ export class AdBlocker {
 
   stopAutoUpdate() {
     if (this.autoUpdateTimer) {
+      console.log("[AdBlocker] stopAutoUpdate: clearing timer");
       clearInterval(this.autoUpdateTimer);
       this.autoUpdateTimer = null;
     }
@@ -263,12 +297,16 @@ export class AdBlocker {
     };
   }
 
-  private registerIPCHandlers() {
+  private registerPreloadHandlers() {
     if (this.ipcHandlersRegistered) return;
     this.ipcHandlersRegistered = true;
 
-    ipcMain.handle("@adb/inject-cosmetic-filters", async (event, url: string, msg?: any) => {
-      if (!this.engine || !this.isEnabled) return;
+    ipcMain.handle("@adb/inject-cosmetic-filters", async (event: IpcMainInvokeEvent, url: string, msg?: any) => {
+      console.log("[AdBlocker] @adb/inject-cosmetic-filters", url.slice(0, 80));
+      if (!this.engine || !this.isEnabled) {
+        console.log("[AdBlocker] inject-cosmetic-filters skipped: engine=", !!this.engine, "enabled=", this.isEnabled);
+        return;
+      }
 
       try {
         const parsed = parse(url);
@@ -295,78 +333,145 @@ export class AdBlocker {
           },
         });
 
-        if (active === false) return;
+        if (active === false) {
+          console.log("[AdBlocker] inject-cosmetic-filters: inactive");
+          return;
+        }
 
         if (styles.length > 0) {
+          console.log("[AdBlocker] inject-cosmetic-filters: injecting", styles.length, "styles");
           event.sender.insertCSS(styles, { cssOrigin: "user" });
         }
 
         for (const script of scripts) {
           try {
+            console.log("[AdBlocker] inject-cosmetic-filters: executing scriptlet");
             event.sender.executeJavaScript(script, true);
           } catch (e) {
-            console.error("@adb scriptlet crashed", e);
+            console.error("[AdBlocker] scriptlet crashed", e);
           }
         }
       } catch (e) {
-        console.error("@adb inject-cosmetic-filters error", e);
+        console.error("[AdBlocker] inject-cosmetic-filters error", e);
       }
     });
 
     ipcMain.handle("@adb/is-mutation-observer-enabled", async () => {
+      console.log("[AdBlocker] @adb/is-mutation-observer-enabled → true");
       return true;
     });
 
     ipcMain.handle("@adb/is-cosmetic-filtering-enabled", async () => {
+      console.log("[AdBlocker] @adb/is-cosmetic-filtering-enabled →", this.isCosmeticFilteringEnabled);
       return this.isCosmeticFilteringEnabled;
-    });
-
-    ipcMain.handle("@adb/get-filter-metadata", async () => {
-      return Object.entries(this._fullList).map(([key, url]) => ({
-        key,
-        url,
-        name: filterNameFromUrl(url),
-        group: filterGroupFromUrl(url),
-      }));
-    });
-
-    ipcMain.handle("@adb/get-stats", async () => {
-      return this.getStats();
-    });
-
-    ipcMain.handle("@adb/clear-cache", async () => {
-      await this.clearCache();
-      return true;
-    });
-
-    ipcMain.handle("@adb/get-cache-info", async () => {
-      return this.getCacheInfo();
-    });
-
-    ipcMain.handle("@adb/get-custom-filters", async () => {
-      return this.getCustomFilters();
-    });
-
-    ipcMain.handle("@adb/set-custom-filters", async (_event, filters: string[]) => {
-      await this.setCustomFiltersAndReload(filters);
-      return true;
-    });
-
-    ipcMain.handle("@adb/get-auto-update-status", async () => {
-      return this.getAutoUpdateStatus();
-    });
-
-    ipcMain.handle("@adb/set-auto-update", async (_event, enabled: boolean, intervalMs?: number) => {
-      if (enabled) {
-        this.startAutoUpdate(intervalMs);
-      } else {
-        this.stopAutoUpdate();
-      }
-      return true;
     });
   }
 
+  getInvokeHandlers(): Record<string, (data?: any) => any> {
+    return {
+      "@adb/get-filter-metadata": () => {
+        const count = Object.keys(this._fullList).length;
+        console.log("[AdBlocker] @adb/get-filter-metadata →", count, "lists");
+        return Object.entries(this._fullList).map(([key, url]) => ({
+          key,
+          url,
+          name: filterNameFromUrl(url),
+          group: filterGroupFromUrl(url),
+        }));
+      },
+      "@adb/get-stats": () => {
+        const stats = this.getStats();
+        console.log("[AdBlocker] @adb/get-stats →", stats);
+        return stats;
+      },
+      "@adb/clear-cache": async () => {
+        console.log("[AdBlocker] @adb/clear-cache");
+        await this.clearCache();
+        console.log("[AdBlocker] @adb/clear-cache done");
+        return true;
+      },
+      "@adb/get-cache-info": async () => {
+        const info = await this.getCacheInfo();
+        console.log("[AdBlocker] @adb/get-cache-info →", info);
+        return info;
+      },
+      "@adb/get-custom-filters": async () => {
+        const filters = await this.getCustomFilters();
+        console.log("[AdBlocker] @adb/get-custom-filters →", filters.length, "rules");
+        return filters;
+      },
+      "@adb/set-custom-filters": async (_data: any) => {
+        const filters: string[] = _data ?? [];
+        console.log("[AdBlocker] @adb/set-custom-filters →", filters.length, "rules");
+        await this.setCustomFiltersAndReload(filters);
+        console.log("[AdBlocker] @adb/set-custom-filters done");
+        return true;
+      },
+      "@adb/get-auto-update-status": () => {
+        const status = this.getAutoUpdateStatus();
+        console.log("[AdBlocker] @adb/get-auto-update-status →", status);
+        return status;
+      },
+      "@adb/set-auto-update": (data: any) => {
+        const { enabled, intervalMs } = data || {};
+        console.log("[AdBlocker] @adb/set-auto-update enabled=", enabled, "intervalMs=", intervalMs);
+        if (enabled) {
+          this.startAutoUpdate(intervalMs);
+        } else {
+          this.stopAutoUpdate();
+        }
+        return true;
+      },
+    };
+  }
+
+  injectionCosmeticFilter(event: any, url: string, msg?: any) {
+    if (!this.engine || !this.isEnabled) return;
+    try {
+      const parsed = parse(url);
+      const hostname = parsed.hostname || "";
+      const domain = parsed.domain || "";
+      const isFirstRun = msg === undefined;
+
+      const { active, styles, scripts } = this.engine.getCosmeticsFilters({
+        url,
+        hostname,
+        domain,
+        classes: msg?.classes,
+        hrefs: msg?.hrefs,
+        ids: msg?.ids,
+        getBaseRules: isFirstRun,
+        getInjectionRules: isFirstRun,
+        getExtendedRules: false,
+        getRulesFromHostname: isFirstRun,
+        getRulesFromDOM: !isFirstRun,
+        callerContext: {
+          frameId: event.frameId,
+          processId: event.processId,
+          lifecycle: msg?.lifecycle,
+        },
+      });
+
+      if (active === false) return;
+
+      if (styles.length > 0) {
+        event.sender.insertCSS(styles, { cssOrigin: "user" });
+      }
+
+      for (const script of scripts) {
+        try {
+          event.sender.executeJavaScript(script, true);
+        } catch (e) {
+          console.error("@adb scriptlet crashed", e);
+        }
+      }
+    } catch (e) {
+      console.error("@adb inject-cosmetic-filters error", e);
+    }
+  }
+
   async initializeForSession(session: Electron.Session, disabledFilters?: string[]) {
+    console.log("[AdBlocker] initializeForSession");
     this.session = session;
     await this.initialize(disabledFilters);
 
@@ -374,14 +479,21 @@ export class AdBlocker {
       type: "frame",
       filePath: path.join(__dirname, "adblocker-preload.js"),
     });
+    console.log("[AdBlocker] initializeForSession: preload script registered");
   }
 
   enable() {
-    if (!this.session || !this.engine) return;
-    if (this.isEnabled) return;
+    console.log("[AdBlocker] enable called");
+    if (!this.session || !this.engine) {
+      console.log("[AdBlocker] enable: skipped, session=", !!this.session, "engine=", !!this.engine);
+      return;
+    }
+    if (this.isEnabled) {
+      console.log("[AdBlocker] enable: already enabled");
+      return;
+    }
     this.isEnabled = true;
-
-    // Enable built-in YouTube scripts when adblock is turned on
+    console.log("[AdBlocker] enable: registering webRequest handlers");
     this.session.webRequest.onBeforeRequest({ urls: ["<all_urls>"] }, (details, callback) => {
       if (!this.engine) return callback({});
       const request = Request.fromRawDetails({
@@ -400,9 +512,11 @@ export class AdBlocker {
 
       if (redirect) {
         this._blockedRequestsCount++;
+        console.log("[AdBlocker] blocked (redirect):", details.url.slice(0, 100));
         callback({ redirectURL: redirect.dataUrl });
       } else if (match) {
         this._blockedRequestsCount++;
+        console.log("[AdBlocker] blocked (cancel):", details.url.slice(0, 100));
         callback({ cancel: true });
       } else {
         callback({});
@@ -444,28 +558,18 @@ export class AdBlocker {
   }
 
   disable() {
+    console.log("[AdBlocker] disable called");
     this.isEnabled = false;
 
-    // Disable built-in YouTube scripts when adblock is turned off
-
-    if (!this.session) return;
+    if (!this.session) {
+      console.log("[AdBlocker] disable: no session");
+      return;
+    }
     this.session.webRequest.onBeforeRequest(null);
     this.session.webRequest.onHeadersReceived(null);
     this.unwatchAll();
+    console.log("[AdBlocker] disable: done");
   }
-
-  // injectYoutubeAdblockSponsor(webContents: WebContents) {
-  //   if (!this.isEnabled) return;
-  //   webContents.executeJavaScript(`
-  //     if (!window.__ytAdblockInjected) {
-  //       window.__ytAdblockInjected = true;
-  //       (${SponsorBlock.toString()})();
-  //       (${SkipADSBlock.toString()})();
-  //     }
-  //   `).catch((err) => {
-  //     console.error("[YT Adblock] Injection failed:", err);
-  //   });
-  // }
 
   watch(webContents: WebContents) {
     if (!this.isEnabled) return;

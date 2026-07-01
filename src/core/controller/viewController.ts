@@ -128,7 +128,7 @@ export class ViewController {
           }
           return { success: false, error: "No captured image" };
         },
-        "@adb/get-filter-metadata": () => adblocker.getFilterMetadata(),
+        ...adblocker.getInvokeHandlers(),
         [IPC_TAB_GROUP_INVOKE.HIDE_GROUP]: async (id: string) => {
           const group = tabGroupController.getGroups().find((g) => g.id === id);
           if (!group) return { success: true };
@@ -611,7 +611,10 @@ export class ViewController {
         }
       }
 
-      if (next.adblockAutoUpdate !== prev.adblockAutoUpdate || next.adblockAutoUpdateInterval !== prev.adblockAutoUpdateInterval) {
+      if (
+        next.adblockAutoUpdate !== prev.adblockAutoUpdate ||
+        next.adblockAutoUpdateInterval !== prev.adblockAutoUpdateInterval
+      ) {
         if (next.adblockAutoUpdate !== false) {
           const interval = (next.adblockAutoUpdateInterval ?? 360) * 60 * 1000;
           adblocker.startAutoUpdate(interval);

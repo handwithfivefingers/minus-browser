@@ -1,8 +1,8 @@
 export const AI_SELECTION_SCRIPT = `(() => {
-  const trustPolicy = (window as any)?.trustedTypes?.createPolicy(
+  const trustPolicy = window.trustedTypes?.createPolicy(
     "forceInner",
     {
-      createHTML: (to_escape: string) => to_escape,
+      createHTML: (to_escape) => to_escape,
     },
   );
 
@@ -199,9 +199,12 @@ export const AI_SELECTION_SCRIPT = `(() => {
   document.addEventListener("mousedown", (e) => {
     const btn = document.getElementById(CONTAINER_ID);
     if (btn && btn !== e.target && !btn.contains(e.target)) {
-      hideTimeout = setTimeout(() => {
-        if (!isHovering) hideContainer();
-      }, 180);
+      const currentText = String(window.getSelection?.()?.toString?.() || "").trim();
+      if (!currentText) {
+        hideTimeout = setTimeout(() => {
+          if (!isHovering) hideContainer();
+        }, 180);
+      }
     }
   });
 

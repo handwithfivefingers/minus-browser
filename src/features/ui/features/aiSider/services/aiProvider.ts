@@ -22,6 +22,7 @@ function getClient(): OpenAI {
   }
 
   if (!apiKey) {
+    // @ts-ignore
     apiKey = import.meta.env.VITE_GROQ_AI_API_KEY || "";
   }
   if (!apiKey) {

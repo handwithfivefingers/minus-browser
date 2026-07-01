@@ -5,11 +5,11 @@ import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import type { ChatMessage } from "../stores/useAiSidebarStore";
 
-function CodeBlock({ children, className }: { children: string; className?: string }) {
+function CodeBlock({ children, className, codeString }: { children: React.ReactNode; className?: string; codeString?: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(children);
+    await navigator.clipboard.writeText(codeString || String(children));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -57,11 +57,11 @@ const MessageBubble = ({ message }: { message: ChatMessage }) => {
               components={{
                 code({ className, children, ...props }: CodeProps) {
                   const isInline = !className;
-                  const content = String(children).replace(/\n$/, "");
+                  const codeString = String(children).replace(/\n$/, "");
                   if (isInline) {
                     return <InlineCode>{children}</InlineCode>;
                   }
-                  return <CodeBlock className={className}>{content}</CodeBlock>;
+                  return <CodeBlock className={className} codeString={codeString}>{children}</CodeBlock>;
                 },
                 pre({ children }) {
                   return <>{children}</>;

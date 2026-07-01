@@ -65,7 +65,6 @@ export const Extension = () => {
   const [stats, setStats] = useState<{ blockedRequests: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [customFilterText, setCustomFilterText] = useState("");
-
   useEffect(() => {
     (async () => {
       const list: FilterEntry[] = await (window.api.INVOKE as any)("@adb/get-filter-metadata");
@@ -75,7 +74,7 @@ export const Extension = () => {
       const s = await (window.api.INVOKE as any)("@adb/get-stats");
       setStats(s);
       const custom: string[] = await (window.api.INVOKE as any)("@adb/get-custom-filters");
-      setCustomFilterText(custom.join("\n"));
+      setCustomFilterText(custom?.join("\n"));
     })();
   }, []);
 

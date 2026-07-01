@@ -9,9 +9,8 @@ import {
   IconLanguage,
   IconPictureInPicture,
   IconReload,
-  IconRobot,
   IconSearch,
-  IconStarFilled,
+  IconShieldCancel,
   IconSnowflake,
 } from "@tabler/icons-react";
 import clsx from "clsx";
@@ -70,6 +69,14 @@ const Header = ({
   onTogglePreventHibernate,
 }: IHeader) => {
   const { layout, extension } = useMinusThemeStore();
+  const [stats, setStats] = useState<{ blockedRequests: number } | null>(null);
+  useEffect(() => {
+    (async () => {
+      const s = await (window.api.INVOKE as any)("@adb/get-stats");
+      setStats(s);
+    })();
+  }, []);
+
   const onBookmark = () => {
     window.api.EMIT("TOGGLE_BOOKMARK", { url: url, id: id });
   };
@@ -181,7 +188,7 @@ const Header = ({
 
         {extension.vault ? (
           <button
-            className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer px-2 py-1 transition-all text-[10px] font-semibold"
+            className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all text-[10px] font-semibold"
             onClick={onOpenVaultManager}
             title="Open Vault Manager"
           >
@@ -222,15 +229,18 @@ const Header = ({
           <IconBrain size={16} />
         </button>
 
-        <button
+        {/* <button
           className={clsx("hover:text-yellow-500 rounded cursor-pointer p-1 transition-all", {
             ["text-yellow-500"]: isBookmarked,
           })}
           title="Bookmark"
-          onClick={onBookmark}
-        >
-          <IconStarFilled size={16} />
-        </button>
+          // onClick={onBookmark}
+        > */}
+        <div className="text-green-600 text-xs gap-0.5 flex items-center">
+          <IconShieldCancel size={16} />
+          {stats?.blockedRequests}
+        </div>
+        {/* </button> */}
       </div>
     </div>
   );

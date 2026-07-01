@@ -13,7 +13,7 @@ const MODE_TABS: { key: AiSidebarMode; label: string; icon: React.ReactNode }[] 
   { key: "summarize", label: "Summarize", icon: <IconFileText size={16} /> },
   { key: "generate", label: "Generate", icon: <IconPencil size={16} /> },
   { key: "explain", label: "Explain", icon: <IconQuestionMark size={16} /> },
-  { key: "capture", label: "Capture", icon: <IconCamera size={16} /> },
+  // { key: "capture", label: "Capture", icon: <IconCamera size={16} /> },
 ];
 
 const LANGUAGE_OPTIONS = Object.entries(LANGUAGE_MAP).map(([value, label]) => ({ value, label }));
