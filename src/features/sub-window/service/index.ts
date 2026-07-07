@@ -24,14 +24,10 @@ export class SubWindowService {
 
   init(mainWindow: BrowserWindow) {
     this.mainWindow = mainWindow;
-
-    ipcMain.handle(SUB_WINDOW_INVOKE.RESOLVE, (_event, data: { requestId?: string; payload?: any }) => {
-      this.resolveRequest(data);
-      return { success: true };
-    });
   }
 
   resolveRequest(data: { requestId?: string; payload?: any }) {
+    console.log("[SubWindowService] RESOLVE", data);
     const requestId = data?.requestId;
     if (requestId && this.pendingRequests.has(requestId)) {
       const pending = this.pendingRequests.get(requestId)!;
@@ -40,6 +36,7 @@ export class SubWindowService {
       pending.resolve(data.payload ?? data);
       this.close();
     }
+    return { success: true };
   }
 
   private getURL() {

@@ -1,16 +1,5 @@
-import {
-  IconPlus,
-  IconSquare,
-  IconSquareCheck,
-  IconTrash,
-} from "@tabler/icons-react";
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
+import { IconPlus, IconSquare, IconSquareCheck, IconTrash } from "@tabler/icons-react";
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 import { v4 as uuidV4 } from "uuid";
 interface ITodoItem {
   label: string;
@@ -26,15 +15,7 @@ const Home = () => {
   );
 };
 
-const DATE_OUTPUT = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
+const DATE_OUTPUT = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const TodoHome = () => {
   const hourRef = useRef<HTMLSpanElement | null>(null);
   const minRef = useRef<HTMLSpanElement | null>(null);
@@ -56,7 +37,7 @@ const TodoHome = () => {
   }, []);
 
   useLayoutEffect(() => {
-    const todo = localStorage.getItem("APP_TODO");
+    const todo = localStorage.getItem("APP_TODO") as string;
     if (JSON.parse(todo)?.length > 0) {
       setTodos(JSON.parse(todo));
     } else {
@@ -106,31 +87,21 @@ const TodoHome = () => {
   };
   return (
     <div className="flex justify-center h-full items-center-safe py-20 flex-col gap-8 w-full">
-      <div className="flex-1 flex-shrink-0 gap-2 flex">
+      <div className="flex-1 shrink-0 gap-2 flex">
+        <span className="font-medium text-3xl text-white">{DATE_OUTPUT[new Date().getDay()]}</span>
         <span className="font-medium text-3xl text-white">
-          {DATE_OUTPUT[new Date().getDay()]}
-        </span>
-        <span className="font-medium text-3xl text-white">
-          {new Date().getDate()}/{new Date().getMonth()}/
-          {new Date().getFullYear()}
+          {new Date().getDate()}/{new Date().getMonth()}/{new Date().getFullYear()}
         </span>
       </div>
-      <div className="flex-1 flex-shrink-0">
+      <div className="flex-1 shrink-0">
         <span ref={hourRef} className="font-medium text-8xl text-white" />
         <span className="font-medium text-8xl text-white">:</span>
         <span ref={minRef} className="font-medium text-8xl text-white" />
       </div>
       <div className="h-full w-full max-w-80 flex gap-2 flex-col">
-        <div className="flex gap-2 flex-col max-h-[275px] overflow-x-hidden overflow-y-auto scrollbar">
+        <div className="flex gap-2 flex-col max-h-68.75 overflow-x-hidden overflow-y-auto scrollbar">
           {todos?.map((item) => {
-            return (
-              <TodoItem
-                {...item}
-                key={item.id}
-                onSave={onSave}
-                onDelete={() => onDelete(item)}
-              />
-            );
+            return <TodoItem {...item} key={item.id} onSave={onSave} onDelete={() => onDelete(item)} />;
           })}
         </div>
 
@@ -176,22 +147,18 @@ const TodoItem = ({
         <input
           className="font-normal text-xl capitalize px-2 focus:outline-indigo-500/50"
           value={todo.label}
-          onChange={(e) =>
-            setTodo((prev) => ({ ...prev, label: e.target.value }))
-          }
+          onChange={(e) => setTodo((prev) => ({ ...prev, label: e.target.value }))}
         />
         <textarea
           className="text-base text-slate-500 px-2 focus:outline-indigo-500/50"
           value={todo.description}
-          onChange={(e) =>
-            setTodo((prev) => ({ ...prev, description: e.target.value }))
-          }
+          onChange={(e) => setTodo((prev) => ({ ...prev, description: e.target.value }))}
         />
       </div>
 
       <button
         onClick={onDelete}
-        className="text-red-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute z-[1] right-0.5 top-1/2 rounded -translate-y-1/2 cursor-pointer p-1"
+        className="text-red-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute z-1 right-0.5 top-1/2 rounded -translate-y-1/2 cursor-pointer p-1"
       >
         <IconTrash />
       </button>

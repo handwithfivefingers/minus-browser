@@ -1,3 +1,11 @@
+export interface TabError {
+  code: string;
+  description: string;
+  url: string;
+  httpResponseCode?: number;
+  isCertError?: boolean;
+}
+
 export interface ITab {
   id?: string;
   title: string;
@@ -13,6 +21,12 @@ export interface ITab {
   isLoading?: boolean;
   preventHibernate?: boolean;
   groupId?: string;
+  isMuted?: boolean;
+  isUsingCamera?: boolean;
+  isUsingMicrophone?: boolean;
+  isUsingScreenShare?: boolean;
+  blockedNotifications?: number;
+  error?: TabError | null;
 }
 
 export interface ITabManager {

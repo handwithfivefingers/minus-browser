@@ -1,4 +1,13 @@
-import { IconBrain, IconBrandWechat, IconCamera, IconFileText, IconLanguage, IconPencil, IconQuestionMark, IconX } from "@tabler/icons-react";
+import {
+  IconBrain,
+  IconBrandWechat,
+  IconCamera,
+  IconFileText,
+  IconLanguage,
+  IconPencil,
+  IconQuestionMark,
+  IconX,
+} from "@tabler/icons-react";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { AiSidebarMode, useAiSidebarStore } from "../stores/useAiSidebarStore";
@@ -57,7 +66,7 @@ const AiSidebar = () => {
     <div
       ref={sidebarRef}
       className={clsx(
-        "flex-shrink-0 flex flex-col bg-white transition-all duration-200 overflow-hidden h-full",
+        "shrink-0 flex flex-col bg-white transition-all duration-200 overflow-hidden h-full",
         styles.sidebar,
         {
           "w-0 opacity-0": !isOpen,

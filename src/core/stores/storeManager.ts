@@ -23,6 +23,7 @@ const fileStorages = {
   userscripts: path.join(baseDir, "userscripts.json"),
   passwordVault: path.join(baseDir, "passwordVault.json"),
   translate: path.join(baseDir, "translate.json"),
+  permission: path.join(baseDir, "permission.json"),
 };
 
 type StoreName =
@@ -33,7 +34,8 @@ type StoreName =
   | "history"
   | "userscripts"
   | "passwordVault"
-  | "translate";
+  | "translate"
+  | "permission";
 export class StoreManager {
   storage = new Map();
   configFile = fileStorages.userData;
@@ -48,6 +50,7 @@ export class StoreManager {
         "userscripts",
         "passwordVault",
         "translate",
+        "permission",
       ].includes(props)
     ) {
       throw new Error("Invalid props");

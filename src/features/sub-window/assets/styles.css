@@ -4,6 +4,7 @@
 @source "../../translate/";
 @source "../../userscript/";
 @source "../../tabGroup/";
+@source "../../permission/";
 
 @theme {
   --animate-fade-in: fade-in 200ms ease-out;

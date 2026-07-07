@@ -75,11 +75,21 @@ app.on("render-process-gone", () => app.quit());
 
 app.whenReady().then(async () => {
   if (process.platform === "darwin") {
-    const status = systemPreferences.getMediaAccessStatus("microphone");
-    if (status === "not-determined") {
-      const granted = await systemPreferences.askForMediaAccess("microphone");
-      if (granted) {
-        console.log("Microphone access granted!");
+    for (const media of ["microphone", "camera"] as const) {
+      try {
+        const status = systemPreferences.getMediaAccessStatus(media);
+        if (status === "not-determined") {
+          const granted = await systemPreferences.askForMediaAccess(media);
+          if (granted) {
+            console.log(`${media} access granted!`);
+          }
+        } else if (status === "denied") {
+          console.warn(
+            `${media} access denied at OS level — go to System Settings → Privacy & Security → ${media === "microphone" ? "Microphone" : "Camera"} to enable`,
+          );
+        }
+      } catch (err) {
+        console.error(`Failed to request ${media} access:`, err);
       }
     }
   }

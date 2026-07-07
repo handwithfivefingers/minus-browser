@@ -1,19 +1,19 @@
 import { BrowserWindow, WebContentsAudioStateChangedEventParams, WebContentsView } from "electron";
 import { v7 as uuid_v7 } from "uuid";
+import { ContextMenuController } from "~/core/controller/context";
+import { historyController } from "~/core/controller/history";
+import { browserSession } from "~/core/services/session";
+import { StoreManager } from "~/core/stores";
 import { cacheSystem } from "~/features/cacheSystem";
-import { AiTabPlugin } from "~/features/ui/features/aiSider/plugin";
 import { CaptureTabPlugin } from "~/features/capture";
 import { SearchTabPlugin } from "~/features/search/plugin";
-import { StoreManager } from "~/core/stores";
-import { ContextMenuController } from "~/core/controller/context";
 import { TabPluginManager } from "~/features/tabPluginManager";
 import { TranslateTabPlugin } from "~/features/translate/plugin";
+import { AiTabPlugin } from "~/features/ui/features/aiSider/plugin";
 import { UserScriptTabPlugin } from "~/features/userscript/plugin";
 import { VaultTabPlugin } from "~/features/vault";
 import { ITab, IUserInterface } from "~/shared/types";
-import { browserSession } from "~/core/services/session";
-import { historyController } from "~/core/controller/history";
-import { YoutubeEmbeddingPlugin } from "~/features/youtubeEmbed";
+import { TabPermission } from "./permission";
 interface IDestroy {
   destroy?: () => void;
 }
@@ -43,17 +43,19 @@ const preloadScript = () => {
   }, 500);
 };
 
-export class Tab {
+export class Tab extends TabPermission {
   id: string = uuid_v7();
   title: string = "New Tab";
   url: string = "https://google.com";
   isPinned: boolean = false;
   isFocused: boolean = false;
   audible: boolean = false;
+
   isLoading = false;
   index?: number;
   favicon: string = "";
   timestamp: number = Date.now();
+  error?: ITab["error"];
   isBookmarked: boolean = false;
   isHibernated: boolean = false;
   preventHibernate: boolean = false;
@@ -92,6 +94,7 @@ export class Tab {
     eventEmitter,
     ...props
   }: Partial<ITab> & { eventEmitter: <T>(payload: { channel: string; data: T }) => void }) {
+    super(props);
     Object.assign(this, props);
     this.eventEmitter = eventEmitter;
   }
@@ -107,8 +110,9 @@ export class Tab {
     this._webContents = this._view.webContents;
     this._view.setMaxListeners(30);
     this.createContextMenu();
-    this.requestPermissions();
+    this.requestPermissions(this.id, this._webContents, this.peristInformationToRenderer.bind(this));
     this.registerCommonEvent();
+    this.registerMediaEvents(this._webContents, this.peristInformationToRenderer.bind(this));
     this.isHibernated = false;
     this.pluginReady ??= this.registerPlugin();
   }
@@ -229,11 +233,21 @@ export class Tab {
     this._webContents.on("page-favicon-updated", this.updateFavicon.bind(this));
     // @ts-ignore
     this._webContents.on("page-title-updated", this.updateTitle.bind(this));
-    this._webContents.on("did-navigate", (_event, url, _httpResponseCode, _httpStatusText) => {
+    this._webContents.on("did-navigate", (_event, url, httpResponseCode, _httpStatusText) => {
       this.updateUrl(url);
       if (url && url !== "about:blank") {
+        if (httpResponseCode >= 400) {
+          this.handleNavigationError(
+            `HTTP_${httpResponseCode}`,
+            `HTTP ${httpResponseCode} ${_httpStatusText || ""}`,
+            url,
+            httpResponseCode,
+          );
+          return;
+        }
         historyController.addEntry(url, this.title, this.favicon);
       }
+      this.clearError();
     });
     this._webContents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
       if (isMainFrame) {
@@ -243,6 +257,15 @@ export class Tab {
         }
       }
     });
+    this._webContents.on(
+      "did-fail-load",
+      (_event, _errorCode, errorDescription, validatedURL, isMainFrame, _frameProcessId, _frameRoutingId) => {
+        if (errorDescription === "ERR_ABORTED") return;
+        if (!isMainFrame) return;
+        if (!validatedURL || validatedURL === "about:blank") return;
+        this.handleNavigationError(errorDescription, errorDescription, validatedURL);
+      },
+    );
     this._webContents.on("audio-state-changed", this.updateAudioState.bind(this));
     this._webContents.on("did-start-loading", this.tabLoading.bind(this, true));
     this._webContents.on("did-stop-loading", this.tabLoading.bind(this, false));
@@ -252,6 +275,86 @@ export class Tab {
     this.isLoading = isLoading;
     const browser = BrowserWindow.getFocusedWindow();
     browser?.webContents?.send(`LOADING:${this.id}`, isLoading);
+  }
+
+  clearError() {
+    if (!this.error) return;
+    this.error = null;
+    this.peristInformationToRenderer({ error: null });
+  }
+
+  handleNavigationError(errorCode: string, errorDescription: string, url: string, httpResponseCode?: number) {
+    const tabError: ITab["error"] = {
+      code: errorCode,
+      description: this.formatErrorDescription(errorCode, errorDescription),
+      url,
+      httpResponseCode,
+    };
+    this.error = tabError;
+    this.loadErrorPage(tabError);
+    this.peristInformationToRenderer({ error: tabError });
+  }
+
+  private formatErrorDescription(errorCode: string, _errorDescription: string): string {
+    if (errorCode.startsWith("ERR_NAME_NOT_RESOLVED")) return "Server IP address could not be found";
+    if (errorCode.startsWith("ERR_CONNECTION_REFUSED")) return "Connection refused";
+    if (errorCode.startsWith("ERR_CONNECTION_TIMED_OUT")) return "Connection timed out";
+    if (errorCode.startsWith("ERR_CONNECTION_RESET")) return "Connection was reset";
+    if (errorCode.startsWith("ERR_INTERNET_DISCONNECTED")) return "Your device is offline";
+    if (errorCode.startsWith("ERR_TIMED_OUT")) return "Server took too long to respond";
+    if (errorCode.startsWith("ERR_CERT")) return "Certificate invalid";
+    if (errorCode.startsWith("HTTP_4")) return `HTTP ${errorCode.replace("HTTP_", "")} Client Error`;
+    if (errorCode.startsWith("HTTP_5")) return `HTTP ${errorCode.replace("HTTP_", "")} Server Error`;
+    return _errorDescription || "An unknown error occurred";
+  }
+
+  private getErrorTitle(errorCode: string): string {
+    if (errorCode.startsWith("ERR_NAME_NOT_RESOLVED")) return "This site can't be reached";
+    if (errorCode.startsWith("ERR_CONNECTION_REFUSED")) return "This site can't be reached";
+    if (errorCode.startsWith("ERR_CONNECTION_TIMED_OUT")) return "This site can't be reached";
+    if (errorCode.startsWith("ERR_CONNECTION_RESET")) return "This site can't be reached";
+    if (errorCode.startsWith("ERR_INTERNET_DISCONNECTED")) return "No internet";
+    if (errorCode.startsWith("ERR_TIMED_OUT")) return "This site took too long to respond";
+    if (errorCode.startsWith("ERR_CERT")) return "Your connection is not private";
+    if (errorCode.startsWith("HTTP_4") || errorCode.startsWith("HTTP_5")) return "This page isn't working";
+    return "Navigation error";
+  }
+
+  private loadErrorPage(tabError: ITab["error"]) {
+    if (!this._webContents || !tabError) return;
+    const title = this.getErrorTitle(tabError.code);
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+  .container { text-align: center; max-width: 480px; padding: 40px 24px; }
+  .icon { font-size: 64px; margin-bottom: 16px; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+  .code-badge { display: inline-block; background: #e2e8f0; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 500; margin-bottom: 12px; }
+  p { font-size: 14px; color: #64748b; margin-bottom: 8px; line-height: 1.5; }
+  .url { font-size: 13px; color: #94a3b8; word-break: break-all; margin-bottom: 24px; }
+  button { background: #6366f1; color: #fff; border: none; border-radius: 6px; padding: 10px 24px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  button:hover { background: #4f46e5; }
+  button.secondary { background: transparent; color: #6366f1; border: 1px solid #6366f1; margin-left: 8px; }
+  button.secondary:hover { background: #eef2ff; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="icon">${tabError.code.startsWith("HTTP_4") || tabError.code.startsWith("HTTP_5") ? "⚠️" : "🔒"}</div>
+  <h1>${title}</h1>
+  ${tabError.httpResponseCode ? `<div class="code-badge">${tabError.httpResponseCode}</div>` : ""}
+  <p>${tabError.description}</p>
+  <div class="url">${tabError.url}</div>
+  <button onclick="location.href='${tabError.url}'">Retry</button>
+  <button class="secondary" onclick="location.href='https://google.com'">Go to Home</button>
+</div>
+</body>
+</html>`;
+    const encoded = encodeURIComponent(html);
+    this._webContents.loadURL(`data:text/html;charset=utf-8,${encoded}`);
   }
 
   updateAudioState({ audible }: WebContentsAudioStateChangedEventParams) {
@@ -311,35 +414,12 @@ export class Tab {
     if (!this._webContents) return;
     this._webContents.on("context-menu", new ContextMenuController().initialize);
   }
-  requestPermissions() {
+
+  toggleMute() {
     if (!this._view) return;
-    this._view.webContents.session.setDisplayMediaRequestHandler(
-      (request, callback) => {
-        callback({ video: request.frame || undefined });
-      },
-      { useSystemPicker: true },
-    );
-    this._view.webContents.session.setPermissionRequestHandler((webContents, permission, request) => {
-      if (
-        permission === "unknown" ||
-        permission === "fileSystem" ||
-        permission === "storage-access" ||
-        permission === "top-level-storage-access" ||
-        permission === "mediaKeySystem"
-      ) {
-        return request(false);
-      }
-      return request(true);
-    });
-    this._view.webContents.setWindowOpenHandler(({ url }) => {
-      try {
-        const browserView = BrowserWindow.getFocusedWindow();
-        browserView?.webContents?.send("CREATE_TAB", { url: url });
-        return { action: "deny" };
-      } catch (error) {
-        return { action: "deny" };
-      }
-    });
+    this.isMuted = !this.isMuted;
+    this._view.webContents.setAudioMuted(this.isMuted);
+    this.peristInformationToRenderer({ isMuted: this.isMuted });
   }
   onRequestPIP() {
     if (!this.isAlive) return;
@@ -347,11 +427,11 @@ export class Tab {
       this._webContents!.focus();
     }
     const script = `(${preloadScript.toString()})();
-new Promise((resolve) => {
-  document.addEventListener('enterpictureinpicture', () => {
-    document.addEventListener('leavepictureinpicture', () => resolve(), { once: true });
-  }, { once: true });
-});`;
+    new Promise((resolve) => {
+      document.addEventListener('enterpictureinpicture', () => {
+        document.addEventListener('leavepictureinpicture', () => resolve(), { once: true });
+      }, { once: true });
+    });`;
     this._webContents!.executeJavaScript(script)
       .then(() => {
         this.eventEmitter({ channel: "PIP_EXITED", data: { id: this.id } });
@@ -404,6 +484,12 @@ new Promise((resolve) => {
       groupId: this.groupId,
       cookies: this.cookies,
       audible: this.audible,
+      isMuted: this.isMuted,
+      isUsingCamera: this.isUsingCamera,
+      isUsingMicrophone: this.isUsingMicrophone,
+      isUsingScreenShare: this.isUsingScreenShare,
+      blockedNotifications: this.blockedNotifications,
+      error: this.error,
     };
   }
 }
