@@ -1,4 +1,5 @@
 import { IconInnerShadowTopLeft } from "@tabler/icons-react";
+import { TabErrorPage } from "~/features/ui/components/tab/TabErrorPage";
 import { lazy, useEffect, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router";
 import { ITab } from "~/shared/types";
@@ -83,17 +84,21 @@ const CustomApp = () => {
   const handleSearch = async (url: string) => {
     try {
       const outputFormat = navigateOrSearch(url);
-      updateTab(tabId, { url: outputFormat });
+      updateTab(tabId, { url: outputFormat, error: null });
       window.api.EMIT("VIEW_CHANGE_URL", { id: tabId, url: outputFormat });
     } catch (error) {
       console.error("VIEW_CHANGE_URL error", error);
     }
   };
 
-  /**
-   * Processes input from a custom address bar (Omnibox).
-   * Handles: Protocols, Localhost, IPs, Domains, and Search Queries.
-   */
+  const handleRetry = async () => {
+    if (!tab?.error?.url) return;
+    await handleSearch(tab.error.url);
+  };
+
+  const handleGoHome = async () => {
+    await handleSearch("https://google.com");
+  };
 
   const onBackWard = async () => {
     try {
@@ -305,7 +310,11 @@ const CustomApp = () => {
         onCapturePage={() => window.api.INVOKE("CAPTURE_PAGE")}
         onCaptureSelection={() => window.api.INVOKE("CAPTURE_SELECTION")}
       />
-      <WebViewInstance id={tabId} />
+      {tab?.error ? (
+        <TabErrorPage error={tab.error} onRetry={handleRetry} onGoHome={handleGoHome} />
+      ) : (
+        <WebViewInstance id={tabId} />
+      )}
     </div>
   );
 };

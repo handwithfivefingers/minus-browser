@@ -7,6 +7,7 @@ import {
   IconCodeDots,
   IconKey,
   IconLanguage,
+  IconLock,
   IconPictureInPicture,
   IconReload,
   IconSearch,
@@ -70,6 +71,7 @@ const Header = ({
 }: IHeader) => {
   const { layout, extension } = useMinusThemeStore();
   const [stats, setStats] = useState<{ blockedRequests: number } | null>(null);
+
   useEffect(() => {
     (async () => {
       const s = await (window.api.INVOKE as any)("@adb/get-stats");
@@ -77,9 +79,15 @@ const Header = ({
     })();
   }, []);
 
-  const onBookmark = () => {
-    window.api.EMIT("TOGGLE_BOOKMARK", { url: url, id: id });
+  const openSiteInfo = (e: React.MouseEvent) => {
+    if (!url) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    window.api.INVOKE("OPEN_SITE_INFO", {
+      url,
+      anchor: { x: rect.left, y: rect.bottom, width: rect.width, height: rect.height },
+    });
   };
+
   const openSpotlight = () => {
     onOpenSpotlight(url || "");
   };
@@ -112,24 +120,22 @@ const Header = ({
         >
           <IconSnowflake size={14} />
         </button>
+        <button
+          onClick={onReload}
+          className={clsx(
+            "hover:text-white transition-all px-1.5 py-1 h-[calc(100%-4px)] hover:bg-indigo-500 cursor-pointer active:translate-y-0.5 text-indigo-500 rounded-full",
+            {
+              "animate-spin": isLoading,
+            },
+          )}
+        >
+          <IconReload size={12} />
+        </button>
       </div>
       <div
-        className={[
-          "flex gap-1 w-1/2 bg-white rounded-full border-2 transition-all relative mx-auto border-transparent",
-        ].join(" ")}
+        className={"flex gap-1 w-1/2 bg-white rounded-full border-2 transition-all relative mx-auto border-transparent"}
       >
-        <div className="flex gap-0.5 absolute top-0.5 left-0.5">
-          <button
-            onClick={onReload}
-            className={clsx(
-              "hover:text-white transition-all px-1 py-1 h-[calc(100%-4px)] hover:bg-indigo-500 cursor-pointer active:translate-y-0.5 text-indigo-500 rounded-full",
-              {
-                "animate-spin": isLoading,
-              },
-            )}
-          >
-            <IconReload size={12} />
-          </button>
+        <div className="flex gap-px items-center">
           <button
             className="hover:bg-indigo-500 h-[calc(100%-4px)] hover:text-white cursor-pointer p-1 active:translate-y-0.5 transition-all text-indigo-500 rounded-full"
             onClick={onTranslatePage}
@@ -137,8 +143,16 @@ const Header = ({
           >
             <IconLanguage size={12} />
           </button>
+          <button
+            type="button"
+            onClick={openSiteInfo}
+            className="p-1 rounded-full transition-colors cursor-pointer text-slate-400 hover:text-indigo-500 hover:bg-indigo-50"
+            title="Site information"
+          >
+            <IconLock size={12} />
+          </button>
         </div>
-        <div className="flex px-12 items-center rounded-full gap-0.5 w-full">
+        <div className="flex items-center rounded-full gap-1 w-full overflow-hidden">
           <input
             className="py-1 w-full transition-all outline-transparent outline bg-white text-xs cursor-pointer"
             value={title || ""}
@@ -229,18 +243,10 @@ const Header = ({
           <IconBrain size={16} />
         </button>
 
-        {/* <button
-          className={clsx("hover:text-yellow-500 rounded cursor-pointer p-1 transition-all", {
-            ["text-yellow-500"]: isBookmarked,
-          })}
-          title="Bookmark"
-          // onClick={onBookmark}
-        > */}
         <div className="text-green-600 text-xs gap-0.5 flex items-center">
           <IconShieldCancel size={16} />
           {stats?.blockedRequests}
         </div>
-        {/* </button> */}
       </div>
     </div>
   );

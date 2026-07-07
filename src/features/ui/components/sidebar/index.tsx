@@ -258,7 +258,7 @@ const SideMenu = () => {
             to={"/"}
             viewTransition
             className={clsx(
-              `h-8 flex flex-col shrink-0 px-0.5 transition-all rounded-md flex items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
+              `h-8 flex flex-col shrink-0 px-0.5 transition-all rounded-md items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
               {
                 [`bg-white text-slate-500 shadow-md`]: pathname === "/",
                 [`text-slate-500`]: pathname !== "/",

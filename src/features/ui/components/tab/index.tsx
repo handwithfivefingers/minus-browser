@@ -1,4 +1,4 @@
-import { IconError404, IconPin, IconPinFilled, IconVolume, IconX, IconGripVertical } from "@tabler/icons-react";
+import { IconError404, IconPin, IconPinFilled, IconVolume, IconVolumeOff, IconVideo, IconMicrophone, IconScreenShare, IconBellOff, IconX, IconGripVertical } from "@tabler/icons-react";
 import clsx from "clsx";
 import { memo, useCallback } from "react";
 import { Link, useLocation } from "react-router";
@@ -31,6 +31,15 @@ const TabItem = memo(({ id, className, onClose, onContextMenu, isDragging, dragH
       e.preventDefault();
       e.stopPropagation();
       window.api.INVOKE("TOGGLE_PIN_TAB", { id });
+    },
+    [id],
+  );
+
+  const handleMuteToggle = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.api.EMIT("TOGGLE_MUTE_TAB", { tabId: id });
     },
     [id],
   );
@@ -68,11 +77,46 @@ const TabItem = memo(({ id, className, onClose, onContextMenu, isDragging, dragH
         >
           <div className="flex relative">
             <Avatar src={tab?.favicon} />
-            {tab?.audible && (
-              <IconVolume
-                className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 text-slate-700"
-                size={12}
-              />
+
+            {tab?.audible && !tab?.isMuted && (
+              <button className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-pointer p-0 border-none bg-transparent" onClick={handleMuteToggle} title="Mute tab" type="button">
+                <IconVolume className="text-slate-700" size={12} />
+              </button>
+            )}
+
+            {tab?.isMuted && (
+              <button className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-pointer p-0 border-none bg-transparent" onClick={handleMuteToggle} title="Unmute tab" type="button">
+                <IconVolumeOff className="text-slate-700" size={12} />
+              </button>
+            )}
+
+            {tab?.isUsingCamera && (
+              <div className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 flex items-center gap-0.5" title="Camera in use">
+                <span className="w-1 h-1 rounded-full bg-red-500" />
+                <IconVideo className="text-red-500" size={10} />
+              </div>
+            )}
+
+            {tab?.isUsingMicrophone && (
+              <div className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/2 flex items-center gap-0.5" title="Microphone in use">
+                <span className="w-1 h-1 rounded-full bg-red-500" />
+                <IconMicrophone className="text-red-500" size={10} />
+              </div>
+            )}
+
+            {tab?.isUsingScreenShare && (
+              <div className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2" title="Screen sharing">
+                <IconScreenShare className="text-green-500" size={10} />
+              </div>
+            )}
+
+            {(tab?.blockedNotifications ?? 0) > 0 && (
+              <div className="absolute -bottom-1.5 -right-1.5 flex items-center gap-0.5" title={`${tab.blockedNotifications} notification${tab.blockedNotifications !== 1 ? 's' : ''} blocked`}>
+                <IconBellOff className="text-orange-500" size={10} />
+                {(tab?.blockedNotifications ?? 0) > 1 && (
+                  <span className="text-[8px] font-bold text-orange-500 leading-none">{tab.blockedNotifications}</span>
+                )}
+              </div>
             )}
           </div>
 

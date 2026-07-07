@@ -133,7 +133,7 @@ export const Interface = () => {
                 checked={autoDownload ?? true}
                 onChange={(e) => setAutoDownload(e.target.checked)}
               />
-              <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-green-500 peer-focus:outline-none after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
+              <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-green-500 peer-focus:outline-none after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full" />
             </label>
           </div>
 

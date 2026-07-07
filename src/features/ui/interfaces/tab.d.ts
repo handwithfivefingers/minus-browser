@@ -28,9 +28,15 @@ export class Tab {
   timestamp: number = Date.now();
   isBookmarked: boolean = false;
   audible: boolean = false;
+  isMuted: boolean = false;
+  isUsingCamera: boolean = false;
+  isUsingMicrophone: boolean = false;
+  isUsingScreenShare: boolean = false;
+  blockedNotifications: number = 0;
   isLoading: boolean = false;
   preventHibernate: boolean = false;
   groupId?: string;
+  error?: { code: string; description: string; url: string; httpResponseCode?: number; isCertError?: boolean } | null;
   constructor(props: Partial<ITab>) {
     Object.assign(this, props);
   }

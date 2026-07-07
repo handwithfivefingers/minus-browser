@@ -4,6 +4,7 @@ import { Outlet, useNavigate } from "react-router";
 import { IUserInterface } from "~/shared/types";
 import { IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
 import { AiSidebar, SideMenu, NotificationContainer, UpdateBanner } from "../components";
+
 import { useAiSidebarStore } from "../features/aiSider/stores/useAiSidebarStore";
 import { tabServices } from "../services/tab.service";
 import { useMinusThemeStore } from "../stores/useMinusTheme";

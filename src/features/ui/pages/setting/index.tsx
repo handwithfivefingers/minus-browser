@@ -1,4 +1,4 @@
-import { IconAdjustments, IconBrain, IconCode, IconPuzzle, IconShieldLock, IconSnowflake } from "@tabler/icons-react";
+import { IconAdjustments, IconBrain, IconCode, IconPuzzle, IconShieldLock, IconSnowflake, IconWorld } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useState } from "react";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
@@ -8,8 +8,9 @@ import { Interface } from "./components/Interface";
 import { UserScriptSection } from "./components/UserScriptSection";
 import { VaultSection } from "./components/VaultSetting";
 import { HibernateSetting } from "./components/HibernateSetting";
+import { SiteSettings } from "./components/SiteSettings";
 
-type SettingTab = "system" | "userscript" | "vault" | "extension" | "ai" | "hibernate";
+type SettingTab = "system" | "userscript" | "vault" | "extension" | "ai" | "hibernate" | "sites";
 
 const CLASSES = {
   BASIC: "bg-slate-50 w-full h-full p-6",
@@ -40,10 +41,15 @@ const Sidebar = ({ active, onChange }: { active: SettingTab; onChange: (tab: Set
       label: "Hibernate",
       icon: <IconSnowflake size={16} />,
     },
+    {
+      id: "sites",
+      label: "Site Settings",
+      icon: <IconWorld size={16} />,
+    },
   ];
 
   return (
-    <aside className="w-[230px] shrink-0 bg-white rounded-xl border border-slate-200 p-3">
+    <aside className="w-57.5 shrink-0 bg-white rounded-xl border border-slate-200 p-3">
       <div className="px-2 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Settings</div>
       <div className="flex flex-col gap-1.5">
         {tabs.map((tab) => (
@@ -83,6 +89,7 @@ const Setting = () => {
             {activeTab === "extension" && <Extension />}
             {activeTab === "ai" && <AiSettings />}
             {activeTab === "hibernate" && <HibernateSetting />}
+            {activeTab === "sites" && <SiteSettings />}
           </main>
         </div>
       </div>

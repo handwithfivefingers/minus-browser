@@ -1,35 +1,35 @@
 import { app, BrowserWindow, clipboard, ipcMain, Notification, WebContentsView } from "electron";
 import log from "electron-log";
+import { historyController, HistoryRoute } from "~/core/controller/history";
+import { IHandleResizeView, IPC, ITab } from "~/core/interfaces";
+import { ErrorServices } from "~/core/services/error.services";
+import { browserSession } from "~/core/services/session";
+import { eventStore, StoreManager } from "~/core/stores";
+import { permissionStore } from "~/core/stores/permission.store";
+import { isSameURl } from "~/core/utils";
 import { adblocker } from "~/features/adblocker/plugin";
+import { checkForUpdates, initAutoUpdate, quitAndInstall } from "~/features/autoUpdate/autoUpdate.init";
 import { cacheSystem } from "~/features/cacheSystem";
+import { CAPTURE_SELECTION_SCRIPT } from "~/features/capture/plugin/selectionScript";
+import { capturePage } from "~/features/capture/services";
 import { SearchRoute, searchController as splitSearchController } from "~/features/search";
+import {
+  spotlightEmitHandlers,
+  spotlightInvokeHandlers,
+  tabGroupEmitHandlers,
+  tabGroupInvokeHandlers,
+  translateInvokeHandlers,
+  userScriptInvokeHandlers,
+  vaultInvokeHandlers,
+} from "~/features/sub-window/ipc";
+import { subWindowService } from "~/features/sub-window/service";
+import { tabGroupController } from "~/features/tabGroup";
 import { TabController } from "~/features/tabs/controllers";
 import { Tab } from "~/features/tabs/models/tab";
 import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
-import { IUserInterface } from "~/shared/types";
-import { IHandleResizeView, IPC, ITab } from "~/core/interfaces";
-import { ErrorServices } from "~/core/services/error.services";
-import { HistoryRoute, historyController } from "~/core/controller/history";
-import { browserSession } from "~/core/services/session";
-import { StoreManager } from "~/core/stores";
-import { eventStore } from "~/core/stores";
-import { isSameURl } from "~/core/utils";
-import { initAutoUpdate, checkForUpdates, quitAndInstall } from "~/features/autoUpdate/autoUpdate.init";
-import { tabGroupController } from "~/features/tabGroup";
-import { subWindowService } from "~/features/sub-window/service";
-import { SUB_WINDOW_RENDERER_EVENT } from "~/shared/constants/ipc/sub-window";
-import {
-  vaultInvokeHandlers,
-  translateInvokeHandlers,
-  userScriptInvokeHandlers,
-  spotlightInvokeHandlers,
-  spotlightEmitHandlers,
-  tabGroupInvokeHandlers,
-  tabGroupEmitHandlers,
-} from "~/features/sub-window/ipc";
-import { capturePage } from "~/features/capture/services";
-import { CAPTURE_SELECTION_SCRIPT } from "~/features/capture/plugin/selectionScript";
+import { SUB_WINDOW_INVOKE, SUB_WINDOW_RENDERER_EVENT } from "~/shared/constants/ipc/sub-window";
 import { IPC_TAB_GROUP_INVOKE, IPC_TAB_GROUP_RENDERER_EVENT } from "~/shared/constants/ipc/tabGroup";
+import { IUserInterface, PermissionDecision, PermissionType } from "~/shared/types";
 
 export type EmitToRenderer = (channel: string, data?: unknown) => void;
 export class ViewController {
@@ -128,6 +128,10 @@ export class ViewController {
           }
           return { success: false, error: "No captured image" };
         },
+        [IPC_INVOKE_CHANNEL.OPEN_SITE_INFO]: (data) => {
+          subWindowService.open("/site-info", data);
+          return { success: true };
+        },
         ...adblocker.getInvokeHandlers(),
         [IPC_TAB_GROUP_INVOKE.HIDE_GROUP]: async (id: string) => {
           const group = tabGroupController.getGroups().find((g) => g.id === id);
@@ -155,6 +159,29 @@ export class ViewController {
           // Hide the group (triggers onChanged → syncTabsToWindows)
           await tabGroupController.hideGroup(id);
 
+          return { success: true };
+        },
+        [IPC_INVOKE_CHANNEL.GET_SITE_PERMISSIONS]: (data: { origin: string; all?: boolean }) => {
+          if (data?.all) {
+            return permissionStore.getAllSites();
+          }
+          return permissionStore.getSitePermissions(data?.origin || "");
+        },
+        [IPC_INVOKE_CHANNEL.SET_SITE_PERMISSION]: (data: {
+          origin: string;
+          permission: PermissionType;
+          decision: PermissionDecision;
+        }) => {
+          permissionStore.setSitePermission(data.origin, data.permission, data.decision);
+          return { success: true };
+        },
+        [IPC_INVOKE_CHANNEL.RESET_SITE_PERMISSION]: (data: { origin: string; permission: PermissionType }) => {
+          permissionStore.resetSitePermission(data.origin, data.permission);
+          return { success: true };
+        },
+        [SUB_WINDOW_INVOKE.RESOLVE]: (data) => subWindowService.resolveRequest(data),
+        [IPC_INVOKE_CHANNEL.RESET_ALL_PERMISSIONS]: () => {
+          permissionStore.resetAllPermissions();
           return { success: true };
         },
         [IPC_INVOKE_CHANNEL.AI_GET_PAGE_TEXT]: () => this.getActiveTabPageText(),
@@ -193,6 +220,10 @@ export class ViewController {
         ...tabGroupEmitHandlers,
         [IPC_EMIT_CHANNEL.SUB_WINDOW_CLOSE]: () => subWindowService.close(),
         [SUB_WINDOW_RENDERER_EVENT.RESOLVE]: (data) => subWindowService.resolveRequest(data),
+        [IPC_EMIT_CHANNEL.TOGGLE_MUTE_TAB]: (data: { tabId: string }) => {
+          const tab = this.tabController?.getTabById(data.tabId);
+          if (tab) tab.toggleMute();
+        },
       };
     } catch (err) {
       console.error("initializeHandlers Error");
@@ -216,6 +247,7 @@ export class ViewController {
         this.tabController?.initialize(),
         historyController.initialize(),
         tabGroupController.initialize(),
+        permissionStore.initialize(),
       ]);
       tabGroupController.onChanged = () => this.syncTabsToWindows();
       ipcMain.handle("invoke", (event, args: IPC) => this.onInvoke(args));

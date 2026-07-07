@@ -52,6 +52,12 @@ export const IPC_INVOKE_CHANNEL = {
   CAPTURE_PAGE: "CAPTURE_PAGE",
   CAPTURE_SELECTION: "CAPTURE_SELECTION",
   CAPTURE_COPY_CLIPBOARD: "CAPTURE_COPY_CLIPBOARD",
+  GET_SITE_PERMISSIONS: "GET_SITE_PERMISSIONS",
+  SET_SITE_PERMISSION: "SET_SITE_PERMISSION",
+  RESET_SITE_PERMISSION: "RESET_SITE_PERMISSION",
+  RESET_ALL_PERMISSIONS: "RESET_ALL_PERMISSIONS",
+  OPEN_SITE_INFO: "OPEN_SITE_INFO",
+
 } as const;
 
 export const IPC_EMIT_CHANNEL = {
@@ -75,6 +81,7 @@ export const IPC_EMIT_CHANNEL = {
   OPEN_TAB_BY_ID: "OPEN_TAB_BY_ID",
   REORDER_TABS: "REORDER_TABS",
   SUB_WINDOW_CLOSE: "SUB_WINDOW_CLOSE",
+  TOGGLE_MUTE_TAB: "TOGGLE_MUTE_TAB",
 } as const;
 
 export const IPC_RENDERER_EVENT = {
@@ -97,16 +104,9 @@ export const IPC_RENDERER_EVENT = {
   COOKIE_CHANGED: "COOKIE_CHANGED",
   UPDATE_STATUS: "UPDATE_STATUS",
   CAPTURE_RESULT: "CAPTURE_RESULT",
+  PERMISSION_REQUESTED: "PERMISSION_REQUESTED",
 } as const;
 
 export type IPCInvokeChannel = (typeof IPC_INVOKE_CHANNEL)[keyof typeof IPC_INVOKE_CHANNEL];
 export type IPCEmitChannel = (typeof IPC_EMIT_CHANNEL)[keyof typeof IPC_EMIT_CHANNEL];
 export type IPCRendererEventChannel = (typeof IPC_RENDERER_EVENT)[keyof typeof IPC_RENDERER_EVENT];
-
-// 4. Additional suggestions
-// - Virtual list: If tabs grows large (50+), replace the flat map with react-window or @tanstack/virtual to skip DOM work for off-screen items
-// - Debounce search: For fast typers, debounce the useMemo computation by ~50ms
-// - Fuzzy search: Use fuse.js for typo-tolerant tab matching instead of simple includes()
-// - Persist window position: Save spotlight window bounds between opens
-// - Escape to close: Already works, but you could also add Escape listener on the backdrop div
-// - will-change: transform on the animated panel to hint GPU compositing
