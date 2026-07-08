@@ -14,6 +14,8 @@ interface PendingRequest {
 
 export class SubWindowService {
   isOpen = false;
+  onDidOpen: (() => void) | null = null;
+  onDidClose: (() => void) | null = null;
   private view: WebContentsView | null = null;
   private mainWindow: BrowserWindow | null = null;
   private resizeHandler: (() => void) | null = null;
@@ -110,6 +112,7 @@ export class SubWindowService {
     this.view.webContents.focus();
     this.isOpen = true;
     this.lastOpenTime = Date.now();
+    this.onDidOpen?.();
 
     this.resizeHandler = () => this.syncViewBounds();
     this.mainWindow.on("resize", this.resizeHandler);
@@ -141,6 +144,7 @@ export class SubWindowService {
     // from triggering a BrowserWindow blur that closes immediately)
     if (Date.now() - this.lastOpenTime < 300) return;
     this.isOpen = false;
+    this.onDidClose?.();
 
     for (const [, pending] of this.pendingRequests) {
       clearTimeout(pending.timer);

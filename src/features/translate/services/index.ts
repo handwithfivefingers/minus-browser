@@ -8,7 +8,7 @@ import {
   ITranslateSelectionHistoryItem,
   ITranslateStore,
 } from "../types";
-import { StoreManager } from "~/core/stores";
+import { appDb } from "~/core/stores";
 
 const SENTINEL = "__TRANSLATE_RESOLVE__:";
 const MAX_RECENT_SELECTIONS = 40;
@@ -70,20 +70,42 @@ function resolveTranslateUrl(): string {
 }
 
 export class TranslateService {
-  private store = new StoreManager("translate");
   private preference: ITranslatePreference = { ...DEFAULT_PREFERENCE };
   private recentSelections: ITranslateSelectionHistoryItem[] = [];
 
   async initialize() {
-    const raw = await this.store.readFiles<ITranslateStore>();
-    this.preference = { ...DEFAULT_PREFERENCE, ...(raw?.preference || {}) };
-    this.recentSelections = Array.isArray(raw?.recentSelections) ? raw.recentSelections : [];
+    try {
+      const prefRows = appDb.query<{ key: string; value: string }>("SELECT key, value FROM translate_preferences");
+      const pref: Record<string, any> = {};
+      for (const row of prefRows) {
+        try { pref[row.key] = JSON.parse(row.value); } catch { pref[row.key] = row.value; }
+      }
+      this.preference = { ...DEFAULT_PREFERENCE, ...(pref as any) };
+
+      const selRows = appDb.query<ITranslateSelectionHistoryItem>(
+        "SELECT id, tab_id as tabId, source_text as sourceText, translated_text as translatedText, source_language as sourceLanguage, target_language as targetLanguage, created_at as createdAt FROM translate_recent_selections ORDER BY created_at DESC",
+      );
+      this.recentSelections = selRows || [];
+    } catch {
+      this.preference = { ...DEFAULT_PREFERENCE };
+      this.recentSelections = [];
+    }
   }
 
   private async persist() {
-    await this.store.saveFiles<ITranslateStore>({
-      preference: this.preference,
-      recentSelections: this.recentSelections,
+    appDb.transaction(() => {
+      appDb.run("DELETE FROM translate_preferences");
+      for (const [key, value] of Object.entries(this.preference)) {
+        appDb.run("INSERT INTO translate_preferences (key, value) VALUES (?, ?)", [key, JSON.stringify(value)]);
+      }
+
+      appDb.run("DELETE FROM translate_recent_selections");
+      for (const sel of this.recentSelections) {
+        appDb.run(
+          "INSERT INTO translate_recent_selections (id, tab_id, source_text, translated_text, source_language, target_language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [sel.id, sel.tabId, sel.sourceText, sel.translatedText, sel.sourceLanguage, sel.targetLanguage, sel.createdAt],
+        );
+      }
     });
   }
   scriptInjection(text: string, result: { sourceLanguage: string; targetLanguage: string; translatedText: string }) {

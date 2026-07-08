@@ -19,7 +19,8 @@ type LISTENER_CHANNEL =
   | "OPEN_TAB_BY_ID"
   | "NAVIGATE_HISTORY"
   | "GET_HISTORY"
-  | "TAB_GROUP_UPDATED";
+  | "TAB_GROUP_UPDATED"
+  | "NOTIFICATION_POPUP";
 
 export interface IElectronAPI {
   INVOKE: <T>(channel: IPCInvokeChannel, data?: any) => Promise<T> | T;

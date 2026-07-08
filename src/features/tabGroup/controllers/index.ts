@@ -1,18 +1,23 @@
 import { v7 as uuid_v7 } from "uuid";
 import { cacheSystem } from "~/features/cacheSystem";
-import { StoreManager } from "~/core/stores";
+import { appDb } from "~/core/stores";
 import { ITabGroup } from "~/shared/types/tab-group";
 
 export class TabGroupController {
   groups: Map<string, ITabGroup> = new Map();
-  private groupStore: StoreManager = new StoreManager("userData");
   onChanged?: () => void;
 
   async initialize() {
     try {
       const data = await cacheSystem.get<{ tabGroups: ITabGroup[] }>("tabGroups", async () => {
-        const stored = await this.groupStore.readFiles<{ tabGroups?: ITabGroup[] }>();
-        return { tabGroups: stored?.tabGroups || [] };
+        const rows = appDb.query<ITabGroup & { tabIds: string }>("SELECT * FROM tab_groups");
+        const tabGroups: ITabGroup[] = rows.map((r: any) => ({
+          id: r.id, name: r.name, color: r.color,
+          tabIds: [],
+          hidden: !!r.hidden, collapsed: !!r.collapsed,
+          createdAt: r.created_at, updatedAt: r.updated_at,
+        }));
+        return { tabGroups };
       });
       if (data?.tabGroups) {
         for (const group of data.tabGroups) {
@@ -141,7 +146,15 @@ export class TabGroupController {
   private async syncCache() {
     const groups = this.getGroups();
     cacheSystem.set("tabGroups", { tabGroups: groups });
-    await this.groupStore.saveFiles({ tabGroups: groups });
+    appDb.transaction(() => {
+      appDb.run("DELETE FROM tab_groups");
+      for (const group of groups) {
+        appDb.run(
+          "INSERT INTO tab_groups (id, name, color, hidden, collapsed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [group.id, group.name, group.color, group.hidden ? 1 : 0, group.collapsed ? 1 : 0, group.createdAt, group.updatedAt],
+        );
+      }
+    });
     this.onChanged?.();
   }
 

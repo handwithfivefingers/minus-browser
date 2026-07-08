@@ -21,6 +21,7 @@ import { useTabGroupStore } from "../../stores/useTabGroupStore";
 import { useTabStore } from "../../stores/useTabStore";
 import { TabItem } from "../tab";
 import { TabGroupContainer } from "../tabGroup";
+import { NotificationBell } from "~/features/notification/components/NotificationBell";
 import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 /** @ts-ignore */
 import styles from "./styles.module.css";
@@ -368,6 +369,7 @@ const SideMenu = () => {
             <IconPlus size={16} />
             <span className="text-[10px] font-medium">New Tab</span>
           </button>
+          <NotificationBell />
           <SubMenuItem size={tabs?.length} />
         </div>
       </ResizableSidebar>

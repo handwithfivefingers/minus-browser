@@ -1,17 +1,39 @@
 import log from "electron-log";
 import { cacheSystem } from "~/features/cacheSystem";
 import { Tab } from "../models/tab";
-import { StoreManager } from "~/core/stores";
-import { IUserInterface } from "~/shared/types";
+import { appDb } from "~/core/stores";
+import { IUserInterface, ITab } from "~/shared/types";
 import { tabGroupController } from "~/features/tabGroup";
+
+interface ITabDBRow {
+  id: string; title: string; url: string; is_pinned: number; is_focused: number;
+  index: number; favicon: string; timestamp: number; is_bookmarked: number;
+  is_hibernated: number; prevent_hibernate: number; group_id: string | null;
+  audible: number; is_muted: number; is_using_camera: number;
+  is_using_microphone: number; is_using_screen_share: number;
+  blocked_notifications: string | null; error: string | null;
+}
+
+function deserializeTab(row: ITabDBRow): Record<string, any> {
+  return {
+    id: row.id, title: row.title, url: row.url,
+    isPinned: !!row.is_pinned, isFocused: !!row.is_focused,
+    index: row.index, favicon: row.favicon, timestamp: row.timestamp,
+    isBookmarked: !!row.is_bookmarked, isHibernated: !!row.is_hibernated,
+    preventHibernate: !!row.prevent_hibernate, groupId: row.group_id || undefined,
+    audible: !!row.audible, isMuted: !!row.is_muted,
+    isUsingCamera: !!row.is_using_camera, isUsingMicrophone: !!row.is_using_microphone,
+    isUsingScreenShare: !!row.is_using_screen_share,
+    blockedNotifications: row.blocked_notifications ? JSON.parse(row.blocked_notifications) : undefined,
+    error: row.error ? JSON.parse(row.error) : null,
+  };
+}
 
 export class TabController {
   activeTab: Tab | null = null;
   tabsIndex: Record<string, number> = {};
   index: number = 0;
   tabs: Map<string, Tab> = new Map();
-  userStore: StoreManager = new StoreManager("userData");
-  interfaceStore: StoreManager = new StoreManager("interface");
   eventEmitter: <T>(payload: { channel: string; data: T }) => void;
   private _userInterface: IUserInterface | null = null;
 
@@ -33,11 +55,14 @@ export class TabController {
   async initialize() {
     try {
       const fallback = async () => {
-        return this.userStore.readFiles<{
-          tabs: Tab[];
-          index: number;
-          activeTabId: string | null;
-        }>();
+        const indexRow = appDb.get<{ value: string }>("SELECT value FROM app_state WHERE key = 'tab_index'");
+        const activeTabRow = appDb.get<{ value: string }>("SELECT value FROM app_state WHERE key = 'active_tab_id'");
+        const tabRows = appDb.query<ITabDBRow>('SELECT * FROM tabs ORDER BY "index" ASC');
+        return {
+          tabs: tabRows.map(deserializeTab),
+          index: indexRow ? JSON.parse(indexRow.value) : 0,
+          activeTabId: activeTabRow ? JSON.parse(activeTabRow.value) : null,
+        };
       };
       const data = await cacheSystem.get<{
         tabs: Tab[];
@@ -259,12 +284,25 @@ export class TabController {
   }
 
   private syncCache() {
+    const tabs = this.getTabs();
     const persisted = {
-      tabs: this.getTabs(),
+      tabs,
       index: this.index,
       activeTabId: this.activeTab?.id || null,
     };
     cacheSystem.set("tab", persisted as any);
+    appDb.transaction(() => {
+      appDb.run("DELETE FROM tabs");
+      for (const tab of tabs || []) {
+        appDb.run(
+          'INSERT INTO tabs (id, title, url, is_pinned, is_focused, "index", favicon, timestamp, is_bookmarked, is_hibernated, prevent_hibernate, group_id, audible, is_muted, is_using_camera, is_using_microphone, is_using_screen_share, blocked_notifications, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [tab.id, tab.title, tab.url, tab.isPinned ? 1 : 0, tab.isFocused ? 1 : 0, tab.index ?? 0, tab.favicon || "", tab.timestamp || Date.now(), tab.isBookmarked ? 1 : 0, tab.isHibernated ? 1 : 0, tab.preventHibernate ? 1 : 0, tab.groupId || null, tab.audible ? 1 : 0, tab.isMuted ? 1 : 0, tab.isUsingCamera ? 1 : 0, tab.isUsingMicrophone ? 1 : 0, tab.isUsingScreenShare ? 1 : 0, tab.blockedNotifications ? JSON.stringify(tab.blockedNotifications) : null, tab.error ? JSON.stringify(tab.error) : null],
+        );
+      }
+      appDb.run("DELETE FROM app_state WHERE key IN ('tab_index', 'active_tab_id')");
+      appDb.run("INSERT OR REPLACE INTO app_state (key, value) VALUES ('tab_index', ?)", [JSON.stringify(this.index)]);
+      appDb.run("INSERT OR REPLACE INTO app_state (key, value) VALUES ('active_tab_id', ?)", [JSON.stringify(this.activeTab?.id || null)]);
+    });
   }
 
   private getPreviousTab(id: string) {

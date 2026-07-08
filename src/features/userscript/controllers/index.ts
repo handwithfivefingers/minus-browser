@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import { v7 as uuid_v7 } from "uuid";
-import { StoreManager } from "~/core/stores";
-import { IUserScript, IUserScriptStore } from "../types";
+import { appDb } from "~/core/stores";
+import { IUserScript } from "../types";
 import { UserScript } from "../models/userScript";
 import { isUrlMatchedByPatterns } from "~/shared/utils";
 import { cacheSystem } from "~/features/cacheSystem";
@@ -10,7 +10,6 @@ import { eventStore } from "~/core/stores";
 import { WebContentsView } from "electron";
 
 export class UserScriptController {
-  private store: StoreManager = new StoreManager("userscripts");
   private scripts: Map<string, UserScript> = new Map();
   private initialized = false;
   private initializing?: Promise<void>;
@@ -30,8 +29,18 @@ export class UserScriptController {
   }
 
   private async load() {
-    const callback = () => this.store.readFiles<IUserScriptStore>();
-    const raw = await cacheSystem.get<IUserScriptStore>("userscripts", callback);
+    const callback = () => {
+      const rows = appDb.query<IUserScript>(
+        "SELECT id, name, source, enabled, matches, excludes, run_at as runAt, created_at as createdAt, updated_at as updatedAt FROM user_scripts",
+      );
+      return { scripts: rows.map((r) => ({
+        ...r,
+        enabled: !!r.enabled,
+        matches: typeof r.matches === "string" ? JSON.parse(r.matches) : r.matches,
+        excludes: typeof r.excludes === "string" ? JSON.parse(r.excludes || "[]") : (r.excludes || []),
+      })) };
+    };
+    const raw = await cacheSystem.get<{ scripts: IUserScript[] }>("userscripts", callback);
     const storedScripts = Array.isArray(raw?.scripts) ? raw.scripts : [];
 
     this.scripts = new Map();
@@ -47,7 +56,15 @@ export class UserScriptController {
   private persist() {
     const allScripts = [...this.scripts.values()].map((script) => script.toJSON());
     cacheSystem.set("userscripts", { scripts: allScripts });
-    return this.store.saveFiles({ scripts: allScripts });
+    appDb.transaction(() => {
+      appDb.run("DELETE FROM user_scripts");
+      for (const s of allScripts) {
+        appDb.run(
+          "INSERT INTO user_scripts (id, name, source, enabled, matches, excludes, run_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          [s.id, s.name, s.source, s.enabled ? 1 : 0, JSON.stringify(s.matches || []), JSON.stringify(s.excludes || []), s.runAt, s.createdAt || Date.now(), s.updatedAt || Date.now()],
+        );
+      }
+    });
   }
 
   listScripts() {

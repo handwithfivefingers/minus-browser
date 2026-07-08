@@ -4,10 +4,11 @@ import { historyController, HistoryRoute } from "~/core/controller/history";
 import { IHandleResizeView, IPC, ITab } from "~/core/interfaces";
 import { ErrorServices } from "~/core/services/error.services";
 import { browserSession } from "~/core/services/session";
-import { eventStore, StoreManager } from "~/core/stores";
+import { appDb, eventStore } from "~/core/stores";
 import { permissionStore } from "~/core/stores/permission.store";
 import { isSameURl } from "~/core/utils";
 import { adblocker } from "~/features/adblocker/plugin";
+import { NotificationService } from "~/features/notification/service";
 import { checkForUpdates, initAutoUpdate, quitAndInstall } from "~/features/autoUpdate/autoUpdate.init";
 import { cacheSystem } from "~/features/cacheSystem";
 import { CAPTURE_SELECTION_SCRIPT } from "~/features/capture/plugin/selectionScript";
@@ -35,8 +36,6 @@ export type EmitToRenderer = (channel: string, data?: unknown) => void;
 export class ViewController {
   window: BrowserWindow;
   wc: Electron.WebContents | undefined;
-  userStore: StoreManager = new StoreManager("userData");
-  interfaceStore: StoreManager = new StoreManager("interface");
   minusSession: Electron.Session | undefined = browserSession;
   userInterface: IUserInterface | undefined = undefined;
   tabController: TabController | undefined;
@@ -45,6 +44,7 @@ export class ViewController {
   private listenerHandlers: Record<string, (data?: any) => void> | undefined;
   private initPromise: Promise<void>;
   private lastCaptureImage: Electron.NativeImage | null = null;
+  private notificationService = new NotificationService();
 
   constructor(window: BrowserWindow) {
     this.tabController = new TabController((payload) => this.onInvoke(payload));
@@ -224,6 +224,9 @@ export class ViewController {
           const tab = this.tabController?.getTabById(data.tabId);
           if (tab) tab.toggleMute();
         },
+        [IPC_EMIT_CHANNEL.NOTIFICATION_TOGGLE_LIST]: () => {
+          this.notificationService.toggleList();
+        },
       };
     } catch (err) {
       console.error("initializeHandlers Error");
@@ -256,6 +259,7 @@ export class ViewController {
       await this.loadUserInterface();
       this.tabController?.setUserInterface(this.userInterface!);
       await adblocker.initializeForSession(browserSession, this.userInterface?.extension?.disabledFilters);
+      this.notificationService.init(this.window);
       if (this.userInterface?.extension?.adblock) {
         adblocker.isCosmeticFilteringEnabled = this.userInterface?.extension?.cosmeticFiltering ?? true;
         adblocker.enable();
@@ -278,6 +282,7 @@ export class ViewController {
         autoDownload: this.userInterface?.autoDownload,
       });
       subWindowService.init(this.window);
+      subWindowService.onDidOpen = () => this.notificationService.ensureOnTop();
       setImmediate(() => subWindowService.warmup().catch(() => {}));
     }
   }
@@ -467,10 +472,6 @@ export class ViewController {
     const defaultData: IUserInterface = {
       layout: "FLOATING",
       mode: "light",
-      dataSync: {
-        intervalTime: "15",
-        hardwareAcceleration: "1",
-      },
       savedCookies: "0",
       extension: {
         adblock: true,
@@ -488,9 +489,15 @@ export class ViewController {
       autoDownload: true,
     };
     try {
-      const userInterface = await cacheSystem.get<IUserInterface>("interface", () =>
-        this.interfaceStore.readFiles<IUserInterface>(),
-      );
+      const userInterface = await cacheSystem.get<IUserInterface>("interface", () => {
+        const rows = appDb.query<{ key: string; value: string }>("SELECT key, value FROM app_state WHERE key LIKE 'ui_%'");
+        const data: Record<string, any> = {};
+        for (const row of rows) {
+          const k = row.key.replace(/^ui_/, "");
+          try { data[k] = JSON.parse(row.value); } catch { data[k] = row.value; }
+        }
+        return data as IUserInterface;
+      });
       const merged = { ...defaultData, ...userInterface };
       this.userInterface = merged;
       if (merged.historyRetentionDays) {
@@ -535,10 +542,28 @@ export class ViewController {
       const index = this.tabController?.index || 0;
       const activeTabId = this.tabController?.activeTab?.id || null;
       const tabGroups = tabGroupController.getGroups();
+      appDb.transaction(() => {
+        appDb.run("DELETE FROM tabs");
+        for (const tab of tabs || []) {
+          appDb.run(
+            'INSERT OR REPLACE INTO tabs (id, title, url, is_pinned, is_focused, "index", favicon, timestamp, is_bookmarked, is_hibernated, prevent_hibernate, group_id, audible, is_muted, is_using_camera, is_using_microphone, is_using_screen_share, blocked_notifications, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [tab.id, tab.title, tab.url, tab.isPinned ? 1 : 0, tab.isFocused ? 1 : 0, tab.index ?? 0, tab.favicon || "", tab.timestamp || Date.now(), tab.isBookmarked ? 1 : 0, tab.isHibernated ? 1 : 0, tab.preventHibernate ? 1 : 0, tab.groupId || null, tab.audible ? 1 : 0, tab.isMuted ? 1 : 0, tab.isUsingCamera ? 1 : 0, tab.isUsingMicrophone ? 1 : 0, tab.isUsingScreenShare ? 1 : 0, tab.blockedNotifications ? JSON.stringify(tab.blockedNotifications) : null, tab.error ? JSON.stringify(tab.error) : null],
+          );
+        }
+        appDb.run("DELETE FROM app_state WHERE key IN ('tab_index', 'active_tab_id')");
+        appDb.run("INSERT OR REPLACE INTO app_state (key, value) VALUES ('tab_index', ?)", [JSON.stringify(index)]);
+        appDb.run("INSERT OR REPLACE INTO app_state (key, value) VALUES ('active_tab_id', ?)", [JSON.stringify(activeTabId)]);
+        appDb.run("DELETE FROM tab_groups");
+        for (const group of tabGroups || []) {
+          appDb.run(
+            "INSERT OR REPLACE INTO tab_groups (id, name, color, hidden, collapsed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [group.id, group.name, group.color, group.hidden ? 1 : 0, group.collapsed ? 1 : 0, group.createdAt, group.updatedAt],
+          );
+        }
+      });
       await Promise.all([
         this.minusSession?.cookies.flushStore(),
         this.minusSession?.flushStorageData(),
-        this.userStore.saveFiles({ tabs: tabs || [], index, activeTabId, tabGroups }),
       ]);
       return this.window.webContents?.send("SYNC");
     } catch (error) {
@@ -587,6 +612,8 @@ export class ViewController {
     if (subWindowService.isOpen) {
       subWindowService.ensureOnTop();
     }
+    // Notification layer (zIndex=3) always on top of everything
+    this.notificationService.ensureOnTop();
   }
   detachChildView(view: WebContentsView) {
     eventStore.broadcast("viewChanges", undefined);
@@ -605,7 +632,12 @@ export class ViewController {
 
   async interfaceSave(data: IUserInterface) {
     cacheSystem.set("interface", data);
-    this.interfaceStore.saveFiles(data);
+    appDb.transaction(() => {
+      appDb.run("DELETE FROM app_state WHERE key LIKE 'ui_%'");
+      for (const [key, value] of Object.entries(data)) {
+        appDb.run("INSERT OR REPLACE INTO app_state (key, value) VALUES (?, ?)", [`ui_${key}`, JSON.stringify(value)]);
+      }
+    });
 
     if (data.hibernateMode) {
       this.tabController?.setHibernateMode(data.hibernateMode, data.hibernateCustomMinutes);

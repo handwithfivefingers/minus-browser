@@ -1,2 +1,2 @@
-export * from "./storeManager";
+export { appDb } from "./database";
 export * from "./minusEventEmitter";

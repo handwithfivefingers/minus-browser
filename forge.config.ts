@@ -90,6 +90,16 @@ const config: ForgeConfig = {
           config: "vite.findbar-preload.config.ts",
           target: "preload",
         },
+        {
+          entry: "src/features/notification/notification-view-preload.ts",
+          config: "vite.notification-view-preload.config.ts",
+          target: "preload",
+        },
+        {
+          entry: "src/features/notification/notification-preload.ts",
+          config: "vite.notification-preload.config.ts",
+          target: "preload",
+        },
       ],
       renderer: [
         {

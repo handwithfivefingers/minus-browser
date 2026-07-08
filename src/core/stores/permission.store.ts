@@ -1,15 +1,20 @@
-import { StoreManager } from "~/core/stores";
 import { PermissionDecision, PermissionType, SitePermissions } from "~/shared/types";
+import { appDb } from "~/core/stores";
 
 export class PermissionStore {
-  private store: StoreManager = new StoreManager("permission");
   private permissions: Record<string, SitePermissions> = {};
 
   async initialize() {
     try {
-      const data = await this.store.readFiles<Record<string, SitePermissions>>();
-      if (data && typeof data === "object" && !Array.isArray(data)) {
-        this.permissions = data;
+      const rows = appDb.query<{ origin: string; permission: string; decision: string }>(
+        "SELECT origin, permission, decision FROM permissions",
+      );
+      this.permissions = {};
+      for (const row of rows) {
+        if (!this.permissions[row.origin]) {
+          this.permissions[row.origin] = {};
+        }
+        this.permissions[row.origin][row.permission] = row.decision as PermissionDecision;
       }
     } catch {
       this.permissions = {};
@@ -17,47 +22,49 @@ export class PermissionStore {
   }
 
   getSitePermission(origin: string, permission: PermissionType): PermissionDecision {
-    return this.permissions[origin]?.[permission] || "prompt";
+    const result = appDb.get<{ decision: string }>(
+      "SELECT decision FROM permissions WHERE origin = ? AND permission = ?",
+      [origin, permission],
+    );
+    return (result?.decision as PermissionDecision) || "prompt";
   }
 
   getSitePermissions(origin: string): SitePermissions {
-    return this.permissions[origin] || {};
+    const rows = appDb.query<{ permission: string; decision: string }>(
+      "SELECT permission, decision FROM permissions WHERE origin = ?",
+      [origin],
+    );
+    const perms: SitePermissions = {};
+    for (const row of rows) {
+      perms[row.permission] = row.decision as PermissionDecision;
+    }
+    return perms;
   }
 
   setSitePermission(origin: string, permission: PermissionType, decision: PermissionDecision) {
-    if (!this.permissions[origin]) {
-      this.permissions[origin] = {};
-    }
-    this.permissions[origin][permission] = decision;
-    this.save();
+    appDb.run(
+      "INSERT OR REPLACE INTO permissions (origin, permission, decision) VALUES (?, ?, ?)",
+      [origin, permission, decision],
+    );
   }
 
   resetSitePermission(origin: string, permission: PermissionType | "*") {
     if (permission === "*") {
-      delete this.permissions[origin];
-      this.save();
+      appDb.run("DELETE FROM permissions WHERE origin = ?", [origin]);
       return;
     }
-    if (this.permissions[origin]) {
-      delete this.permissions[origin][permission];
-      if (Object.keys(this.permissions[origin]).length === 0) {
-        delete this.permissions[origin];
-      }
-      this.save();
-    }
+    appDb.run("DELETE FROM permissions WHERE origin = ? AND permission = ?", [origin, permission]);
   }
 
   resetAllPermissions() {
-    this.permissions = {};
-    this.save();
+    appDb.run("DELETE FROM permissions");
   }
 
   getAllSites(): string[] {
-    return Object.keys(this.permissions);
-  }
-
-  private save() {
-    this.store.saveFiles(this.permissions);
+    const rows = appDb.query<{ origin: string }>(
+      "SELECT DISTINCT origin FROM permissions",
+    );
+    return rows.map((r) => r.origin);
   }
 }
 

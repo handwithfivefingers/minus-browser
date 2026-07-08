@@ -1,63 +1,64 @@
 import { safeStorage } from "electron";
 import { v7 as uuid_v7 } from "uuid";
-import { IPasswordItem, IPasswordVaultPayload } from "../types/password";
-import { StoreManager } from "~/core/stores";
+import { IPasswordItem } from "../types/password";
+import { appDb } from "~/core/stores";
 import { cacheSystem } from "~/features/cacheSystem";
 
-interface IPasswordStore {
-  vault: IPasswordVaultPayload;
-}
-
 export class PasswordController {
-  private store: StoreManager = new StoreManager("passwordVault");
   private items: Map<string, IPasswordItem> = new Map();
   async initialize() {
     try {
-      const cb = () => this.store.readFiles<IPasswordStore>();
-      const vaults = await cacheSystem.get<IPasswordStore>("passwordVault", cb);
-
-      const payload = vaults?.vault;
-      if (!payload?.cipherText) {
-        this.items = new Map();
-        return;
-      }
-      const decrypted = this.decrypt(payload);
-      const parsed = JSON.parse(decrypted || "[]");
-      const list = Array.isArray(parsed) ? parsed : [];
-      const items = new Map(list.filter((item) => item?.id).map((item) => [item.id, item]));
-      this.items = items;
+      const cb = () => {
+        const rows = appDb.query<{ id: string; site: string; username: string; encrypted_password: string; notes: string; created_at: number; updated_at: number }>(
+          "SELECT * FROM password_vault_items",
+        );
+        const list: IPasswordItem[] = rows.map((r) => ({
+          id: r.id, site: r.site, username: r.username,
+          password: this.decryptString(r.encrypted_password),
+          notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at,
+        }));
+        return { vault: { cipherText: "", isEncrypted: false } };
+      };
+      const vaults = await cacheSystem.get<{ vault: any }>("passwordVault", cb);
+      this.items = new Map();
     } catch (error) {
       console.error("failed to init", error);
     }
   }
 
-  private encrypt(text: string): IPasswordVaultPayload {
-    if (safeStorage.isEncryptionAvailable()) {
-      const buffer = safeStorage.encryptString(text);
-      return { cipherText: buffer.toString("base64"), isEncrypted: true };
+  private decryptString(encrypted: string): string {
+    if (!encrypted) return "";
+    try {
+      const cipher = Buffer.from(encrypted, "base64");
+      if (safeStorage.isEncryptionAvailable()) {
+        return safeStorage.decryptString(cipher);
+      }
+      return cipher.toString("utf-8");
+    } catch {
+      return "";
     }
-    return {
-      cipherText: Buffer.from(text, "utf-8").toString("base64"),
-      isEncrypted: false,
-    };
   }
 
-  private decrypt(payload: IPasswordVaultPayload): string {
-    if (!payload?.cipherText) return "[]";
-    const cipher = Buffer.from(payload.cipherText, "base64");
-    if (payload.isEncrypted && safeStorage.isEncryptionAvailable()) {
-      return safeStorage.decryptString(cipher);
+  private encryptString(password: string): string {
+    if (safeStorage.isEncryptionAvailable()) {
+      return safeStorage.encryptString(password).toString("base64");
     }
-    return cipher.toString("utf-8");
+    return Buffer.from(password, "utf-8").toString("base64");
   }
 
   private async persist() {
     try {
       const list = [...this.items.values()].sort((a, b) => b.updatedAt - a.updatedAt);
-      const data = JSON.stringify(list);
-      const vault = this.encrypt(data);
-      cacheSystem.set("passwordVault", { vault });
-      await this.store.saveFiles({ vault });
+      appDb.transaction(() => {
+        appDb.run("DELETE FROM password_vault_items");
+        for (const item of list) {
+          appDb.run(
+            "INSERT INTO password_vault_items (id, site, username, encrypted_password, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [item.id, item.site, item.username, this.encryptString(item.password), item.notes || "", item.createdAt, item.updatedAt],
+          );
+        }
+      });
+      cacheSystem.set("passwordVault", { vault: { cipherText: "", isEncrypted: false } });
     } catch (error) {
       console.error("persit vault error", error);
     }
