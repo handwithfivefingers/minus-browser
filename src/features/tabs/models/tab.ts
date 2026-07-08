@@ -1,9 +1,10 @@
 import { BrowserWindow, WebContentsAudioStateChangedEventParams, WebContentsView } from "electron";
+import path from "node:path";
 import { v7 as uuid_v7 } from "uuid";
 import { ContextMenuController } from "~/core/controller/context";
 import { historyController } from "~/core/controller/history";
 import { browserSession } from "~/core/services/session";
-import { StoreManager } from "~/core/stores";
+import { appDb } from "~/core/stores";
 import { cacheSystem } from "~/features/cacheSystem";
 import { CaptureTabPlugin } from "~/features/capture";
 import { SearchTabPlugin } from "~/features/search/plugin";
@@ -20,27 +21,43 @@ interface IDestroy {
 
 const preloadScript = () => {
   // @ts-ignore
-  function enterPictureInPicture(videoElement) {
-    if (document.pictureInPictureEnabled && !videoElement.disablePictureInPicture) {
+  if (window.__minus_pip_pending) return false;
+  // @ts-ignore
+  window.__minus_pip_pending = true;
+
+  const video = document.querySelector("video");
+  if (!video || !document.pictureInPictureEnabled || video.disablePictureInPicture) {
+    // @ts-ignore
+    window.__minus_pip_pending = false;
+    return false;
+  }
+
+  // @ts-ignore
+  return new Promise((resolve) => {
+    const onLeave = () => {
+      // @ts-ignore
+      window.__minus_pip_pending = false;
+      document.removeEventListener("leavepictureinpicture", onLeave);
+      // @ts-ignore
+      resolve();
+    };
+
+    document.addEventListener("leavepictureinpicture", onLeave, { once: true });
+
+    (async () => {
       try {
         if (document.pictureInPictureElement) {
-          document.exitPictureInPicture();
+          await document.exitPictureInPicture();
+          document.addEventListener("leavepictureinpicture", onLeave, { once: true });
         }
-        videoElement
-          .requestPictureInPicture()
-          .then(() => {})
-          // @ts-ignore
-          .catch((error) => {
-            console.error("Failed to enter Picture-in-Picture mode:", error);
-          });
+        // @ts-ignore
+        await video.requestPictureInPicture();
       } catch (err) {
-        console.error(err);
+        console.error("PiP error:", err);
+        onLeave();
       }
-    }
-  }
-  setTimeout(() => {
-    enterPictureInPicture(document.querySelector("video"));
-  }, 500);
+    })();
+  });
 };
 
 export class Tab extends TabPermission {
@@ -62,7 +79,6 @@ export class Tab extends TabPermission {
   groupId?: string;
   cookies?: Electron.Cookie[];
   minusSession: Electron.Session = browserSession;
-  interface: StoreManager = new StoreManager("interface");
   lastUpdated?: number;
   referrer?: string;
   private scrollPosition?: { x: number; y: number };
@@ -105,6 +121,8 @@ export class Tab extends TabPermission {
         nodeIntegration: false,
         contextIsolation: true,
         session: this.minusSession,
+        preload: path.join(__dirname, "notification-preload.js"),
+        additionalArguments: [`--notification-tab-id=${this.id}`],
       },
     });
     this._webContents = this._view.webContents;
@@ -186,13 +204,13 @@ export class Tab extends TabPermission {
       const extensionManager =
         this._userInterface ??
         (await cacheSystem.get<IUserInterface>("interface", async () => {
-          return this.interface.readFiles<{
-            extension: {
-              translate: boolean;
-              userscript: boolean;
-              vault: boolean;
-            };
-          }>();
+          const rows = appDb.query<{ key: string; value: string }>("SELECT key, value FROM app_state WHERE key LIKE 'ui_%'");
+          const data: Record<string, any> = {};
+          for (const row of rows) {
+            const k = row.key.replace(/^ui_/, "");
+            try { data[k] = JSON.parse(row.value); } catch { data[k] = row.value; }
+          }
+          return data as IUserInterface;
         }));
       if (extensionManager && "extension" in extensionManager) {
         const { vault, translate, userscript } = extensionManager.extension;
@@ -426,15 +444,12 @@ export class Tab extends TabPermission {
     if (!this._webContents!.isFocused()) {
       this._webContents!.focus();
     }
-    const script = `(${preloadScript.toString()})();
-    new Promise((resolve) => {
-      document.addEventListener('enterpictureinpicture', () => {
-        document.addEventListener('leavepictureinpicture', () => resolve(), { once: true });
-      }, { once: true });
-    });`;
+    const script = `(${preloadScript.toString()})()`;
     this._webContents!.executeJavaScript(script)
-      .then(() => {
-        this.eventEmitter({ channel: "PIP_EXITED", data: { id: this.id } });
+      .then((res) => {
+        if (res === undefined) {
+          this.eventEmitter({ channel: "PIP_EXITED", data: { id: this.id } });
+        }
       })
       .catch((error) => {
         console.error("requestPIP error", error);

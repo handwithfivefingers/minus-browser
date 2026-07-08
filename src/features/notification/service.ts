@@ -1,0 +1,115 @@
+import { BrowserWindow, ipcMain, Notification } from "electron";
+import { useWebNotificationStore } from "./store";
+import { NotificationViewService } from "./view/viewService";
+import type { WebNotification } from "./store";
+
+export class NotificationService {
+  private mainWindow: BrowserWindow | null = null;
+  private store = useWebNotificationStore;
+  private viewService = new NotificationViewService();
+  private isFocused = true;
+
+  init(mainWindow: BrowserWindow) {
+    this.mainWindow = mainWindow;
+    this.viewService.init(mainWindow);
+    this.viewService.setCallbacks({
+      onNavigateToTab: (tabId) => this.handleOpenTabById(tabId),
+      getHistory: () => this.store.getState().notifications,
+    });
+
+    this.registerNotificationHandler();
+    this.registerFocusHandlers();
+  }
+
+  private registerNotificationHandler() {
+    ipcMain.on("WEB_NOTIFICATION", (_event, data: {
+      tabId: string;
+      title: string;
+      body: string;
+      tag: string;
+      tabTitle?: string;
+      favicon?: string;
+    }) => {
+      this.handleIncomingNotification(data);
+    });
+  }
+
+  private registerFocusHandlers() {
+    if (!this.mainWindow) return;
+
+    this.mainWindow.on("focus", () => {
+      this.isFocused = true;
+    });
+
+    this.mainWindow.on("blur", () => {
+      this.isFocused = false;
+    });
+  }
+
+  private handleIncomingNotification(data: {
+    tabId: string;
+    title: string;
+    body: string;
+    tag: string;
+    tabTitle?: string;
+    favicon?: string;
+  }) {
+    const notification: WebNotification = {
+      id: "",
+      tabId: data.tabId,
+      tabTitle: data.tabTitle || "Unknown tab",
+      favicon: data.favicon || "",
+      title: data.title,
+      body: data.body,
+      timestamp: Date.now(),
+      read: false,
+    };
+
+    this.store.getState().addNotification(notification);
+
+    if (this.isFocused) {
+      const allNotifications = this.store.getState().notifications;
+      const latest = allNotifications[0];
+      if (latest) {
+        this.viewService.showToast(latest);
+      }
+    } else {
+      this.showOsNotification(data);
+    }
+  }
+
+  private showOsNotification(data: {
+    tabId: string;
+    title: string;
+    body: string;
+    tabTitle?: string;
+  }) {
+    const osNotification = new Notification({
+      title: data.title,
+      body: data.body || data.tabTitle || "",
+    });
+
+    osNotification.on("click", () => {
+      if (data.tabId) {
+        this.handleOpenTabById(data.tabId);
+      }
+      this.mainWindow?.show();
+      this.mainWindow?.focus();
+    });
+
+    osNotification.show();
+  }
+
+  ensureOnTop() {
+    this.viewService.ensureOnTop();
+  }
+
+  toggleList() {
+    this.viewService.toggle();
+  }
+
+  private handleOpenTabById(tabId: string) {
+    if (!tabId) return;
+    this.mainWindow?.webContents.send("OPEN_TAB_BY_ID", { id: tabId });
+  }
+}

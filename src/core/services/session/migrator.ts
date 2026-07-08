@@ -8,6 +8,7 @@ const STORE_FILES = [
   "interface.json",
   "bookmark.json",
   "history.json",
+  "permission.json",
   "userscripts.json",
   "passwordVault.json",
   "translate.json",

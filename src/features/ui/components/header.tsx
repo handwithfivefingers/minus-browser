@@ -2,7 +2,6 @@ import {
   IconBrain,
   IconCamera,
   IconChevronLeft,
-  IconCloudUp,
   IconCode,
   IconCodeDots,
   IconKey,
@@ -175,8 +174,6 @@ const Header = ({
       </div>
 
       <div className="text-sm text-slate-500 border-slate-300 px-2 rounded-full flex gap-2 items-center bg-slate-200">
-        <Sync />
-
         <button
           className="hover:bg-indigo-500 rounded hover:text-white cursor-pointer p-1 transition-all"
           onClick={onRequestPIP}
@@ -249,29 +246,6 @@ const Header = ({
         </div>
       </div>
     </div>
-  );
-};
-
-const Sync = () => {
-  const [isSync, setIsSync] = useState(false);
-  useEffect(() => {
-    window.api.LISTENER(`SYNC`, () => {
-      setIsSync(true);
-      setTimeout(() => {
-        setIsSync(false);
-      }, 1000);
-    });
-  }, []);
-  return (
-    <button
-      className={clsx("rounded cursor-pointer p-1 transition-colors flex gap-0.5 relative", {
-        ["text-green-500"]: isSync,
-        [""]: !isSync,
-      })}
-      title="Sync data"
-    >
-      <IconCloudUp size={16} />
-    </button>
   );
 };
 

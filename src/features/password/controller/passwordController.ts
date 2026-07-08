@@ -1,55 +1,59 @@
 import { safeStorage } from "electron";
 import { v7 as uuid_v7 } from "uuid";
-import { StoreManager } from "../../system/stores";
-import { IPasswordItem, IPasswordVaultPayload } from "../interfaces/password";
-
-interface IPasswordStore {
-  vault: IPasswordVaultPayload;
-}
+import { appDb } from "~/core/stores";
+import { IPasswordItem } from "../interfaces/password";
 
 export class PasswordController {
-  private store: StoreManager = new StoreManager("passwordVault");
   private items: Map<string, IPasswordItem> = new Map();
 
   async initialize() {
-    const raw = await this.store.readFiles<IPasswordStore>();
-    const payload = raw?.vault;
-    if (!payload?.cipherText) {
+    try {
+      const rows = appDb.query<{ id: string; site: string; username: string; encrypted_password: string; notes: string; created_at: number; updated_at: number }>(
+        "SELECT * FROM password_vault_items",
+      );
       this.items = new Map();
-      return;
+      for (const row of rows) {
+        const password = this.decryptString(row.encrypted_password);
+        this.items.set(row.id, {
+          id: row.id, site: row.site, username: row.username, password,
+          notes: row.notes, createdAt: row.created_at, updatedAt: row.updated_at,
+        });
+      }
+    } catch {
+      this.items = new Map();
     }
-    const decrypted = this.decrypt(payload);
-    const parsed = JSON.parse(decrypted || "[]");
-    const list = Array.isArray(parsed) ? parsed : [];
-    this.items = new Map(
-      list.filter((item) => item?.id).map((item) => [item.id, item]),
-    );
   }
 
-  private encrypt(text: string): IPasswordVaultPayload {
+  private decryptString(encrypted: string): string {
+    if (!encrypted) return "";
+    try {
+      const cipher = Buffer.from(encrypted, "base64");
+      if (safeStorage.isEncryptionAvailable()) {
+        return safeStorage.decryptString(cipher);
+      }
+      return cipher.toString("utf-8");
+    } catch {
+      return "";
+    }
+  }
+
+  private encryptString(password: string): string {
     if (safeStorage.isEncryptionAvailable()) {
-      const buffer = safeStorage.encryptString(text);
-      return { cipherText: buffer.toString("base64"), isEncrypted: true };
+      return safeStorage.encryptString(password).toString("base64");
     }
-    return {
-      cipherText: Buffer.from(text, "utf-8").toString("base64"),
-      isEncrypted: false,
-    };
-  }
-
-  private decrypt(payload: IPasswordVaultPayload): string {
-    if (!payload?.cipherText) return "[]";
-    const cipher = Buffer.from(payload.cipherText, "base64");
-    if (payload.isEncrypted && safeStorage.isEncryptionAvailable()) {
-      return safeStorage.decryptString(cipher);
-    }
-    return cipher.toString("utf-8");
+    return Buffer.from(password, "utf-8").toString("base64");
   }
 
   private async persist() {
-    const data = JSON.stringify(this.list());
-    const vault = this.encrypt(data);
-    await this.store.saveFiles({ vault });
+    appDb.transaction(() => {
+      appDb.run("DELETE FROM password_vault_items");
+      for (const item of this.items.values()) {
+        appDb.run(
+          "INSERT INTO password_vault_items (id, site, username, encrypted_password, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          [item.id, item.site, item.username, this.encryptString(item.password), item.notes || "", item.createdAt, item.updatedAt],
+        );
+      }
+    });
   }
 
   list() {

@@ -1,20 +1,24 @@
-import { StoreManager } from "~/core/stores";
+import { appDb } from "~/core/stores";
 
 export class Bookmark {
   bookmarks: Set<string> = new Set();
-  private bookmarkStore: StoreManager = new StoreManager("bookmark");
 
   async initialize() {
     try {
-      const bookmarkRaw =
-        await this.bookmarkStore.readFiles<Record<string, string[]>>();
-      this.bookmarks = new Set(bookmarkRaw?.bookmark || []);
+      const rows = appDb.query<{ url: string }>("SELECT url FROM bookmarks");
+      this.bookmarks = new Set(rows.map((r) => r.url));
     } catch (error) {
       this.bookmarks = new Set();
     }
   }
 
   saveBookmark() {
-    this.bookmarkStore.saveFiles({ bookmark: Array.from(this.bookmarks) });
+    appDb.transaction(() => {
+      appDb.run("DELETE FROM bookmarks");
+      const now = Date.now();
+      for (const url of this.bookmarks) {
+        appDb.run("INSERT INTO bookmarks (url, created_at) VALUES (?, ?)", [url, now]);
+      }
+    });
   }
 }
