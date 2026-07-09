@@ -259,7 +259,8 @@ export class ViewController {
       await this.loadUserInterface();
       this.tabController?.setUserInterface(this.userInterface!);
       await adblocker.initializeForSession(browserSession, this.userInterface?.extension?.disabledFilters);
-      this.notificationService.init(this.window);
+      const retentionDays = Number(this.userInterface?.notificationRetentionDays) || 30;
+      this.notificationService.init(this.window, retentionDays);
       if (this.userInterface?.extension?.adblock) {
         adblocker.isCosmeticFilteringEnabled = this.userInterface?.extension?.cosmeticFiltering ?? true;
         adblocker.enable();
@@ -487,6 +488,7 @@ export class ViewController {
       hibernateMode: "normal",
       hibernateCustomMinutes: 60,
       autoDownload: true,
+      notificationRetentionDays: "30",
     };
     try {
       const userInterface = await cacheSystem.get<IUserInterface>("interface", () => {
@@ -506,6 +508,8 @@ export class ViewController {
       if (merged.hibernateMode) {
         this.tabController?.setHibernateMode(merged.hibernateMode, merged.hibernateCustomMinutes);
       }
+      const notificationRetentionDays = Number(merged.notificationRetentionDays) || 30;
+      this.notificationService.setRetentionDays(notificationRetentionDays);
       return merged;
     } catch (error) {
       return defaultData;
@@ -641,6 +645,10 @@ export class ViewController {
 
     if (data.hibernateMode) {
       this.tabController?.setHibernateMode(data.hibernateMode, data.hibernateCustomMinutes);
+    }
+
+    if (data.notificationRetentionDays) {
+      this.notificationService.setRetentionDays(Number(data.notificationRetentionDays));
     }
 
     const prev = this.userInterface?.extension;

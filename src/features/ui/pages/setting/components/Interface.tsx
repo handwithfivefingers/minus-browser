@@ -1,4 +1,4 @@
-import { IconClock, IconDatabase, IconDeviceFloppy, IconLayoutGrid, IconRefresh } from "@tabler/icons-react";
+import { IconBell, IconClock, IconDatabase, IconDeviceFloppy, IconLayoutGrid, IconRefresh } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useMinusThemeStore } from "~/features/ui/stores/useMinusTheme";
 import { useUpdateStore } from "~/features/ui/stores/useUpdateStore";
@@ -19,7 +19,7 @@ interface ISystemForm {
 }
 
 export const Interface = () => {
-  const { layout, dataSync, savedCookies, historyRetentionDays, autoDownload, setDataSyncTime, setCookieMode, setLayout, setHistoryRetentionDays, setAutoDownload, saved } = useMinusThemeStore();
+  const { layout, dataSync, savedCookies, historyRetentionDays, autoDownload, notificationRetentionDays, setDataSyncTime, setCookieMode, setLayout, setHistoryRetentionDays, setAutoDownload, setNotificationRetentionDays, saved } = useMinusThemeStore();
   const { status, checkForUpdate } = useUpdateStore();
   const { notify } = useNotificationStore();
   return (
@@ -110,6 +110,28 @@ export const Interface = () => {
               className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm"
             />
             <span className="text-xs text-slate-400">Entries older than this many days are automatically removed. Set to 0 to keep forever.</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-5 mt-4">
+        <div className="flex items-center gap-2 mb-4">
+          <IconBell size={18} className="text-slate-700" />
+          <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-slate-600">Auto-clear notifications after (days)</span>
+            <input
+              type="number"
+              min="1"
+              max="365"
+              value={notificationRetentionDays || "30"}
+              onChange={(e) => setNotificationRetentionDays(e.target.value)}
+              className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm"
+            />
+            <span className="text-xs text-slate-400">Notifications older than this many days are automatically removed. Set to 0 to keep forever.</span>
           </label>
         </div>
       </div>

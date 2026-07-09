@@ -8,17 +8,25 @@ export class NotificationService {
   private store = useWebNotificationStore;
   private viewService = new NotificationViewService();
   private isFocused = true;
+  private retentionDays = 30;
 
-  init(mainWindow: BrowserWindow) {
+  init(mainWindow: BrowserWindow, retentionDays?: number) {
     this.mainWindow = mainWindow;
+    this.retentionDays = retentionDays ?? 30;
     this.viewService.init(mainWindow);
     this.viewService.setCallbacks({
       onNavigateToTab: (tabId) => this.handleOpenTabById(tabId),
       getHistory: () => this.store.getState().notifications,
     });
 
+    this.store.getState().prune(this.retentionDays);
     this.registerNotificationHandler();
     this.registerFocusHandlers();
+  }
+
+  setRetentionDays(days: number) {
+    this.retentionDays = days;
+    this.store.getState().prune(this.retentionDays);
   }
 
   private registerNotificationHandler() {
@@ -66,6 +74,7 @@ export class NotificationService {
     };
 
     this.store.getState().addNotification(notification);
+    this.store.getState().prune(this.retentionDays);
 
     if (this.isFocused) {
       const allNotifications = this.store.getState().notifications;

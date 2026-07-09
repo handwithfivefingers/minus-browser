@@ -54,6 +54,12 @@ export class NotificationViewService {
       useWebNotificationStore.getState().markAllAsRead();
       this.sendHistory();
     });
+
+    ipcMain.on("NOTIFICATION_VIEW_CLEAR_ALL", () => {
+      useWebNotificationStore.getState().clear();
+      this.sendHistory();
+      this.closeList();
+    });
   }
 
   setCallbacks(handlers: {

@@ -18,6 +18,7 @@ interface NotificationStore {
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clear: () => void;
+  prune: (maxDays: number) => void;
 }
 
 let _id = 0;
@@ -43,6 +44,13 @@ const useWebNotificationStore = create<NotificationStore>((set) => ({
       unreadCount: 0,
     })),
   clear: () => set({ notifications: [], unreadCount: 0 }),
+  prune: (maxDays) =>
+    set((s) => {
+      if (maxDays <= 0) return s;
+      const cutoff = Date.now() - maxDays * 86400000;
+      const notifications = s.notifications.filter((n) => n.timestamp >= cutoff);
+      return { notifications, unreadCount: notifications.filter((n) => !n.read).length };
+    }),
 }));
 
 export { useWebNotificationStore };
