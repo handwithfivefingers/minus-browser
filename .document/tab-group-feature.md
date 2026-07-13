@@ -160,16 +160,31 @@ The overlay (WebContentsView above tabs) supports:
 
 ## 5. Persistence
 
-Tab groups saved via the existing `StoreManager("userData")` pattern (same store as tabs).
+Tab groups saved to SQLite `tab_groups` table via `appDb`.
 
-Storage key: `tabGroups` — stored in `userData.json` alongside tabs.
+### Schema (`tab_groups` table)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `TEXT PK` | UUID v7 |
+| `name` | `TEXT` | Group display name |
+| `color` | `TEXT` | Hex color (e.g. `#6366f1`) |
+| `hidden` | `INTEGER` | `0` or `1` |
+| `collapsed` | `INTEGER` | `0` or `1` |
+| `created_at` | `INTEGER` | Unix ms timestamp |
+| `updated_at` | `INTEGER` | Unix ms timestamp |
+| `tab_ids` | `TEXT` | JSON array of tab IDs (e.g. `["id1","id2"]`) |
 
 ### Two-tier persistence
 
 | Layer | Mechanism | When |
 |-------|-----------|------|
 | **In-memory cache** | `cacheSystem.set("tabGroups", data)` | On every mutation via `syncCache()` |
-| **Disk (userData.json)** | `StoreManager.saveFiles({ tabGroups })` | On every mutation via `syncCache()` |
+| **SQLite (tab_groups)** | `appDb.transaction → INSERT INTO tab_groups (..., tab_ids)` | On every mutation via `syncCache()` + on app close via `persist()` |
+
+### Startup restore
+
+`initialize()` queries `SELECT * FROM tab_groups` and parses `tab_ids` via `JSON.parse(r.tab_ids)` to rebuild the in-memory `Map<string, ITabGroup>` with correct tab membership.
 
 ---
 

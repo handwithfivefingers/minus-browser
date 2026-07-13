@@ -24,6 +24,7 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
   hibernateMode: "normal",
   hibernateCustomMinutes: 60,
   autoDownload: true,
+  notificationRetentionDays: "30",
   setLayout: (layout: "BASIC" | "FLOATING") => {
     set({ layout });
   },
@@ -51,6 +52,9 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
   setAutoDownload: (enabled: boolean) => {
     set({ autoDownload: enabled });
   },
+  setNotificationRetentionDays: (days: string) => {
+    set({ notificationRetentionDays: days });
+  },
   initialize: (data: Partial<IMinusThemeStore>) => {
     return set(data);
   },
@@ -66,6 +70,7 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
       hibernateMode: data.hibernateMode,
       hibernateCustomMinutes: data.hibernateCustomMinutes,
       autoDownload: data.autoDownload,
+      notificationRetentionDays: data.notificationRetentionDays,
     };
     window?.api?.INVOKE(IPC_INVOKE_CHANNEL.INTERFACE_SAVE, params);
   },

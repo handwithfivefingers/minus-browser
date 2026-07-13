@@ -10,6 +10,7 @@ export interface MinusThemeAction {
   setHibernateMode: (mode: "fast" | "normal" | "slow" | "custom") => void;
   setHibernateCustomMinutes: (minutes: number) => void;
   setAutoDownload: (enabled: boolean) => void;
+  setNotificationRetentionDays: (days: string) => void;
   saved: () => void;
 }
 export interface IMinusThemeStore extends IUserInterface, MinusThemeAction {}

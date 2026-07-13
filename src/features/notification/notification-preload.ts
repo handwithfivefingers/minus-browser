@@ -4,7 +4,7 @@ const tabId = process.argv.find((arg) => arg.startsWith("--notification-tab-id="
 
 contextBridge.exposeInMainWorld("__notificationAPI", {
   notify: (data: { title: string; body: string; tag: string }) => {
-    ipcRenderer.send("WEB_NOTIFICATION", { ...data, tabId });
+    ipcRenderer.send("WEB_NOTIFICATION", { ...data, tabTitle: document.title, tabId });
   },
 });
 

@@ -125,5 +125,29 @@ export const CREDENTIAL_ASSIST_SCRIPT = `(function() {
             const target = window.__minusCredentialAssistTarget;
             if (target && isTargetInput(target)) moveIcon(target);
           });
+
+          document.addEventListener("submit", (event) => {
+            const form = event.target;
+            if (!form || form.tagName !== "FORM") return;
+            const pwdInput = form.querySelector('input[type="password"]');
+            if (!pwdInput) return;
+            const password = pwdInput.value;
+            if (!password) return;
+            const usernameSelectors = [
+              'input[type="email"]',
+              'input[name*="user" i]', 'input[name*="email" i]',
+              'input[id*="user" i]', 'input[id*="email" i]',
+              'input:not([type="password"])'
+            ];
+            const userInput = usernameSelectors
+              .map(function(s) { return form.querySelector(s); })
+              .find(function(el) { return Boolean(el); });
+            console.log("__MINUS_VAULT_CAPTURE__" + JSON.stringify({
+              username: userInput ? userInput.value : '',
+              password: password,
+              url: window.location.href
+            }));
+          }, true);
+
           document.body.appendChild(wrapper)
         })();`;

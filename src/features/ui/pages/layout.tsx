@@ -4,6 +4,7 @@ import { Outlet, useNavigate } from "react-router";
 import { IUserInterface } from "~/shared/types";
 import { IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
 import { AiSidebar, SideMenu, NotificationContainer, UpdateBanner } from "../components";
+import { useWebNotificationStore } from "~/features/notification/store";
 
 import { useAiSidebarStore } from "../features/aiSider/stores/useAiSidebarStore";
 import { tabServices } from "../services/tab.service";
@@ -49,13 +50,18 @@ const Layout = () => {
     window.api.LISTENER("NAVIGATE_HISTORY", () => {
       navigate("/history");
     });
+    window.api.LISTENER("NOTIFICATION_POPUP", (data?: any) => {
+      if (data) {
+        useWebNotificationStore.getState().addNotification(data);
+      }
+    });
   }, []);
 
   useEffect(() => {
     window.api.LISTENER("CAPTURE_PAGE", () => {
       window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_PAGE);
     });
-    window.api.LISTENER("CAPTURE_SELECTION", () => {
+    window.api.LISTENER(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION, () => {
       window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION);
     });
     window.api.LISTENER(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, (payload?: { text?: string; action?: string }) => {
@@ -88,7 +94,6 @@ const Layout = () => {
           <AiSidebar />
         </div>
       </div>
-      <SyncSideEffect />
     </LayoutSideEffect>
   );
 };
@@ -108,33 +113,6 @@ const LayoutSideEffect = ({ children }: { children: React.ReactElement | React.R
   }, []);
 
   return children as React.ReactElement;
-};
-
-const SyncSideEffect = (): React.ReactElement => {
-  const { sync } = useTabStore();
-  const dataSync = useMinusThemeStore().dataSync;
-  const intervalTime =
-    dataSync.intervalTime === "off"
-      ? false
-      : isNaN(Number(dataSync.intervalTime))
-        ? 15
-        : Number(dataSync.intervalTime) * 1000;
-
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (intervalTime) {
-      interval = setInterval(() => {
-        sync();
-      }, intervalTime);
-    }
-    return () => {
-      if (intervalTime && interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [intervalTime]);
-
-  return <></>;
 };
 
 export default Layout;

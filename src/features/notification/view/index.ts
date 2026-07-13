@@ -138,6 +138,7 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
     <div class="list-header">
       <h3>Notifications</h3>
       <div>
+        <button class="mark-all" id="clearAllBtn" style="display:none">✕ Clear all</button>
         <button class="mark-all" id="markAllBtn" style="display:none">✔ Mark all read</button>
         <button id="closeBtn">✕</button>
       </div>
@@ -151,6 +152,7 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
   const listEl = document.getElementById('list');
   const items = document.getElementById('items');
   const markAllBtn = document.getElementById('markAllBtn');
+  const clearAllBtn = document.getElementById('clearAllBtn');
   const closeBtn = document.getElementById('closeBtn');
   let toastTimer = null;
   let toastQueue = [];
@@ -220,10 +222,12 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
     if (notifications.length === 0) {
       items.innerHTML = '<div class="empty">No notifications</div>';
       markAllBtn.style.display = 'none';
+      clearAllBtn.style.display = 'none';
       return;
     }
     var hasUnread = notifications.some(function(n) { return !n.read; });
     markAllBtn.style.display = hasUnread ? 'inline' : 'none';
+    clearAllBtn.style.display = 'inline';
 
     items.innerHTML = notifications.map(function(n) {
       return '<div class="item ' + (n.read ? '' : 'unread') + '" data-id="' + n.id + '" data-tab-id="' + n.tabId + '">'
@@ -253,10 +257,12 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
     // Re-attach close handler after render
     document.getElementById('closeBtn').onclick = function() { api.onClose(); };
     document.getElementById('markAllBtn').onclick = function() { api.onMarkAllRead(); };
+    document.getElementById('clearAllBtn').onclick = function() { api.onClearAll(); };
   }
 
   closeBtn.onclick = function() { api.onClose(); };
   markAllBtn.onclick = function() { api.onMarkAllRead(); };
+  clearAllBtn.onclick = function() { api.onClearAll(); };
 
   /* --- IPC --- */
   api.onToast(function(data) {

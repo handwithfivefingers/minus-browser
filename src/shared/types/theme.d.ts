@@ -17,4 +17,5 @@ export interface IUserInterface {
   hibernateMode?: "fast" | "normal" | "slow" | "custom";
   hibernateCustomMinutes?: number;
   autoDownload?: boolean;
+  notificationRetentionDays?: string;
 }

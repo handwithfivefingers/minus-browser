@@ -110,10 +110,6 @@ const config: ForgeConfig = {
           name: "sub_window",
           config: "vite.sub-window.renderer.config.ts",
         },
-        {
-          name: "youtube_embed",
-          config: "vite.youtube-embed.renderer.config.ts",
-        },
       ],
     }),
     // Fuses are used to enable/disable various Electron functionality

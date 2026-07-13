@@ -9,6 +9,7 @@ import { debounce, navigateOrSearch } from "../../libs";
 import { tabServices } from "../../services/tab.service";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
 import { useTabStore } from "../../stores/useTabStore";
+import { IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
 
 const Header = lazy(() => import("~/features/ui/components/header"));
 
@@ -297,18 +298,16 @@ const CustomApp = () => {
         onToggleDevTools={onToggleDevTools}
         onReload={onReload}
         onRequestPIP={onRequestPIP}
-        // onFillPassword={onFillPassword}
         onOpenVaultManager={onOpenVaultManager}
         onOpenUserscriptManager={onOpenUserscriptManager}
         onTranslatePage={onTranslatePage}
-        // onTranslateSelection={onTranslateSelection}
         onOpenTranslateManager={onOpenTranslateManager}
-        onOpenSpotlight={(query) => window.api.EMIT("SPOTLIGHT_OPEN", { query })}
+        onOpenSpotlight={(query) => window.api.EMIT("SPOTLIGHT_OPEN", { query, activeTabId: tabId })}
         isLoading={loading}
         preventHibernate={tab?.preventHibernate}
         onTogglePreventHibernate={() => window.api.INVOKE("TOGGLE_PREVENT_HIBERNATE", { id: tabId })}
-        onCapturePage={() => window.api.INVOKE("CAPTURE_PAGE")}
-        onCaptureSelection={() => window.api.INVOKE("CAPTURE_SELECTION")}
+        onCapturePage={() => window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_PAGE)}
+        onCaptureSelection={() => window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION)}
       />
       {tab?.error ? (
         <TabErrorPage error={tab.error} onRetry={handleRetry} onGoHome={handleGoHome} />

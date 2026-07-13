@@ -34,4 +34,7 @@ contextBridge.exposeInMainWorld("notificationViewAPI", {
   onGetHistory: () => {
     ipcRenderer.send("NOTIFICATION_VIEW_GET_HISTORY");
   },
+  onClearAll: () => {
+    ipcRenderer.send("NOTIFICATION_VIEW_CLEAR_ALL");
+  },
 });

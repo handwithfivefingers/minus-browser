@@ -13,6 +13,8 @@ import Fuse from "fuse.js";
 import { Tab } from "~/features/ui/interfaces";
 import { isValidDomainOrIP, navigateOrSearch } from "../../ui/libs";
 import { IPC_EMIT_CHANNEL } from "~/shared/constants/ipc";
+import { SUB_WINDOW_EMIT } from "~/shared/constants/ipc/sub-window";
+import { consumePayload } from "~/features/sub-window/payload-store";
 
 interface IHistoryEntry {
   id: string;
@@ -69,8 +71,10 @@ const SpotlightApp = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [visible, setVisible] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string | undefined>();
+  const [loading, setLoading] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const keyboardNavRef = useRef(false);
   const hasTabs = tabs.length > 0;
 
   const fetchTabs = useCallback(async () => {
@@ -92,22 +96,14 @@ const SpotlightApp = () => {
   }, []);
 
   useEffect(() => {
-    const raw = sessionStorage.getItem("subWindowPayload");
-    sessionStorage.removeItem("subWindowPayload");
-    if (raw) {
-      try {
-        const payload = JSON.parse(raw) as SpotlightProps;
-        setQuery(payload?.query || "");
-        setActiveTabId(payload?.activeTabId);
-      } catch {
-        /* ignore */
-      }
+    const payload = consumePayload<SpotlightProps>();
+    if (payload) {
+      setQuery(payload?.query || "");
+      setActiveTabId(payload?.activeTabId);
     }
 
-    setActiveIndex(0);
     setVisible(true);
-    fetchTabs();
-    fetchHistory();
+    Promise.all([fetchTabs(), fetchHistory()]).finally(() => setLoading(false));
 
     inputRef.current?.focus();
     inputRef.current?.select();
@@ -118,6 +114,13 @@ const SpotlightApp = () => {
 
     window.api.LISTENER("GET_HISTORY", (payload?: IHistoryEntry[]) => {
       setHistory(payload || []);
+    });
+
+    window.api.LISTENER(SUB_WINDOW_EMIT.PAYLOAD, (payload: any) => {
+      if (payload) {
+        setQuery(payload?.query || "");
+        setActiveTabId(payload?.activeTabId);
+      }
     });
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -309,11 +312,6 @@ const SpotlightApp = () => {
   }, [actions.length, activeIndex]);
 
   useEffect(() => {
-    if (!normalizedQuery) return;
-    setActiveIndex(0);
-  }, [normalizedQuery]);
-
-  useEffect(() => {
     if (listRef.current && actions[activeIndex]) {
       const item = listRef.current.children[activeIndex] as HTMLElement | undefined;
       item?.scrollIntoView({ block: "nearest" });
@@ -381,6 +379,7 @@ const SpotlightApp = () => {
                 onChange={(event) => {
                   setQuery(event.target.value);
                   setActiveIndex(0);
+                  keyboardNavRef.current = false;
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") {
@@ -390,11 +389,13 @@ const SpotlightApp = () => {
                   }
                   if (event.key === "ArrowDown" && actions.length) {
                     event.preventDefault();
+                    keyboardNavRef.current = true;
                     setActiveIndex((current) => (current + 1) % actions.length);
                     return;
                   }
                   if (event.key === "ArrowUp" && actions.length) {
                     event.preventDefault();
+                    keyboardNavRef.current = true;
                     setActiveIndex((current) => (current - 1 + actions.length) % actions.length);
                     return;
                   }
@@ -414,7 +415,7 @@ const SpotlightApp = () => {
             </div>
           </div>
 
-          <div ref={listRef} className="max-h-[50vh] overflow-y-auto overscroll-contain py-1.5 scrollbar-thin">
+          <div ref={listRef} className="max-h-[50vh] overflow-y-auto overscroll-contain py-1.5 scrollbar-thin" onPointerMove={() => { keyboardNavRef.current = false; }}>
             {actions.length > 0 ? (
               actions.map((action, index) => {
                 const active = index === activeIndex;
@@ -426,7 +427,7 @@ const SpotlightApp = () => {
                       "group relative mx-2 flex w-[calc(100%-16px)] items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150",
                       active ? "bg-indigo-500/12 text-white" : "text-white/70 hover:bg-white/4 hover:text-white/90",
                     )}
-                    onMouseEnter={() => setActiveIndex(index)}
+                    onMouseEnter={() => { if (!keyboardNavRef.current) setActiveIndex(index); }}
                     onClick={action.onSelect}
                   >
                     {active && <span className="absolute inset-0 rounded-xl ring-1 ring-inset ring-indigo-400/25" />}
@@ -478,6 +479,14 @@ const SpotlightApp = () => {
                   </button>
                 );
               })
+            ) : loading ? (
+              <div className="flex flex-col items-center gap-2 px-4 py-14 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/4 ring-1 ring-white/6">
+                  <IconSwitchHorizontal size={20} className="text-white/20 animate-pulse" />
+                </div>
+                <p className="text-sm text-white/30">Loading tabs & history...</p>
+                <p className="text-xs text-white/20">Fetching your browsing data</p>
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-2 px-4 py-14 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/4 ring-1 ring-white/6">

@@ -1,12 +1,12 @@
 import { app, BrowserWindow, Menu, Notification, systemPreferences } from "electron";
 import log from "electron-log";
 import started from "electron-squirrel-startup";
-import { findbarService } from "./features/findbar/service";
-import { ViewController } from "./core/controller/viewController";
 import { CommandController } from "./core/controller/commandController";
+import { ViewController } from "./core/controller/viewController";
 import { menuApplication } from "./core/services/menu";
 import { browserSession, sessionInitPromise } from "./core/services/session";
-import { createMainWindow, loadAppURL, setupUserAgent, setupWindowCrashHandlers, setupLogging } from "./core/window";
+import { createMainWindow, loadAppURL, setupLogging, setupUserAgent, setupWindowCrashHandlers } from "./core/window";
+import { findbarService } from "./features/findbar/service";
 
 Object.assign(console, log.functions);
 if (started) app.quit();
@@ -37,7 +37,6 @@ async function createWindow() {
     viewController = new ViewController(win);
     findbarService.init(win);
     await viewController.ready();
-
     if (Notification.isSupported()) {
       new Notification({ title: "Minus Browser", body: "Welcome to Minus Browser!" }).show();
     }
@@ -94,6 +93,7 @@ app.whenReady().then(async () => {
     }
   }
   await sessionInitPromise;
+
   await createWindow();
   if (menuApplication?.menu) Menu.setApplicationMenu(menuApplication?.menu);
 });

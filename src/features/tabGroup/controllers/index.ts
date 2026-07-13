@@ -10,10 +10,10 @@ export class TabGroupController {
   async initialize() {
     try {
       const data = await cacheSystem.get<{ tabGroups: ITabGroup[] }>("tabGroups", async () => {
-        const rows = appDb.query<ITabGroup & { tabIds: string }>("SELECT * FROM tab_groups");
+        const rows = appDb.query<ITabGroup & { tab_ids: string }>("SELECT * FROM tab_groups");
         const tabGroups: ITabGroup[] = rows.map((r: any) => ({
           id: r.id, name: r.name, color: r.color,
-          tabIds: [],
+          tabIds: JSON.parse(r.tab_ids || "[]"),
           hidden: !!r.hidden, collapsed: !!r.collapsed,
           createdAt: r.created_at, updatedAt: r.updated_at,
         }));
@@ -150,8 +150,8 @@ export class TabGroupController {
       appDb.run("DELETE FROM tab_groups");
       for (const group of groups) {
         appDb.run(
-          "INSERT INTO tab_groups (id, name, color, hidden, collapsed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          [group.id, group.name, group.color, group.hidden ? 1 : 0, group.collapsed ? 1 : 0, group.createdAt, group.updatedAt],
+          "INSERT INTO tab_groups (id, name, color, hidden, collapsed, created_at, updated_at, tab_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          [group.id, group.name, group.color, group.hidden ? 1 : 0, group.collapsed ? 1 : 0, group.createdAt, group.updatedAt, JSON.stringify(group.tabIds)],
         );
       }
     });

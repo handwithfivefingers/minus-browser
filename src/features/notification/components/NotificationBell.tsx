@@ -10,7 +10,7 @@ export const NotificationBell = () => {
       type="button"
       onClick={() => window.api.EMIT("NOTIFICATION_TOGGLE_LIST")}
       className={clsx(
-        "z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1 relative",
+        " z-1 w-full px-0.5 relative rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors text-slate-500 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1",
       )}
       title="Notifications"
     >

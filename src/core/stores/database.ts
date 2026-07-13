@@ -166,8 +166,8 @@ class AppDatabase {
 
     if (Array.isArray(tabGroups)) {
       const insertGroup = this.db.prepare(`
-        INSERT OR REPLACE INTO tab_groups (id, name, color, hidden, collapsed, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO tab_groups (id, name, color, hidden, collapsed, created_at, updated_at, tab_ids)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const group of tabGroups) {
         if (group?.id) {
@@ -179,6 +179,7 @@ class AppDatabase {
             group.collapsed ? 1 : 0,
             group.createdAt || Date.now(),
             group.updatedAt || Date.now(),
+            JSON.stringify(group.tabIds || []),
           );
         }
       }
