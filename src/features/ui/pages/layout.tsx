@@ -55,7 +55,7 @@ const Layout = () => {
     window.api.LISTENER("CAPTURE_PAGE", () => {
       window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_PAGE);
     });
-    window.api.LISTENER("CAPTURE_SELECTION", () => {
+    window.api.LISTENER(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION, () => {
       window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION);
     });
     window.api.LISTENER(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, (payload?: { text?: string; action?: string }) => {
@@ -88,7 +88,6 @@ const Layout = () => {
           <AiSidebar />
         </div>
       </div>
-      <SyncSideEffect />
     </LayoutSideEffect>
   );
 };
@@ -108,33 +107,6 @@ const LayoutSideEffect = ({ children }: { children: React.ReactElement | React.R
   }, []);
 
   return children as React.ReactElement;
-};
-
-const SyncSideEffect = (): React.ReactElement => {
-  const { sync } = useTabStore();
-  const dataSync = useMinusThemeStore().dataSync;
-  const intervalTime =
-    dataSync.intervalTime === "off"
-      ? false
-      : isNaN(Number(dataSync.intervalTime))
-        ? 15
-        : Number(dataSync.intervalTime) * 1000;
-
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>;
-    if (intervalTime) {
-      interval = setInterval(() => {
-        sync();
-      }, intervalTime);
-    }
-    return () => {
-      if (intervalTime && interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [intervalTime]);
-
-  return <></>;
 };
 
 export default Layout;

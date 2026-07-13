@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ipcMain, Notification, WebContentsView } from "electron";
+import { app, BrowserWindow, ipcMain, Notification, WebContentsView } from "electron";
 import log from "electron-log";
 import { historyController, HistoryRoute } from "~/core/controller/history";
 import { IHandleResizeView, IPC, ITab } from "~/core/interfaces";
@@ -8,11 +8,9 @@ import { appDb, eventStore } from "~/core/stores";
 import { permissionStore } from "~/core/stores/permission.store";
 import { isSameURl } from "~/core/utils";
 import { adblocker } from "~/features/adblocker/plugin";
-import { NotificationService } from "~/features/notification/service";
 import { checkForUpdates, initAutoUpdate, quitAndInstall } from "~/features/autoUpdate/autoUpdate.init";
 import { cacheSystem } from "~/features/cacheSystem";
-import { CAPTURE_SELECTION_SCRIPT } from "~/features/capture/plugin/selectionScript";
-import { capturePage } from "~/features/capture/services";
+import { NotificationService } from "~/features/notification/service";
 import { SearchRoute, searchController as splitSearchController } from "~/features/search";
 import {
   spotlightEmitHandlers,
@@ -23,6 +21,7 @@ import {
   userScriptInvokeHandlers,
   vaultInvokeHandlers,
 } from "~/features/sub-window/ipc";
+import { captureInvokeHandlers } from "~/features/sub-window/ipc/capture-hanlers";
 import { subWindowService } from "~/features/sub-window/service";
 import { tabGroupController } from "~/features/tabGroup";
 import { TabController } from "~/features/tabs/controllers";
@@ -40,10 +39,10 @@ export class ViewController {
   userInterface: IUserInterface | undefined = undefined;
   tabController: TabController | undefined;
   searchController = splitSearchController;
+  lastCaptureImage: Electron.NativeImage | null = null;
   private invokeHandlers: Record<string, (data?: any) => any> | undefined;
   private listenerHandlers: Record<string, (data?: any) => void> | undefined;
   private initPromise: Promise<void>;
-  private lastCaptureImage: Electron.NativeImage | null = null;
   private notificationService = new NotificationService();
 
   constructor(window: BrowserWindow) {
@@ -74,60 +73,7 @@ export class ViewController {
         ...HistoryRoute,
         ...spotlightInvokeHandlers,
         ...tabGroupInvokeHandlers,
-        [IPC_INVOKE_CHANNEL.CAPTURE_PAGE]: async () => {
-          try {
-            const activeTab = this.tabController?.activeTab;
-            if (!activeTab?.isAlive) return { success: false, error: "No active tab" };
-            const { nativeImage, dataURL } = await capturePage(activeTab.webContents);
-            this.lastCaptureImage = nativeImage;
-            clipboard.writeImage(nativeImage);
-            subWindowService.open("/capture", { image: dataURL, type: "page", copied: true });
-            this.forwardRendererEvent("CAPTURE_RESULT", { image: dataURL, tabId: activeTab.id });
-            return { success: true, image: dataURL };
-          } catch {
-            return { success: false, error: "Capture failed" };
-          }
-        },
-        [IPC_INVOKE_CHANNEL.CAPTURE_SELECTION]: async () => {
-          try {
-            const activeTab = this.tabController?.activeTab;
-            if (!activeTab?.isAlive) return { success: false, error: "No active tab" };
-            await activeTab.webContents.executeJavaScript(CAPTURE_SELECTION_SCRIPT, true);
-            return { success: true };
-          } catch {
-            return { success: false, error: "Failed to inject selection script" };
-          }
-        },
-        ["CAPTURE_SELECTION_RESULT"]: async (data: {
-          rect: { x: number; y: number; w: number; h: number };
-          tabId: string;
-        }) => {
-          try {
-            const tab = this.tabController?.getTabById(data.tabId);
-            if (!tab?.isAlive) return { success: false, error: "Tab not found" };
-            const rect: Electron.Rectangle = {
-              x: data.rect.x,
-              y: data.rect.y,
-              width: data.rect.w,
-              height: data.rect.h,
-            };
-            const { nativeImage, dataURL } = await capturePage(tab.webContents, rect);
-            this.lastCaptureImage = nativeImage;
-            clipboard.writeImage(nativeImage);
-            subWindowService.open("/capture", { image: dataURL, type: "selection", copied: true });
-            this.forwardRendererEvent("CAPTURE_RESULT", { image: dataURL, tabId: data.tabId });
-            return { success: true, image: dataURL };
-          } catch {
-            return { success: false, error: "Capture failed" };
-          }
-        },
-        [IPC_INVOKE_CHANNEL.CAPTURE_COPY_CLIPBOARD]: () => {
-          if (this.lastCaptureImage) {
-            clipboard.writeImage(this.lastCaptureImage);
-            return { success: true };
-          }
-          return { success: false, error: "No captured image" };
-        },
+        ...this.bindingHandlersController(captureInvokeHandlers),
         [IPC_INVOKE_CHANNEL.OPEN_SITE_INFO]: (data) => {
           subWindowService.open("/site-info", data);
           return { success: true };
@@ -233,7 +179,22 @@ export class ViewController {
     }
   }
 
-  private forwardRendererEvent(channel: string, data?: unknown) {
+  bindingHandlersController = (args: Record<string, (viewController: ViewController, data?: any) => Promise<any>>) => {
+    try {
+      if (!Object.keys(args).length) return {};
+      const result: Record<string, (data?: any) => Promise<any>> = {};
+      for (const key in args) {
+        if (Object.prototype.hasOwnProperty.call(args, key)) {
+          result[key] = (data) => args[key](this, data);
+        }
+      }
+      return result;
+    } catch (error) {
+      return {};
+    }
+  };
+
+  forwardRendererEvent(channel: string, data?: unknown) {
     this.window.webContents.send(channel, data);
   }
 
@@ -492,11 +453,17 @@ export class ViewController {
     };
     try {
       const userInterface = await cacheSystem.get<IUserInterface>("interface", () => {
-        const rows = appDb.query<{ key: string; value: string }>("SELECT key, value FROM app_state WHERE key LIKE 'ui_%'");
+        const rows = appDb.query<{ key: string; value: string }>(
+          "SELECT key, value FROM app_state WHERE key LIKE 'ui_%'",
+        );
         const data: Record<string, any> = {};
         for (const row of rows) {
           const k = row.key.replace(/^ui_/, "");
-          try { data[k] = JSON.parse(row.value); } catch { data[k] = row.value; }
+          try {
+            data[k] = JSON.parse(row.value);
+          } catch {
+            data[k] = row.value;
+          }
         }
         return data as IUserInterface;
       });
@@ -551,24 +518,51 @@ export class ViewController {
         for (const tab of tabs || []) {
           appDb.run(
             'INSERT OR REPLACE INTO tabs (id, title, url, is_pinned, is_focused, "index", favicon, timestamp, is_bookmarked, is_hibernated, prevent_hibernate, group_id, audible, is_muted, is_using_camera, is_using_microphone, is_using_screen_share, blocked_notifications, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [tab.id, tab.title, tab.url, tab.isPinned ? 1 : 0, tab.isFocused ? 1 : 0, tab.index ?? 0, tab.favicon || "", tab.timestamp || Date.now(), tab.isBookmarked ? 1 : 0, tab.isHibernated ? 1 : 0, tab.preventHibernate ? 1 : 0, tab.groupId || null, tab.audible ? 1 : 0, tab.isMuted ? 1 : 0, tab.isUsingCamera ? 1 : 0, tab.isUsingMicrophone ? 1 : 0, tab.isUsingScreenShare ? 1 : 0, tab.blockedNotifications ? JSON.stringify(tab.blockedNotifications) : null, tab.error ? JSON.stringify(tab.error) : null],
+            [
+              tab.id,
+              tab.title,
+              tab.url,
+              tab.isPinned ? 1 : 0,
+              tab.isFocused ? 1 : 0,
+              tab.index ?? 0,
+              tab.favicon || "",
+              tab.timestamp || Date.now(),
+              tab.isBookmarked ? 1 : 0,
+              tab.isHibernated ? 1 : 0,
+              tab.preventHibernate ? 1 : 0,
+              tab.groupId || null,
+              tab.audible ? 1 : 0,
+              tab.isMuted ? 1 : 0,
+              tab.isUsingCamera ? 1 : 0,
+              tab.isUsingMicrophone ? 1 : 0,
+              tab.isUsingScreenShare ? 1 : 0,
+              tab.blockedNotifications ? JSON.stringify(tab.blockedNotifications) : null,
+              tab.error ? JSON.stringify(tab.error) : null,
+            ],
           );
         }
         appDb.run("DELETE FROM app_state WHERE key IN ('tab_index', 'active_tab_id')");
         appDb.run("INSERT OR REPLACE INTO app_state (key, value) VALUES ('tab_index', ?)", [JSON.stringify(index)]);
-        appDb.run("INSERT OR REPLACE INTO app_state (key, value) VALUES ('active_tab_id', ?)", [JSON.stringify(activeTabId)]);
+        appDb.run("INSERT OR REPLACE INTO app_state (key, value) VALUES ('active_tab_id', ?)", [
+          JSON.stringify(activeTabId),
+        ]);
         appDb.run("DELETE FROM tab_groups");
         for (const group of tabGroups || []) {
           appDb.run(
             "INSERT OR REPLACE INTO tab_groups (id, name, color, hidden, collapsed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [group.id, group.name, group.color, group.hidden ? 1 : 0, group.collapsed ? 1 : 0, group.createdAt, group.updatedAt],
+            [
+              group.id,
+              group.name,
+              group.color,
+              group.hidden ? 1 : 0,
+              group.collapsed ? 1 : 0,
+              group.createdAt,
+              group.updatedAt,
+            ],
           );
         }
       });
-      await Promise.all([
-        this.minusSession?.cookies.flushStore(),
-        this.minusSession?.flushStorageData(),
-      ]);
+      await Promise.all([this.minusSession?.cookies.flushStore(), this.minusSession?.flushStorageData()]);
       return this.window.webContents?.send("SYNC");
     } catch (error) {
       return new ErrorServices(error);
