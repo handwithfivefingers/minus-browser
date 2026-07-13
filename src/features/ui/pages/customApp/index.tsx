@@ -302,7 +302,7 @@ const CustomApp = () => {
         onOpenUserscriptManager={onOpenUserscriptManager}
         onTranslatePage={onTranslatePage}
         onOpenTranslateManager={onOpenTranslateManager}
-        onOpenSpotlight={(query) => window.api.EMIT("SPOTLIGHT_OPEN", { query })}
+        onOpenSpotlight={(query) => window.api.EMIT("SPOTLIGHT_OPEN", { query, activeTabId: tabId })}
         isLoading={loading}
         preventHibernate={tab?.preventHibernate}
         onTogglePreventHibernate={() => window.api.INVOKE("TOGGLE_PREVENT_HIBERNATE", { id: tabId })}

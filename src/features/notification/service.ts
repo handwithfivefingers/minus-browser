@@ -76,6 +76,8 @@ export class NotificationService {
     this.store.getState().addNotification(notification);
     this.store.getState().prune(this.retentionDays);
 
+    this.mainWindow?.webContents.send("NOTIFICATION_POPUP", notification);
+
     if (this.isFocused) {
       const allNotifications = this.store.getState().notifications;
       const latest = allNotifications[0];

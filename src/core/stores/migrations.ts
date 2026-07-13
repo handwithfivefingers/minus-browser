@@ -44,7 +44,8 @@ const migrations: { version: number; up: (db: DatabaseSync) => void }[] = [
           hidden INTEGER NOT NULL DEFAULT 0,
           collapsed INTEGER NOT NULL DEFAULT 0,
           created_at INTEGER NOT NULL DEFAULT 0,
-          updated_at INTEGER NOT NULL DEFAULT 0
+          updated_at INTEGER NOT NULL DEFAULT 0,
+          tab_ids TEXT NOT NULL DEFAULT '[]'
         );
 
         CREATE TABLE IF NOT EXISTS bookmarks (
@@ -104,6 +105,36 @@ const migrations: { version: number; up: (db: DatabaseSync) => void }[] = [
           matches TEXT NOT NULL DEFAULT '[]',
           excludes TEXT NOT NULL DEFAULT '[]',
           run_at TEXT NOT NULL DEFAULT 'document-start',
+          created_at INTEGER NOT NULL DEFAULT 0,
+          updated_at INTEGER NOT NULL DEFAULT 0
+        );
+      `);
+    },
+  },
+  {
+    version: 2,
+    up: (db) => {
+      db.exec(`ALTER TABLE tab_groups ADD COLUMN tab_ids TEXT NOT NULL DEFAULT '[]'`);
+    },
+  },
+  {
+    version: 3,
+    up: (db) => {
+      const columns = db.prepare("PRAGMA table_info(tab_groups)").all() as { name: string }[];
+      if (!columns.some((c) => c.name === "tab_ids")) {
+        db.exec(`ALTER TABLE tab_groups ADD COLUMN tab_ids TEXT NOT NULL DEFAULT '[]'`);
+      }
+    },
+  },
+  {
+    version: 4,
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS todo_items (
+          id TEXT PRIMARY KEY,
+          label TEXT NOT NULL DEFAULT '',
+          description TEXT NOT NULL DEFAULT '',
+          checked INTEGER NOT NULL DEFAULT 0,
           created_at INTEGER NOT NULL DEFAULT 0,
           updated_at INTEGER NOT NULL DEFAULT 0
         );

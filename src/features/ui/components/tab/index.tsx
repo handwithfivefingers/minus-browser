@@ -1,4 +1,4 @@
-import { IconError404, IconPin, IconPinFilled, IconVolume, IconVolumeOff, IconVideo, IconMicrophone, IconScreenShare, IconBellOff, IconX, IconGripVertical } from "@tabler/icons-react";
+import { IconError404, IconPin, IconPinFilled, IconVolume, IconVolumeOff, IconVideo, IconScreenShare, IconBellOff, IconX, IconGripVertical } from "@tabler/icons-react";
 import clsx from "clsx";
 import { memo, useCallback } from "react";
 import { Link, useLocation } from "react-router";
@@ -90,17 +90,16 @@ const TabItem = memo(({ id, className, onClose, onContextMenu, isDragging, dragH
               </button>
             )}
 
-            {tab?.isUsingCamera && (
+            {/* {tab?.isUsingCamera && (
               <div className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 flex items-center gap-0.5" title="Camera in use">
                 <span className="w-1 h-1 rounded-full bg-red-500" />
                 <IconVideo className="text-red-500" size={10} />
               </div>
-            )}
+            )} */}
 
-            {tab?.isUsingMicrophone && (
-              <div className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/2 flex items-center gap-0.5" title="Microphone in use">
-                <span className="w-1 h-1 rounded-full bg-red-500" />
-                <IconMicrophone className="text-red-500" size={10} />
+            {(tab?.isUsingCamera || tab?.isUsingMicrophone) && (
+              <div className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/2" title="Recording">
+                <div className="w-2 h-2 rounded-full bg-red-500 ring-2 ring-red-300" />
               </div>
             )}
 
@@ -111,10 +110,10 @@ const TabItem = memo(({ id, className, onClose, onContextMenu, isDragging, dragH
             )}
 
             {(tab?.blockedNotifications ?? 0) > 0 && (
-              <div className="absolute -bottom-1.5 -right-1.5 flex items-center gap-0.5" title={`${tab.blockedNotifications} notification${tab.blockedNotifications !== 1 ? 's' : ''} blocked`}>
+              <div className="absolute -bottom-1.5 -right-1.5 flex items-center gap-0.5" title={`${tab?.blockedNotifications} notification${tab?.blockedNotifications !== 1 ? 's' : ''} blocked`}>
                 <IconBellOff className="text-orange-500" size={10} />
                 {(tab?.blockedNotifications ?? 0) > 1 && (
-                  <span className="text-[8px] font-bold text-orange-500 leading-none">{tab.blockedNotifications}</span>
+                  <span className="text-[8px] font-bold text-orange-500 leading-none">{tab?.blockedNotifications}</span>
                 )}
               </div>
             )}

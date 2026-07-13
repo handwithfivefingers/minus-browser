@@ -100,7 +100,7 @@ dist/
 # Electron-Forge
 out/
 
-extension
+# extension
 engine.bin
 
 userData.json

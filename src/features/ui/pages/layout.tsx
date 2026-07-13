@@ -4,6 +4,7 @@ import { Outlet, useNavigate } from "react-router";
 import { IUserInterface } from "~/shared/types";
 import { IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
 import { AiSidebar, SideMenu, NotificationContainer, UpdateBanner } from "../components";
+import { useWebNotificationStore } from "~/features/notification/store";
 
 import { useAiSidebarStore } from "../features/aiSider/stores/useAiSidebarStore";
 import { tabServices } from "../services/tab.service";
@@ -48,6 +49,11 @@ const Layout = () => {
     });
     window.api.LISTENER("NAVIGATE_HISTORY", () => {
       navigate("/history");
+    });
+    window.api.LISTENER("NOTIFICATION_POPUP", (data?: any) => {
+      if (data) {
+        useWebNotificationStore.getState().addNotification(data);
+      }
     });
   }, []);
 

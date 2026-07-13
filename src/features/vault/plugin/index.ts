@@ -28,6 +28,22 @@ export class VaultTabPlugin implements ITabPlugin {
             ctx.webContents.executeJavaScript(scriptInjection, true);
           }
         }
+        return;
+      }
+
+      const VAULT_CAPTURE_PREFIX = "__MINUS_VAULT_CAPTURE__";
+      if (msg.startsWith(VAULT_CAPTURE_PREFIX)) {
+        try {
+          const payload = JSON.parse(msg.slice(VAULT_CAPTURE_PREFIX.length));
+          if (payload?.password) {
+            this.emitToRenderer(IPC_RENDERER_EVENT.VAULT_CREDENTIAL_DETECTED, {
+              tabId: ctx.tabId,
+              ...payload,
+            });
+          }
+        } catch {
+          // ignore malformed messages
+        }
       }
     };
   }

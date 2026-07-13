@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { createHashRouter, RouterProvider } from "react-router";
 import { buildRoutes } from "./routes";
 import { SUB_WINDOW_EMIT, SUB_WINDOW_RENDERER_EVENT } from "~/shared/constants/ipc/sub-window";
+import { setPayload } from "./payload-store";
 // @ts-ignore
 import "./assets/styles.css";
 
@@ -31,6 +32,7 @@ if (typeof window !== "undefined") {
   });
 
   window.api.LISTENER(SUB_WINDOW_EMIT.PAYLOAD, (payload: any) => {
+    setPayload(payload);
     sessionStorage.setItem("subWindowPayload", JSON.stringify(payload));
   });
 }

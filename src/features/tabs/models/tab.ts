@@ -67,7 +67,6 @@ export class Tab extends TabPermission {
   isPinned: boolean = false;
   isFocused: boolean = false;
   audible: boolean = false;
-
   isLoading = false;
   index?: number;
   favicon: string = "";
@@ -204,11 +203,17 @@ export class Tab extends TabPermission {
       const extensionManager =
         this._userInterface ??
         (await cacheSystem.get<IUserInterface>("interface", async () => {
-          const rows = appDb.query<{ key: string; value: string }>("SELECT key, value FROM app_state WHERE key LIKE 'ui_%'");
+          const rows = appDb.query<{ key: string; value: string }>(
+            "SELECT key, value FROM app_state WHERE key LIKE 'ui_%'",
+          );
           const data: Record<string, any> = {};
           for (const row of rows) {
             const k = row.key.replace(/^ui_/, "");
-            try { data[k] = JSON.parse(row.value); } catch { data[k] = row.value; }
+            try {
+              data[k] = JSON.parse(row.value);
+            } catch {
+              data[k] = row.value;
+            }
           }
           return data as IUserInterface;
         }));
@@ -342,35 +347,35 @@ export class Tab extends TabPermission {
     if (!this._webContents || !tabError) return;
     const title = this.getErrorTitle(tabError.code);
     const html = `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-  .container { text-align: center; max-width: 480px; padding: 40px 24px; }
-  .icon { font-size: 64px; margin-bottom: 16px; }
-  h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
-  .code-badge { display: inline-block; background: #e2e8f0; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 500; margin-bottom: 12px; }
-  p { font-size: 14px; color: #64748b; margin-bottom: 8px; line-height: 1.5; }
-  .url { font-size: 13px; color: #94a3b8; word-break: break-all; margin-bottom: 24px; }
-  button { background: #6366f1; color: #fff; border: none; border-radius: 6px; padding: 10px 24px; font-size: 14px; font-weight: 500; cursor: pointer; }
-  button:hover { background: #4f46e5; }
-  button.secondary { background: transparent; color: #6366f1; border: 1px solid #6366f1; margin-left: 8px; }
-  button.secondary:hover { background: #eef2ff; }
-</style>
-</head>
-<body>
-<div class="container">
-  <div class="icon">${tabError.code.startsWith("HTTP_4") || tabError.code.startsWith("HTTP_5") ? "⚠️" : "🔒"}</div>
-  <h1>${title}</h1>
-  ${tabError.httpResponseCode ? `<div class="code-badge">${tabError.httpResponseCode}</div>` : ""}
-  <p>${tabError.description}</p>
-  <div class="url">${tabError.url}</div>
-  <button onclick="location.href='${tabError.url}'">Retry</button>
-  <button class="secondary" onclick="location.href='https://google.com'">Go to Home</button>
-</div>
-</body>
-</html>`;
+      <html lang="en">
+      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { text-align: center; max-width: 480px; padding: 40px 24px; }
+        .icon { font-size: 64px; margin-bottom: 16px; }
+        h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+        .code-badge { display: inline-block; background: #e2e8f0; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 500; margin-bottom: 12px; }
+        p { font-size: 14px; color: #64748b; margin-bottom: 8px; line-height: 1.5; }
+        .url { font-size: 13px; color: #94a3b8; word-break: break-all; margin-bottom: 24px; }
+        button { background: #6366f1; color: #fff; border: none; border-radius: 6px; padding: 10px 24px; font-size: 14px; font-weight: 500; cursor: pointer; }
+        button:hover { background: #4f46e5; }
+        button.secondary { background: transparent; color: #6366f1; border: 1px solid #6366f1; margin-left: 8px; }
+        button.secondary:hover { background: #eef2ff; }
+      </style>
+      </head>
+      <body>
+      <div class="container">
+        <div class="icon">${tabError.code.startsWith("HTTP_4") || tabError.code.startsWith("HTTP_5") ? "⚠️" : "🔒"}</div>
+        <h1>${title}</h1>
+        ${tabError.httpResponseCode ? `<div class="code-badge">${tabError.httpResponseCode}</div>` : ""}
+        <p>${tabError.description}</p>
+        <div class="url">${tabError.url}</div>
+        <button onclick="location.href='${tabError.url}'">Retry</button>
+        <button class="secondary" onclick="location.href='https://google.com'">Go to Home</button>
+      </div>
+      </body>
+      </html>`;
     const encoded = encodeURIComponent(html);
     this._webContents.loadURL(`data:text/html;charset=utf-8,${encoded}`);
   }

@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, Notification, WebContentsView } from "electron";
 import log from "electron-log";
 import { historyController, HistoryRoute } from "~/core/controller/history";
+import { TodoRoute } from "~/core/controller/todo";
 import { IHandleResizeView, IPC, ITab } from "~/core/interfaces";
 import { ErrorServices } from "~/core/services/error.services";
 import { browserSession } from "~/core/services/session";
@@ -71,6 +72,7 @@ export class ViewController {
         ...userScriptInvokeHandlers,
         ...SearchRoute,
         ...HistoryRoute,
+        ...TodoRoute,
         ...spotlightInvokeHandlers,
         ...tabGroupInvokeHandlers,
         ...this.bindingHandlersController(captureInvokeHandlers),
@@ -549,7 +551,7 @@ export class ViewController {
         appDb.run("DELETE FROM tab_groups");
         for (const group of tabGroups || []) {
           appDb.run(
-            "INSERT OR REPLACE INTO tab_groups (id, name, color, hidden, collapsed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO tab_groups (id, name, color, hidden, collapsed, created_at, updated_at, tab_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
               group.id,
               group.name,
@@ -558,6 +560,7 @@ export class ViewController {
               group.collapsed ? 1 : 0,
               group.createdAt,
               group.updatedAt,
+              JSON.stringify(group.tabIds),
             ],
           );
         }
@@ -613,6 +616,7 @@ export class ViewController {
     // Notification layer (zIndex=3) always on top of everything
     this.notificationService.ensureOnTop();
   }
+  
   detachChildView(view: WebContentsView) {
     eventStore.broadcast("viewChanges", undefined);
     this.window.contentView.removeChildView(view);
