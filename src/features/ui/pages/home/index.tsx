@@ -213,7 +213,7 @@ const TodoItem = ({
           onChange={(e) => setTodo((prev) => ({ ...prev, label: e.target.value }))}
         />
         <textarea
-          className="text-sm px-2 rounded-sm ring-1 ring-transparent focus:ring-slate-500 outline-0 text-white/80"
+          className="text-sm px-2 rounded-sm ring-1 ring-transparent focus:ring-slate-500 outline-0 text-white/80 scrollbar"
           value={todo.description}
           onChange={(e) => setTodo((prev) => ({ ...prev, description: e.target.value }))}
         />

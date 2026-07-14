@@ -157,6 +157,12 @@ export class ViewController {
         [IPC_RENDERER_EVENT.FILL_PASSWORD_REQUEST]: (data) => {
           this.window.webContents.send(IPC_RENDERER_EVENT.FILL_PASSWORD_REQUEST, data);
         },
+        [IPC_RENDERER_EVENT.TRANSLATE_LANGUAGE_DETECTED]: (data) => {
+          this.window.webContents.send(IPC_RENDERER_EVENT.TRANSLATE_LANGUAGE_DETECTED, data);
+        },
+        [IPC_RENDERER_EVENT.TRANSLATE_SELECTION_AVAILABLE]: (data) => {
+          this.window.webContents.send(IPC_RENDERER_EVENT.TRANSLATE_SELECTION_AVAILABLE, data);
+        },
       };
 
       this.listenerHandlers = {

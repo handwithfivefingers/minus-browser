@@ -14,9 +14,11 @@ export const translateInvokeHandlers = {
   [IPC_INVOKE_CHANNEL.TRANSLATE_OPEN_MANAGER]: async () => {
     await translateController.initialize();
     const preference = await translateController.getPreference();
-    const recentSelections = await translateController.getRecentSelections();
-    subWindowService.open("/translate", { preference, recentSelections });
+    subWindowService.open("/translate", { preference });
     return { success: true };
   },
-  [IPC_INVOKE_CHANNEL.TRANSLATE_GET_SELECTION_HISTORY]: () => translateController.getRecentSelections(),
+  [IPC_INVOKE_CHANNEL.TRANSLATE_SHOULD_AUTO]: (data: { domain: string; language?: string }) =>
+    translateController.shouldAutoTranslate(data.domain, data.language),
+  [IPC_INVOKE_CHANNEL.TRANSLATE_SHOW_PROMPT]: (data: { language: string }) =>
+    translateController.showTranslatePrompt(data),
 };

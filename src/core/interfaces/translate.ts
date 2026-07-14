@@ -7,21 +7,6 @@ export interface ITranslatePreference {
   neverTranslateLanguages: string[];
 }
 
-export interface ITranslateSelectionHistoryItem {
-  id: string;
-  tabId: string;
-  sourceText: string;
-  translatedText: string;
-  sourceLanguage: string;
-  targetLanguage: string;
-  createdAt: number;
-}
-
-export interface ITranslateStore {
-  preference: ITranslatePreference;
-  recentSelections: ITranslateSelectionHistoryItem[];
-}
-
 export interface ITranslateDetectResult {
   language: string;
   confidence?: number;

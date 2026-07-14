@@ -1,17 +1,10 @@
+import { BrowserWindow, session, WebContentsView } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { BrowserWindow, session, WebContentsView } from "electron";
-import { v7 as uuidv7 } from "uuid";
-import {
-  ITranslateDetectResult,
-  ITranslatePreference,
-  ITranslateSelectionHistoryItem,
-  ITranslateStore,
-} from "../types";
 import { appDb } from "~/core/stores";
+import { ITranslateDetectResult, ITranslatePreference } from "../types";
 
 const SENTINEL = "__TRANSLATE_RESOLVE__:";
-const MAX_RECENT_SELECTIONS = 40;
 
 const DEFAULT_PREFERENCE: ITranslatePreference = {
   sourceLanguage: "auto",
@@ -25,7 +18,6 @@ const DEFAULT_PREFERENCE: ITranslatePreference = {
 type TranslateManagerPayload = {
   requestId: string;
   preference: ITranslatePreference;
-  recentSelections: ITranslateSelectionHistoryItem[];
 };
 
 function getSafeDirname(): string {
@@ -60,7 +52,6 @@ function resolveTranslateUrl(): string {
     );
     return pathToFileURL(rendererPath).toString();
   }
-  // const basePath = path.join(getSafeDirname(), `../renderer/translate_injection/index.html`);
   const basePath = path.join(
     getSafeDirname(),
     /**@ts-ignore */
@@ -71,43 +62,61 @@ function resolveTranslateUrl(): string {
 
 export class TranslateService {
   private preference: ITranslatePreference = { ...DEFAULT_PREFERENCE };
-  private recentSelections: ITranslateSelectionHistoryItem[] = [];
 
   async initialize() {
     try {
+      appDb.run("DROP TABLE IF EXISTS translate_recent_selections");
       const prefRows = appDb.query<{ key: string; value: string }>("SELECT key, value FROM translate_preferences");
       const pref: Record<string, any> = {};
       for (const row of prefRows) {
-        try { pref[row.key] = JSON.parse(row.value); } catch { pref[row.key] = row.value; }
+        try {
+          pref[row.key] = JSON.parse(row.value);
+        } catch {
+          pref[row.key] = row.value;
+        }
       }
       this.preference = { ...DEFAULT_PREFERENCE, ...(pref as any) };
-
-      const selRows = appDb.query<ITranslateSelectionHistoryItem>(
-        "SELECT id, tab_id as tabId, source_text as sourceText, translated_text as translatedText, source_language as sourceLanguage, target_language as targetLanguage, created_at as createdAt FROM translate_recent_selections ORDER BY created_at DESC",
-      );
-      this.recentSelections = selRows || [];
     } catch {
       this.preference = { ...DEFAULT_PREFERENCE };
-      this.recentSelections = [];
     }
   }
 
-  private async persist() {
+  private async persistPreference() {
     appDb.transaction(() => {
       appDb.run("DELETE FROM translate_preferences");
       for (const [key, value] of Object.entries(this.preference)) {
         appDb.run("INSERT INTO translate_preferences (key, value) VALUES (?, ?)", [key, JSON.stringify(value)]);
       }
-
-      appDb.run("DELETE FROM translate_recent_selections");
-      for (const sel of this.recentSelections) {
-        appDb.run(
-          "INSERT INTO translate_recent_selections (id, tab_id, source_text, translated_text, source_language, target_language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          [sel.id, sel.tabId, sel.sourceText, sel.translatedText, sel.sourceLanguage, sel.targetLanguage, sel.createdAt],
-        );
-      }
     });
   }
+
+  scriptTranslatePrompt(language: string) {
+    const targetLanguage = this.preference.targetLanguage || "en";
+    const sourceLabel = language !== "auto" ? language : "detected language";
+    return `(() => {
+      const old = document.getElementById("__minus_translate_prompt_banner");
+      if (old) old.remove();
+      const banner = document.createElement("div");
+      banner.id = "__minus_translate_prompt_banner";
+      banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 16px;background:#0f172a;color:#fff;font-family:Inter,system-ui,sans-serif;font-size:13px;border-bottom:1px solid rgba(255,255,255,.15);box-shadow:0 2px 12px rgba(0,0,0,.3)";
+      const label = document.createElement("span");
+      label.textContent = "Translate this page from ${sourceLabel} to ${targetLanguage}?";
+      const translateBtn = document.createElement("button");
+      translateBtn.textContent = "Translate";
+      translateBtn.style.cssText = "padding:4px 14px;border:none;border-radius:6px;background:#3b82f6;color:#fff;cursor:pointer;font-size:12px;font-weight:600";
+      translateBtn.onclick = () => { window.location.href = "https://translate.google.com/translate?sl=auto&tl=${targetLanguage}&u=" + encodeURIComponent(window.location.href); };
+      const dismissBtn = document.createElement("button");
+      dismissBtn.textContent = "✕";
+      dismissBtn.style.cssText = "padding:4px 8px;border:none;border-radius:4px;background:transparent;color:rgba(255,255,255,.6);cursor:pointer;font-size:14px";
+      dismissBtn.onclick = () => banner.remove();
+      banner.appendChild(label);
+      banner.appendChild(translateBtn);
+      banner.appendChild(dismissBtn);
+      document.body.prepend(banner);
+      document.body.style.marginTop = (banner.offsetHeight) + "px";
+    })();`;
+  }
+
   scriptInjection(text: string, result: { sourceLanguage: string; targetLanguage: string; translatedText: string }) {
     return `(() => {
           const old = document.getElementById("__minus_translate_selection_popup");
@@ -165,7 +174,6 @@ export class TranslateService {
           root.appendChild(text);
           root.appendChild(close);
           document.documentElement.appendChild(root);
-          // setTimeout(() => root.remove(), 9000);
           let intervalId = null;
           intervalId = setInterval(() => {
             const currentSelection = String(window.getSelection?.()?.toString?.() || "").trim();
@@ -179,10 +187,6 @@ export class TranslateService {
 
   getPreference() {
     return this.preference;
-  }
-
-  getRecentSelections() {
-    return [...this.recentSelections];
   }
 
   async savePreference(patch: Partial<ITranslatePreference>) {
@@ -201,7 +205,7 @@ export class TranslateService {
       sourceLanguage: normalizeLanguage(patch.sourceLanguage || this.preference.sourceLanguage || "auto") || "auto",
       targetLanguage: normalizeLanguage(patch.targetLanguage || this.preference.targetLanguage || "en") || "en",
     };
-    await this.persist();
+    await this.persistPreference();
     return this.preference;
   }
 
@@ -250,18 +254,12 @@ export class TranslateService {
     const translatedText = Array.isArray(body?.[0]) ? body[0].map((item: any[]) => item?.[0] || "").join("") : "";
     const detectedLanguage = normalizeLanguage(body?.[2] || sourceLanguage) || sourceLanguage;
 
-    const history: ITranslateSelectionHistoryItem = {
-      id: uuidv7(),
-      tabId: input.tabId,
+    return {
       sourceText: text,
       translatedText,
       sourceLanguage: detectedLanguage,
       targetLanguage,
-      createdAt: Date.now(),
     };
-    this.recentSelections = [history, ...this.recentSelections].slice(0, MAX_RECENT_SELECTIONS);
-    await this.persist();
-    return history;
   }
 
   buildGoogleTranslateUrl(input: { targetUrl: string; targetLanguage?: string }) {
@@ -272,7 +270,7 @@ export class TranslateService {
   async openManager(
     win: BrowserWindow,
     view: WebContentsView,
-  ): Promise<{ preference: ITranslatePreference; recentSelections: ITranslateSelectionHistoryItem[] } | null> {
+  ): Promise<{ preference: ITranslatePreference } | null> {
     const requestId = `translate-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const translateView = new WebContentsView({
       webPreferences: {
@@ -300,9 +298,6 @@ export class TranslateService {
           if (data?.requestId !== requestId) return;
           settle({
             preference: { ...this.preference, ...(data?.payload?.preference || {}) },
-            recentSelections: Array.isArray(data?.payload?.recentSelections)
-              ? data.payload.recentSelections
-              : this.recentSelections,
           });
         } catch {
           settle(null);
@@ -319,7 +314,7 @@ export class TranslateService {
       };
 
       const settle = (
-        value: { preference: ITranslatePreference; recentSelections: ITranslateSelectionHistoryItem[] } | null,
+        value: { preference: ITranslatePreference } | null,
       ) => {
         if (!isReady) return;
         if (!translateView.webContents.isDestroyed()) {
@@ -356,7 +351,6 @@ export class TranslateService {
         const openPayload: TranslateManagerPayload = {
           requestId,
           preference: this.preference,
-          recentSelections: this.recentSelections,
         };
         translateView.webContents
           .executeJavaScript(
@@ -387,15 +381,9 @@ export class TranslateService {
     });
   }
 
-  async applyManagerState(payload: {
-    preference: ITranslatePreference;
-    recentSelections: ITranslateSelectionHistoryItem[];
-  }) {
+  async applyManagerState(payload: { preference: ITranslatePreference }) {
     this.preference = { ...DEFAULT_PREFERENCE, ...(payload.preference || {}) };
-    this.recentSelections = Array.isArray(payload.recentSelections)
-      ? payload.recentSelections.slice(0, MAX_RECENT_SELECTIONS)
-      : [];
-    await this.persist();
+    await this.persistPreference();
   }
 }
 

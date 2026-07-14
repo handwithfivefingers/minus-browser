@@ -71,7 +71,7 @@ const CustomApp = () => {
     window.api.LISTENER(`LOADING:${tabId}`, onTabNavigate);
     window.api.LISTENER("VAULT_CREDENTIAL_DETECTED", onCredentialDetected);
     window.api.LISTENER("FILL_PASSWORD_REQUEST", onFillPasswordRequest);
-    // window.api.LISTENER("TRANSLATE_LANGUAGE_DETECTED", onTranslateLanguageDetected);
+    window.api.LISTENER("TRANSLATE_LANGUAGE_DETECTED", onTranslateLanguageDetected);
     window.api.LISTENER("TRANSLATE_SELECTION_AVAILABLE", onTranslateSelectionAvailable);
   }, [tabId]);
 
@@ -273,6 +273,24 @@ const CustomApp = () => {
       }
     } catch (error) {
       console.error("onCredentialDetected error", error);
+    }
+  };
+
+  const onTranslateLanguageDetected = async (payload: { tabId?: string; language?: string; url?: string }) => {
+    if (!payload || payload.tabId !== tabId) return;
+    if (!payload.language) return;
+    try {
+      const domain = (() => {
+        try { return new URL(payload.url || tab?.url || "").hostname; } catch { return ""; }
+      })();
+      const shouldAuto = await window.api.INVOKE<boolean>("TRANSLATE_SHOULD_AUTO", {
+        domain,
+        language: payload.language,
+      });
+      if (!shouldAuto) return;
+      await window.api.INVOKE("TRANSLATE_SHOW_PROMPT", { language: payload.language });
+    } catch (error) {
+      console.error("onTranslateLanguageDetected error", error);
     }
   };
 
