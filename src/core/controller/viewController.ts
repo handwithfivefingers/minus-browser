@@ -22,6 +22,9 @@ import {
   userScriptInvokeHandlers,
   vaultInvokeHandlers,
 } from "~/features/sub-window/ipc";
+import { registerGMAPIHandlers } from "~/features/userscript/gm-api";
+import { registerErrorHandler } from "~/features/userscript/services/error-service";
+import { startUpdateChecker } from "~/features/userscript/services/update-service";
 import { captureInvokeHandlers } from "~/features/sub-window/ipc/capture-hanlers";
 import { subWindowService } from "~/features/sub-window/service";
 import { tabGroupController } from "~/features/tabGroup";
@@ -242,6 +245,9 @@ export class ViewController {
     } catch (error) {
       console.error("[ERROR] View Controller -", error);
     } finally {
+      registerGMAPIHandlers();
+      registerErrorHandler();
+      startUpdateChecker();
       initAutoUpdate((channel, data) => this.forwardRendererEvent(channel, data), {
         autoDownload: this.userInterface?.autoDownload,
       });

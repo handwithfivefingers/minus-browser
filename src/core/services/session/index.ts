@@ -1,4 +1,5 @@
 import { BrowserWindow, session, app } from "electron";
+import path from "node:path";
 import {
   migrateUserData,
   needsLegacyCookieMigration,
@@ -18,6 +19,13 @@ let browserSession: Electron.Session;
 const sessionInitPromise = app.whenReady().then(async () => {
   await migrateUserData();
   browserSession = createSession();
+
+  // Register userscript preload for GM API support
+  const userscriptPreload = path.join(__dirname, "userscript-preload.js");
+  const existing = browserSession.getPreloads();
+  if (!existing.includes(userscriptPreload)) {
+    browserSession.setPreloads([...existing, userscriptPreload]);
+  }
 
   await migrateLegacyCookies();
   await handleVersionChange();
