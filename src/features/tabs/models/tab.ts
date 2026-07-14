@@ -111,6 +111,7 @@ export class Tab extends TabPermission {
   }: Partial<ITab> & { eventEmitter: <T>(payload: { channel: string; data: T }) => void }) {
     super(props);
     Object.assign(this, props);
+    this.resetMediaStates();
     this.eventEmitter = eventEmitter;
   }
 
@@ -134,6 +135,13 @@ export class Tab extends TabPermission {
     this.pluginReady ??= this.registerPlugin();
   }
 
+  private resetMediaStates() {
+    this.audible = false;
+    this.isUsingCamera = false;
+    this.isUsingMicrophone = false;
+    this.isUsingScreenShare = false;
+  }
+
   destroyView() {
     if (!this._view) return;
     try {
@@ -143,6 +151,13 @@ export class Tab extends TabPermission {
     }
     this._view = null;
     this._webContents = null;
+    this.resetMediaStates();
+    this.peristInformationToRenderer({
+      audible: false,
+      isUsingCamera: false,
+      isUsingMicrophone: false,
+      isUsingScreenShare: false,
+    });
   }
 
   hibernate() {

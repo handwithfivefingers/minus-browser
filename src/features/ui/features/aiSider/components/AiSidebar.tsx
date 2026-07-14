@@ -1,7 +1,6 @@
 import {
   IconBrain,
   IconBrandWechat,
-  IconCamera,
   IconFileText,
   IconLanguage,
   IconPencil,
@@ -10,10 +9,10 @@ import {
 } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useEffect, useRef, useState } from "react";
-import { AiSidebarMode, useAiSidebarStore } from "../stores/useAiSidebarStore";
-import { ChatMode, SummaryMode, GenerateMode, ExplainMode, CaptureMode } from "../modes";
+import { CaptureMode, ChatMode, ExplainMode, GenerateMode, SummaryMode } from "../modes";
 import { LANGUAGE_MAP } from "../services/promptTemplates";
 import { useAiSettingsStore } from "../stores/useAiSettingsStore";
+import { AiSidebarMode, useAiSidebarStore } from "../stores/useAiSidebarStore";
 /** @ts-ignore */
 import styles from "./styles.module.css";
 

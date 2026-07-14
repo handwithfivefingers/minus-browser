@@ -50,9 +50,23 @@ const Layout = () => {
     window.api.LISTENER("NAVIGATE_HISTORY", () => {
       navigate("/history");
     });
+    window.api.LISTENER("NAVIGATE_SETTINGS", () => {
+      navigate("/setting");
+    });
+    window.api.LISTENER("TOGGLE_AI_SIDEBAR", () => {
+      useAiSidebarStore.getState().toggle();
+    });
     window.api.LISTENER("NOTIFICATION_POPUP", (data?: any) => {
       if (data) {
         useWebNotificationStore.getState().addNotification(data);
+      }
+    });
+    window.api.LISTENER("NOTIFICATION_STATE_SYNC", (data?: { notifications: any[]; unreadCount: number }) => {
+      if (data) {
+        useWebNotificationStore.setState({
+          notifications: data.notifications,
+          unreadCount: data.unreadCount,
+        });
       }
     });
   }, []);

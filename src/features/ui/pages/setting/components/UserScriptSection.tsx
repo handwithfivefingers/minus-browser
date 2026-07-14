@@ -1,8 +1,24 @@
-import { IconCode, IconDeviceFloppy, IconDownload, IconEdit, IconPlus, IconToggleLeft, IconToggleRight, IconTrash, IconUpload, IconWorldUpload, IconX } from "@tabler/icons-react";
+import {
+  IconCode,
+  IconDeviceFloppy,
+  IconDownload,
+  IconEdit,
+  IconPlus,
+  IconToggleLeft,
+  IconToggleRight,
+  IconTrash,
+  IconUpload,
+  IconWorldUpload,
+  IconX,
+} from "@tabler/icons-react";
 import clsx from "clsx";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
 import { parseUserScriptMetadata, generateMetadataBlock, metadataToPartialScript } from "~/features/userscript/parser";
+import Editor from "react-simple-code-editor";
+import Prism from "prismjs";
+// @ts-ignore
+import "prismjs/themes/prism.min.css";
 
 type UserScriptRunAt = "document-start" | "document-idle" | "document-end";
 
@@ -29,21 +45,59 @@ interface IUserScript {
 }
 
 const GRANT_OPTIONS = [
-  "unsafeWindow", "GM_info", "GM_getValue", "GM_setValue", "GM_deleteValue", "GM_listValues",
-  "GM_getResourceText", "GM_getResourceURL", "GM_addStyle", "GM_addElement",
-  "GM_download", "GM_getTab", "GM_saveTab", "GM_getTabs", "GM_log",
-  "GM_notification", "GM_openInTab", "GM_setClipboard", "GM_xmlhttpRequest",
-  "GM_registerMenuCommand", "GM_unregisterMenuCommand", "window.close", "window.focus",
+  "unsafeWindow",
+  "GM_info",
+  "GM_getValue",
+  "GM_setValue",
+  "GM_deleteValue",
+  "GM_listValues",
+  "GM_getResourceText",
+  "GM_getResourceURL",
+  "GM_addStyle",
+  "GM_addElement",
+  "GM_download",
+  "GM_getTab",
+  "GM_saveTab",
+  "GM_getTabs",
+  "GM_log",
+  "GM_notification",
+  "GM_openInTab",
+  "GM_setClipboard",
+  "GM_xmlhttpRequest",
+  "GM_registerMenuCommand",
+  "GM_unregisterMenuCommand",
+  "window.close",
+  "window.focus",
 ];
 
-const Modal = ({ title, open, onClose, children }: { title: string; open: boolean; onClose: () => void; children: ReactNode }) => {
+const Modal = ({
+  title,
+  open,
+  onClose,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) => {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[2000] bg-slate-900/55 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-3xl max-h-[88vh] overflow-auto rounded-xl bg-white border border-slate-200 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-2000 bg-slate-900/55 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-3xl max-h-[88vh] overflow-auto rounded-xl bg-white border border-slate-200 shadow-2xl scrollbar"
+        onClick={(e) => e.stopPropagation()}
+        style={{}}
+      >
         <div className="sticky top-0 z-10 bg-white px-5 py-4 border-b border-slate-200 flex items-center justify-between">
           <div className="font-semibold text-slate-900">{title}</div>
-          <button className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-100 hover:text-slate-800 cursor-pointer" onClick={onClose} type="button"><IconX size={16} /></button>
+          <button
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
+            onClick={onClose}
+            type="button"
+          >
+            <IconX size={16} />
+          </button>
         </div>
         <div className="p-5">{children}</div>
       </div>
@@ -54,7 +108,13 @@ const Modal = ({ title, open, onClose, children }: { title: string; open: boolea
 const UserScriptSection = () => {
   const [scripts, setScripts] = useState<IUserScript[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const formRef = useRef<IUserScript>({ name: "New Script", source: "", matches: ["*"], runAt: "document-end", enabled: false });
+  const formRef = useRef<IUserScript>({
+    name: "New Script",
+    source: "",
+    matches: ["*"],
+    runAt: "document-end",
+    enabled: false,
+  });
   const [, setTick] = useState(0);
   const forceUpdate = () => setTick((t) => t + 1);
   const patchSelected = <K extends keyof IUserScript>({ field, value }: { field: K; value: IUserScript[K] }) => {
@@ -67,7 +127,9 @@ const UserScriptSection = () => {
     setScripts(list || []);
   };
 
-  useEffect(() => { loadScripts(); }, []);
+  useEffect(() => {
+    loadScripts();
+  }, []);
 
   const parseAndPopulate = (source: string) => {
     const meta = parseUserScriptMetadata(source);
@@ -122,7 +184,9 @@ const UserScriptSection = () => {
   const onExportScript = (script: IUserScript) => {
     const meta = parseUserScriptMetadata(script.source);
     const header = meta ? generateMetadataBlock(meta) : "";
-    const body = header ? script.source.replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n?/m, "") : script.source;
+    const body = header
+      ? script.source.replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n?/m, "")
+      : script.source;
     const content = header + "\n" + body.trimStart();
     const blob = new Blob([content], { type: "text/javascript" });
     const a = document.createElement("a");
@@ -165,13 +229,25 @@ const UserScriptSection = () => {
           <h2 className="text-lg font-semibold text-slate-900">UserScript Manager</h2>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" className="h-9 px-3 rounded-lg border border-slate-300 bg-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer" onClick={onImportScript}>
+          <button
+            type="button"
+            className="h-9 px-3 rounded-lg border border-slate-300 bg-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer"
+            onClick={onImportScript}
+          >
             <IconUpload size={15} /> Import
           </button>
-          <button type="button" className="h-9 px-3 rounded-lg border border-slate-300 bg-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer" onClick={onImportFromURL}>
+          <button
+            type="button"
+            className="h-9 px-3 rounded-lg border border-slate-300 bg-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-50 cursor-pointer"
+            onClick={onImportFromURL}
+          >
             <IconWorldUpload size={15} /> From URL
           </button>
-          <button type="button" className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 cursor-pointer" onClick={openCreateModal}>
+          <button
+            type="button"
+            className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 cursor-pointer"
+            onClick={openCreateModal}
+          >
             <IconPlus size={15} /> New Script
           </button>
         </div>
@@ -179,10 +255,21 @@ const UserScriptSection = () => {
 
       <div className="space-y-2 max-h-[460px] overflow-auto pr-1">
         {scripts.map((script) => (
-          <div key={script.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 flex items-center justify-between gap-3">
+          <div
+            key={script.id}
+            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 flex items-center justify-between gap-3"
+          >
             <div className="min-w-0 flex items-center gap-3">
-              <button type="button" onClick={() => script.id && onToggleScript(script.id, !script.enabled)} className="cursor-pointer text-slate-500 hover:text-slate-700">
-                {script.enabled ? <IconToggleRight size={20} className="text-emerald-600" /> : <IconToggleLeft size={20} />}
+              <button
+                type="button"
+                onClick={() => script.id && onToggleScript(script.id, !script.enabled)}
+                className="cursor-pointer text-slate-500 hover:text-slate-700"
+              >
+                {script.enabled ? (
+                  <IconToggleRight size={20} className="text-emerald-600" />
+                ) : (
+                  <IconToggleLeft size={20} />
+                )}
               </button>
               <div>
                 <div className="text-sm font-medium text-slate-900 truncate">{script.name}</div>
@@ -194,13 +281,25 @@ const UserScriptSection = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button type="button" className="h-8 px-2.5 rounded-md border border-slate-300 text-slate-700 text-xs inline-flex items-center gap-1 hover:bg-white cursor-pointer" onClick={() => onExportScript(script)}>
+              <button
+                type="button"
+                className="h-8 px-2.5 rounded-md border border-slate-300 text-slate-700 text-xs inline-flex items-center gap-1 hover:bg-white cursor-pointer"
+                onClick={() => onExportScript(script)}
+              >
                 <IconDownload size={14} /> Export
               </button>
-              <button type="button" className="h-8 px-2.5 rounded-md border border-slate-300 text-slate-700 text-xs inline-flex items-center gap-1 hover:bg-white cursor-pointer" onClick={() => openEditModal(script)}>
+              <button
+                type="button"
+                className="h-8 px-2.5 rounded-md border border-slate-300 text-slate-700 text-xs inline-flex items-center gap-1 hover:bg-white cursor-pointer"
+                onClick={() => openEditModal(script)}
+              >
                 <IconEdit size={14} /> Edit
               </button>
-              <button type="button" className="h-8 px-2.5 rounded-md border border-red-200 text-red-600 bg-red-50 text-xs inline-flex items-center gap-1 hover:bg-red-100 cursor-pointer" onClick={() => script?.id && onDeleteScript(script.id)}>
+              <button
+                type="button"
+                className="h-8 px-2.5 rounded-md border border-red-200 text-red-600 bg-red-50 text-xs inline-flex items-center gap-1 hover:bg-red-100 cursor-pointer"
+                onClick={() => script?.id && onDeleteScript(script.id)}
+              >
                 <IconTrash size={14} /> Delete
               </button>
             </div>
@@ -208,76 +307,147 @@ const UserScriptSection = () => {
         ))}
       </div>
 
-      <Modal title={formRef.current.id ? "Edit Userscript" : "Create Userscript"} open={modalOpen} onClose={() => setModalOpen(false)}>
+      <Modal
+        title={formRef.current.id ? "Edit Userscript" : "Create Userscript"}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+      >
         <div className="space-y-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-slate-600">Script Name</span>
+            <input
+              className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+              value={formRef.current.name}
+              onChange={(e) => patchSelected({ field: "name", value: e.target.value })}
+              placeholder="My Script"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-slate-600">Namespace</span>
+            <input
+              className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+              value={formRef.current.namespace || ""}
+              onChange={(e) => patchSelected({ field: "namespace", value: e.target.value })}
+              placeholder="https://example.com/"
+            />
+          </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm text-slate-600">Script Name</span>
-              <input className="h-10 px-3 rounded-lg border border-slate-300 text-sm" value={formRef.current.name} onChange={(e) => patchSelected({ field: "name", value: e.target.value })} placeholder="My Script" />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm text-slate-600">Namespace</span>
-              <input className="h-10 px-3 rounded-lg border border-slate-300 text-sm" value={formRef.current.namespace || ""} onChange={(e) => patchSelected({ field: "namespace", value: e.target.value })} placeholder="https://example.com/" />
-            </label>
-            <label className="flex flex-col gap-1.5">
               <span className="text-sm text-slate-600">Version</span>
-              <input className="h-10 px-3 rounded-lg border border-slate-300 text-sm" value={formRef.current.version || ""} onChange={(e) => patchSelected({ field: "version", value: e.target.value })} placeholder="1.0.0" />
+              <input
+                className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+                value={formRef.current.version || ""}
+                onChange={(e) => patchSelected({ field: "version", value: e.target.value })}
+                placeholder="1.0.0"
+              />
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm text-slate-600">Author</span>
-              <input className="h-10 px-3 rounded-lg border border-slate-300 text-sm" value={formRef.current.author || ""} onChange={(e) => patchSelected({ field: "author", value: e.target.value })} placeholder="Author name" />
+              <input
+                className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+                value={formRef.current.author || ""}
+                onChange={(e) => patchSelected({ field: "author", value: e.target.value })}
+                placeholder="Author name"
+              />
             </label>
           </div>
 
           <label className="flex flex-col gap-1.5">
             <span className="text-sm text-slate-600">Description</span>
-            <input className="h-10 px-3 rounded-lg border border-slate-300 text-sm" value={formRef.current.description || ""} onChange={(e) => patchSelected({ field: "description", value: e.target.value })} placeholder="Script description" />
+            <input
+              className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+              value={formRef.current.description || ""}
+              onChange={(e) => patchSelected({ field: "description", value: e.target.value })}
+              placeholder="Script description"
+            />
           </label>
 
           <div className="space-y-2">
-            <FormArray label="Match Rules" values={formRef.current.matches || []} onUpdate={(v) => { formRef.current.matches = v; forceUpdate(); }} />
-          </div>
-          <div className="space-y-2">
-            <FormArray label="Exclude Rules" values={formRef.current.excludes || []} onUpdate={(v) => { formRef.current.excludes = v; forceUpdate(); }} />
-          </div>
-          <div className="space-y-2">
-            <FormArray label="Connect Domains" values={formRef.current.connect || []} onUpdate={(v) => { formRef.current.connect = v; forceUpdate(); }} />
+            <FormArray
+              label="Matches"
+              values={formRef.current.matches || []}
+              onUpdate={(v) => {
+                formRef.current.matches = v;
+                forceUpdate();
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm text-slate-600">Run At</span>
-              <select className="h-10 px-3 rounded-lg border border-slate-300 text-sm" value={formRef.current.runAt} onChange={(e) => patchSelected({ field: "runAt", value: e.target.value as UserScriptRunAt })}>
-                <option value="document-start">On Start</option>
-                <option value="document-idle">On Idle</option>
-                <option value="document-end">On Loaded</option>
+              <select
+                className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+                value={formRef.current.runAt}
+                onChange={(e) => patchSelected({ field: "runAt", value: e.target.value as UserScriptRunAt })}
+              >
+                <option value="document-start">Document Start</option>
+                <option value="document-idle">Document Idle</option>
+                <option value="document-end">Document End</option>
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm text-slate-600">Status</span>
-              <button type="button" className={clsx("h-10 rounded-lg border text-sm cursor-pointer", formRef.current.enabled ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-300")} onClick={() => patchSelected({ field: "enabled", value: !formRef.current.enabled })}>
-                {formRef.current.enabled ? "ON" : "OFF"}
-              </button>
+              <span className="text-sm text-slate-600">Enabled</span>
+              <div
+                className="relative inline-flex items-center cursor-pointer mt-1"
+                onClick={() => patchSelected({ field: "enabled", value: !formRef.current.enabled })}
+                role="switch"
+                aria-checked={formRef.current.enabled}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ")
+                    patchSelected({ field: "enabled", value: !formRef.current.enabled });
+                }}
+              >
+                <input type="checkbox" className="sr-only peer" checked={formRef.current.enabled} readOnly />
+                <div
+                  className={clsx(
+                    "w-9 h-5 rounded-full peer after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full",
+                    formRef.current.enabled ? "bg-indigo-500" : "bg-slate-300",
+                  )}
+                />
+              </div>
             </label>
           </div>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-600">@noframes</span>
-            <button type="button" className={clsx("h-10 rounded-lg border text-sm cursor-pointer w-24", formRef.current.noframes ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-300")} onClick={() => patchSelected({ field: "noframes", value: !formRef.current.noframes })}>
-              {formRef.current.noframes ? "ON" : "OFF"}
-            </button>
-          </label>
-
-          <GrantSelector values={formRef.current.grants || []} onUpdate={(v) => { formRef.current.grants = v; forceUpdate(); }} />
+          <GrantSelector
+            values={formRef.current.grants || []}
+            onUpdate={(v) => {
+              formRef.current.grants = v;
+              forceUpdate();
+            }}
+          />
 
           <label className="flex flex-col gap-1.5">
             <span className="text-sm text-slate-600">Script Source</span>
-            <textarea className="min-h-[260px] p-3 rounded-lg border border-slate-300 text-xs font-mono" value={formRef.current.source} onChange={(e) => handleSourceChange(e.target.value)} />
+            <Editor
+              value={formRef.current.source}
+              onValueChange={(code) => handleSourceChange(code)}
+              highlight={(code) => {
+                if (!code) return "";
+                return Prism.highlight(code, Prism.languages.js, "js");
+              }}
+              padding={10}
+              style={{
+                fontFamily: "monospace",
+              }}
+              className="min-h-[260px] text-xs rounded-lg border border-slate-300 px-3 py-2 font-mono outline-none ring-2 ring-transparent focus:ring-slate-500 transition-all"
+            />
           </label>
 
           <div className="pt-1 flex items-center justify-end gap-2">
-            <button type="button" className="h-9 px-3 rounded-lg border border-slate-300 text-slate-700 text-sm cursor-pointer" onClick={() => setModalOpen(false)}>Cancel</button>
-            <button type="button" className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 cursor-pointer" onClick={onSaveScript}>
+            <button
+              type="button"
+              className="h-9 px-3 rounded-lg border border-slate-300 text-slate-700 text-sm cursor-pointer"
+              onClick={() => setModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 cursor-pointer"
+              onClick={onSaveScript}
+            >
               <IconDeviceFloppy size={14} /> Save Script
             </button>
           </div>
@@ -306,7 +476,17 @@ const GrantSelector = ({ values, onUpdate }: { values: string[]; onUpdate: (v: s
       <div className="text-sm text-slate-600">@grant</div>
       <div className="flex flex-wrap gap-1.5">
         {GRANT_OPTIONS.map((grant) => (
-          <button key={grant} type="button" onClick={() => toggle(grant)} className={clsx("px-2 py-1 rounded-md text-xs border cursor-pointer", enabled.has(grant) ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300")}>
+          <button
+            key={grant}
+            type="button"
+            onClick={() => toggle(grant)}
+            className={clsx(
+              "px-2 py-1 rounded-md text-xs border cursor-pointer",
+              enabled.has(grant)
+                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300",
+            )}
+          >
             {grant}
           </button>
         ))}
@@ -315,13 +495,24 @@ const GrantSelector = ({ values, onUpdate }: { values: string[]; onUpdate: (v: s
   );
 };
 
-const FormArray = ({ label, values, onUpdate }: { label: string; values: string[]; onUpdate: (v: string[]) => void }) => {
+const FormArray = ({
+  label,
+  values,
+  onUpdate,
+}: {
+  label: string;
+  values: string[];
+  onUpdate: (v: string[]) => void;
+}) => {
   const localValues = useRef<string[]>([...values]);
   const [, setTick] = useState(0);
   const inputRef = useRef<HTMLInputElement[]>([]);
   const forceUpdate = () => setTick((t) => t + 1);
 
-  useEffect(() => { localValues.current = [...values]; forceUpdate(); }, [values]);
+  useEffect(() => {
+    localValues.current = [...values];
+    forceUpdate();
+  }, [values]);
 
   const add = () => {
     localValues.current = [...localValues.current, ""];
@@ -342,14 +533,29 @@ const FormArray = ({ label, values, onUpdate }: { label: string; values: string[
     <div>
       <div className="flex justify-between items-center mb-1">
         <span className="text-sm text-slate-600">{label}</span>
-        <button type="button" className="h-7 px-2 rounded-md border border-slate-300 text-xs inline-flex items-center gap-1 hover:bg-slate-50 cursor-pointer" onClick={add}>
+        <button
+          type="button"
+          className="h-7 px-2 rounded-md border border-slate-300 text-xs inline-flex items-center gap-1 hover:bg-slate-50 cursor-pointer"
+          onClick={add}
+        >
           <IconPlus size={13} /> Add
         </button>
       </div>
       {localValues.current.map((v, idx) => (
         <div key={`${label}-${idx}-${v}`} className="flex gap-2 mb-1.5">
-          <input className="flex-1 h-8 px-2.5 rounded-lg border border-slate-300 text-xs" value={v} onChange={(e) => change(idx, e.target.value)} ref={(r) => { if (r) inputRef.current[idx] = r; }} />
-          <button type="button" className="h-8 w-8 rounded-md border border-red-200 text-red-600 bg-red-50 inline-flex items-center justify-center hover:bg-red-100 cursor-pointer" onClick={() => remove(idx)}>
+          <input
+            className="flex-1 h-8 px-2.5 rounded-lg border border-slate-300 text-xs"
+            value={v}
+            onChange={(e) => change(idx, e.target.value)}
+            ref={(r) => {
+              if (r) inputRef.current[idx] = r;
+            }}
+          />
+          <button
+            type="button"
+            className="h-8 w-8 rounded-md border border-red-200 text-red-600 bg-red-50 inline-flex items-center justify-center hover:bg-red-100 cursor-pointer"
+            onClick={() => remove(idx)}
+          >
             <IconTrash size={13} />
           </button>
         </div>

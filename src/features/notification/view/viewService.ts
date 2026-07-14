@@ -14,6 +14,7 @@ export class NotificationViewService {
   private readyPromise: Promise<void> | null = null;
   private clickHandler: ((tabId: string) => void) | null = null;
   private getHistoryHandler: (() => WebNotification[]) | null = null;
+  private onStateChangeHandler: (() => void) | null = null;
   private toastQueue: WebNotification[] = [];
   private toastShowing = false;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -48,16 +49,19 @@ export class NotificationViewService {
     ipcMain.on("NOTIFICATION_VIEW_MARK_READ", (_event, { id }: { id: string }) => {
       useWebNotificationStore.getState().markAsRead(id);
       this.sendHistory();
+      this.onStateChangeHandler?.();
     });
 
     ipcMain.on("NOTIFICATION_VIEW_MARK_ALL_READ", () => {
       useWebNotificationStore.getState().markAllAsRead();
       this.sendHistory();
+      this.onStateChangeHandler?.();
     });
 
     ipcMain.on("NOTIFICATION_VIEW_CLEAR_ALL", () => {
       useWebNotificationStore.getState().clear();
       this.sendHistory();
+      this.onStateChangeHandler?.();
       this.closeList();
     });
   }
@@ -65,9 +69,11 @@ export class NotificationViewService {
   setCallbacks(handlers: {
     onNavigateToTab: (tabId: string) => void;
     getHistory: () => WebNotification[];
+    onStateChange?: () => void;
   }) {
     this.clickHandler = handlers.onNavigateToTab;
     this.getHistoryHandler = handlers.getHistory;
+    this.onStateChangeHandler = handlers.onStateChange ?? null;
   }
 
   private async ensureView() {
