@@ -243,18 +243,20 @@ const CustomApp = () => {
         username: (payload.username || "").trim() || "unknown",
         password: payload.password,
       };
-      const shouldSave = await window.api.INVOKE<boolean>("VAULT_CONFIRM_SAVE", {
-        tabId,
-        username: pendingCredentialSave.username,
-        site: pendingCredentialSave.site,
-      });
-      if (!shouldSave) return;
       const existingVault = await window.api.INVOKE<IPasswordVaultItem[]>("VAULT_LIST");
       const existing = existingVault.find(
         (item) =>
           item.site.toLowerCase() === pendingCredentialSave.site &&
           item.username.trim().toLowerCase() === pendingCredentialSave.username.trim().toLowerCase(),
       );
+      if (existing && existing.password === pendingCredentialSave.password) return;
+      const shouldSave = await window.api.INVOKE<boolean>("VAULT_CONFIRM_SAVE", {
+        tabId,
+        username: pendingCredentialSave.username,
+        site: pendingCredentialSave.site,
+        isUpdate: !!existing,
+      });
+      if (!shouldSave) return;
       if (existing) {
         await window.api.INVOKE("VAULT_UPDATE", {
           id: existing.id,

@@ -83,7 +83,7 @@ export class SubWindowService {
         transparent: true,
       },
     });
-    this.view.webContents.openDevTools();
+    // this.view.webContents.openDevTools();
     this.view.setBackgroundColor("#00000000");
     await this.view.webContents.loadURL(this.getURL()).catch(() => {});
   }

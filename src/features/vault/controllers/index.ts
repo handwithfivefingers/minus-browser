@@ -149,12 +149,13 @@ export class VaultController {
     })();`;
   }
 
-  vaultConfirmSave(data: { username: string; site: string; tabId?: string }) {
+  vaultConfirmSave(data: { username: string; site: string; tabId?: string; isUpdate?: boolean }) {
     const view = this.resolveView(data.tabId);
     if (view) {
       return this.vaultService.confirmSave(view.webContents, {
         username: data.username,
         site: data.site,
+        isUpdate: data.isUpdate,
       });
     }
   }

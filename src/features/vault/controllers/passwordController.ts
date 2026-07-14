@@ -6,22 +6,27 @@ import { cacheSystem } from "~/features/cacheSystem";
 
 export class PasswordController {
   private items: Map<string, IPasswordItem> = new Map();
+  private _initialized = false;
+
   async initialize() {
+    if (this._initialized) return;
+    this._initialized = true;
     try {
-      const cb = () => {
-        const rows = appDb.query<{ id: string; site: string; username: string; encrypted_password: string; notes: string; created_at: number; updated_at: number }>(
-          "SELECT * FROM password_vault_items",
-        );
-        const list: IPasswordItem[] = rows.map((r) => ({
-          id: r.id, site: r.site, username: r.username,
-          password: this.decryptString(r.encrypted_password),
-          notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at,
-        }));
-        return { vault: { cipherText: "", isEncrypted: false } };
-      };
-      const vaults = await cacheSystem.get<{ vault: any }>("passwordVault", cb);
-      this.items = new Map();
+      const rows = appDb.query<{ id: string; site: string; username: string; encrypted_password: string; notes: string; created_at: number; updated_at: number }>(
+        "SELECT * FROM password_vault_items",
+      );
+      this.items = new Map(
+        rows.map((r) => [
+          r.id,
+          {
+            id: r.id, site: r.site, username: r.username,
+            password: this.decryptString(r.encrypted_password),
+            notes: r.notes, createdAt: r.created_at, updatedAt: r.updated_at,
+          } as IPasswordItem,
+        ]),
+      );
     } catch (error) {
+      this._initialized = false;
       console.error("failed to init", error);
     }
   }

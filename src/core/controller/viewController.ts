@@ -151,6 +151,12 @@ export class ViewController {
         [IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE]: (data) => {
           this.window.webContents.send(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, data);
         },
+        [IPC_RENDERER_EVENT.VAULT_CREDENTIAL_DETECTED]: (data) => {
+          this.window.webContents.send(IPC_RENDERER_EVENT.VAULT_CREDENTIAL_DETECTED, data);
+        },
+        [IPC_RENDERER_EVENT.FILL_PASSWORD_REQUEST]: (data) => {
+          this.window.webContents.send(IPC_RENDERER_EVENT.FILL_PASSWORD_REQUEST, data);
+        },
       };
 
       this.listenerHandlers = {
