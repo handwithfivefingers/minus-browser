@@ -105,8 +105,21 @@ const SideMenu = () => {
   };
 
   const onCloseTab = async ({ id }: { id: string }) => {
+    const currentTabs = useTabStore.getState().tabs;
+    const closedIndex = currentTabs.findIndex((t) => t.id === id);
+    const isActiveTab = pathname === `/${id}`;
+
     window.api.EMIT("ON_CLOSE_TAB", { id });
-    navigate(`/`);
+
+    if (isActiveTab) {
+      if (currentTabs.length <= 1) {
+        navigate(`/`);
+      } else if (closedIndex > 0) {
+        navigate(`/${currentTabs[closedIndex - 1].id}`);
+      } else {
+        navigate(`/${currentTabs[1].id}`);
+      }
+    }
   };
 
   const handleContextMenu = useCallback(
@@ -242,7 +255,7 @@ const SideMenu = () => {
   return (
     <ErrorBoundary FallbackComponent={(fallbackProps) => <ComponentError {...fallbackProps} />}>
       <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={clsx(styles.sidebar)}>
-        <div className="flex gap-1 flex-col flex-1 overflow-y-auto overflow-x-hidden h-full scrollbar ">
+        <div className="flex gap-1 flex-col flex-1 overflow-y-auto overflow-x-hidden h-full" style={{}}>
           <div className={clsx("w-full flex gap-0.5 items-center h-8 sticky z-1 top-0 bg-slate-100 pb-2")}>
             <button className={clsx("w-4 h-4 text-black", styles.appbar)}>
               <IconGripVertical size={14} />

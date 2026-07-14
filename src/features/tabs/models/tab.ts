@@ -11,7 +11,7 @@ import { SearchTabPlugin } from "~/features/search/plugin";
 import { TabPluginManager } from "~/features/tabPluginManager";
 import { TranslateTabPlugin } from "~/features/translate/plugin";
 import { AiTabPlugin } from "~/features/ui/features/aiSider/plugin";
-import { UserScriptTabPlugin } from "~/features/userscript/plugin";
+// import { UserScriptTabPlugin } from "~/features/userscript/plugin";
 import { VaultTabPlugin } from "~/features/vault";
 import { ITab, IUserInterface } from "~/shared/types";
 import { TabPermission } from "./permission";
@@ -111,6 +111,7 @@ export class Tab extends TabPermission {
   }: Partial<ITab> & { eventEmitter: <T>(payload: { channel: string; data: T }) => void }) {
     super(props);
     Object.assign(this, props);
+    this.resetMediaStates();
     this.eventEmitter = eventEmitter;
   }
 
@@ -134,6 +135,13 @@ export class Tab extends TabPermission {
     this.pluginReady ??= this.registerPlugin();
   }
 
+  private resetMediaStates() {
+    this.audible = false;
+    this.isUsingCamera = false;
+    this.isUsingMicrophone = false;
+    this.isUsingScreenShare = false;
+  }
+
   destroyView() {
     if (!this._view) return;
     try {
@@ -143,6 +151,13 @@ export class Tab extends TabPermission {
     }
     this._view = null;
     this._webContents = null;
+    this.resetMediaStates();
+    this.peristInformationToRenderer({
+      audible: false,
+      isUsingCamera: false,
+      isUsingMicrophone: false,
+      isUsingScreenShare: false,
+    });
   }
 
   hibernate() {
@@ -223,11 +238,13 @@ export class Tab extends TabPermission {
           const vaulPlugin = new VaultTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }));
           this.pluginManager.register(vaulPlugin);
         }
-        if (userscript) {
-          this.pluginManager.register(
-            new UserScriptTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
-          );
-        }
+        // Script injection is now handled by the userscript preload (registered via session.setPreloads).
+        // The UserScriptTabPlugin is kept for potential future use but disabled to avoid double injection.
+        // if (userscript) {
+        //   this.pluginManager.register(
+        //     new UserScriptTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
+        //   );
+        // }
         if (translate) {
           this.pluginManager.register(
             new TranslateTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),

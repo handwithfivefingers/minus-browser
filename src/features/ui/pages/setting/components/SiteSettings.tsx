@@ -9,6 +9,7 @@ interface SiteEntry {
 
 export const SiteSettings = () => {
   const [sites, setSites] = useState<SiteEntry[]>([]);
+  const [search, setSearch] = useState("");
 
   const loadSites = async () => {
     const allOrigins = await window.api.INVOKE<string[]>("GET_SITE_PERMISSIONS", { all: true });
@@ -41,26 +42,51 @@ export const SiteSettings = () => {
     setSites([]);
   };
 
+  const filteredSites = sites.filter((site) => {
+    if (!search.trim()) return true;
+    const hostname = (() => {
+      try {
+        return new URL(site.origin).hostname.toLowerCase();
+      } catch {
+        return site.origin.toLowerCase();
+      }
+    })();
+    return hostname.includes(search.trim().toLowerCase());
+  });
+
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-slate-800">Site Settings</h2>
-        {sites.length > 0 && (
-          <button
-            type="button"
-            onClick={handleResetAll}
-            className="text-xs text-red-500 hover:text-red-700 cursor-pointer bg-transparent border-none px-2 py-1"
-          >
-            Reset all permissions
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {sites.length > 0 && (
+            <input
+              type="text"
+              placeholder="Search by domain..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="text-xs border border-slate-200 rounded px-2 py-1 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:border-indigo-400 w-48"
+            />
+          )}
+          {sites.length > 0 && (
+            <button
+              type="button"
+              onClick={handleResetAll}
+              className="text-xs text-red-500 hover:text-red-700 cursor-pointer bg-transparent border-none px-2 py-1"
+            >
+              Reset all permissions
+            </button>
+          )}
+        </div>
       </div>
 
-      {sites.length === 0 ? (
-        <p className="text-sm text-slate-400">No sites have custom permissions yet.</p>
+      {filteredSites.length === 0 ? (
+        <p className="text-sm text-slate-400">
+          {search ? "No sites match your search." : "No sites have custom permissions yet."}
+        </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {sites.map((site) => (
+          {filteredSites.map((site) => (
             <div key={site.origin} className="bg-white rounded-lg border border-slate-200 p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">

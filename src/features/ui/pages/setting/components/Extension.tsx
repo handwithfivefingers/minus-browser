@@ -1,4 +1,6 @@
 import {
+  IconChevronDown,
+  IconChevronRight,
   IconClock,
   IconCode,
   IconDatabase,
@@ -103,7 +105,7 @@ export const Extension = () => {
   }
 
   function toggleGroup(group: string) {
-    setExpandedGroups((prev) => ({ ...prev, [group]: !prev[group] }));
+    setExpandedGroups((prev) => ({ ...prev, [group]: prev[group] === undefined ? false : !prev[group] }));
   }
 
   const filteredList = filterSearch
@@ -247,61 +249,91 @@ export const Extension = () => {
             {/* Filter Lists */}
             <div className="flex flex-col gap-2">
               <div
-                className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer"
+                role="button"
+                tabIndex={0}
+                className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none py-1"
                 onClick={() => setShowFilters(!showFilters)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setShowFilters(!showFilters); } }}
               >
-                <IconFilter size={14} />
-                <span className="font-medium">
+                {showFilters ? <IconChevronDown size={20} className="text-slate-500" /> : <IconChevronRight size={20} className="text-slate-500" />}
+                <span className="font-medium text-slate-700">
                   Filter Lists ({filters.length})
-                  <span className={clsx("transition-transform", showFilters && "rotate-180")}>▼</span>
                 </span>
               </div>
 
               {showFilters && (
-                <div className="mt-2 max-h-96 overflow-y-auto bg-slate-100 rounded flex flex-col gap-1 p-2 border border-slate-200">
-                  <input
-                    type="text"
-                    placeholder="Search filters..."
-                    value={filterSearch}
-                    onChange={(e) => setFilterSearch(e.target.value)}
-                    className="mb-1 px-2 py-1 text-xs rounded border border-slate-300 bg-white focus:outline-none focus:border-slate-500"
-                  />
-                  {sortedGroups.map(([group, items]) => (
-                    <div key={group}>
-                      <button
-                        type="button"
-                        onClick={() => toggleGroup(group)}
-                        className="w-full flex items-center gap-1.5 px-1 py-1 text-xs font-medium text-slate-600 hover:text-slate-800 cursor-pointer"
-                      >
-                        <span className={clsx("transition-transform", expandedGroups[group] !== false && "rotate-90")}>
-                          ▶
-                        </span>
-                        {group}
-                        <span className="text-slate-400 font-normal">({items.length})</span>
-                      </button>
-                      {expandedGroups[group] !== false && (
-                        <div className="flex flex-col gap-0.5 pl-4">
-                          {items.map(({ key, name }) => {
-                            const isDisabled = disabledFilters?.includes(key);
-                            return (
-                              <div key={key} className="flex gap-2 items-center py-0.5">
-                                <span className="text-slate-600 flex-1 text-xs truncate" title={name}>
-                                  {name}
-                                </span>
-                                <Switch
-                                  title={name}
-                                  value={!isDisabled}
-                                  onCheck={() =>
-                                    setExtension({ ...extension, disabledFilters: toggleFilter(disabledFilters, key) })
-                                  }
-                                />
+                <div className="bg-slate-100 rounded border border-slate-200 flex flex-col overflow-hidden">
+                  <div className="sticky top-0 z-10 bg-slate-100 p-2 pb-1">
+                    <input
+                      type="text"
+                      placeholder="Search filters..."
+                      value={filterSearch}
+                      onChange={(e) => setFilterSearch(e.target.value)}
+                      className="w-full px-2 py-1.5 text-xs rounded border border-slate-300 bg-white focus:outline-none focus:border-slate-500"
+                    />
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {sortedGroups.map(([group, items]) => {
+                      const isExpanded = expandedGroups[group] !== false;
+                      return (
+                        <div key={group} className="border-b border-slate-200 last:border-b-0">
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-200 cursor-pointer select-none sticky top-0 bg-slate-100"
+                            onClick={() => toggleGroup(group)}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleGroup(group); } }}
+                          >
+                            {isExpanded ? <IconChevronDown size={16} className="text-slate-400 shrink-0" /> : <IconChevronRight size={16} className="text-slate-400 shrink-0" />}
+                            <span className="truncate">{group}</span>
+                            <span className="text-slate-400 font-normal shrink-0">({items.length})</span>
+                          </div>
+                          {isExpanded && (
+                            <div>
+                              <div className="grid grid-cols-[1fr_auto] gap-2 px-3 py-1 text-[10px] text-slate-400 font-medium border-b border-slate-100">
+                                <span>Name</span>
+                                <span className="pr-2">Status</span>
                               </div>
-                            );
-                          })}
+                              {items.map(({ key, name }) => {
+                                const isDisabled = disabledFilters?.includes(key);
+                                return (
+                                  <div
+                                    key={key}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() =>
+                                      setExtension({ ...extension, disabledFilters: toggleFilter(disabledFilters, key) })
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        setExtension({ ...extension, disabledFilters: toggleFilter(disabledFilters, key) });
+                                      }
+                                    }}
+                                    className="grid grid-cols-[1fr_auto] gap-2 px-3 py-1.5 text-xs items-center cursor-pointer hover:bg-slate-200 transition-colors select-none border-b border-slate-100 last:border-b-0"
+                                  >
+                                    <span className="truncate text-slate-600" title={name}>
+                                      {name}
+                                    </span>
+                                    <span
+                                      className={clsx(
+                                        "text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0",
+                                        isDisabled
+                                          ? "text-slate-400 bg-slate-200"
+                                          : "text-green-700 bg-green-100",
+                                      )}
+                                    >
+                                      {isDisabled ? "Off" : "On"}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

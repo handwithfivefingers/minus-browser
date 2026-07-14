@@ -17,6 +17,7 @@ export class NotificationService {
     this.viewService.setCallbacks({
       onNavigateToTab: (tabId) => this.handleOpenTabById(tabId),
       getHistory: () => this.store.getState().notifications,
+      onStateChange: () => this.syncStateToRenderer(),
     });
 
     this.store.getState().prune(this.retentionDays);
@@ -122,5 +123,13 @@ export class NotificationService {
   private handleOpenTabById(tabId: string) {
     if (!tabId) return;
     this.mainWindow?.webContents.send("OPEN_TAB_BY_ID", { id: tabId });
+  }
+
+  private syncStateToRenderer() {
+    const state = this.store.getState();
+    this.mainWindow?.webContents.send("NOTIFICATION_STATE_SYNC", {
+      notifications: state.notifications,
+      unreadCount: state.unreadCount,
+    });
   }
 }

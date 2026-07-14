@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { dialog } from "electron";
 import { v7 as uuid_v7 } from "uuid";
 import { appDb } from "~/core/stores";
 import { IUserScript } from "../types";
@@ -8,6 +9,17 @@ import { cacheSystem } from "~/features/cacheSystem";
 import { UserScriptService } from "../services";
 import { eventStore } from "~/core/stores";
 import { WebContentsView } from "electron";
+
+function parseJSON(val: unknown, fallback: any = []): any {
+  if (typeof val === "string") {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return fallback;
+    }
+  }
+  return val ?? fallback;
+}
 
 export class UserScriptController {
   private scripts: Map<string, UserScript> = new Map();
@@ -30,15 +42,31 @@ export class UserScriptController {
 
   private async load() {
     const callback = () => {
-      const rows = appDb.query<IUserScript>(
-        "SELECT id, name, source, enabled, matches, excludes, run_at as runAt, created_at as createdAt, updated_at as updatedAt FROM user_scripts",
+      const rows = appDb.query<Record<string, any>>(
+        `SELECT id, name, source, enabled, matches, excludes, run_at as runAt,
+                created_at as createdAt, updated_at as updatedAt,
+                namespace, version, description, author, grants, includes,
+                noframes, icon, download_url as downloadURL, update_url as updateURL,
+                support_url as supportURL, homepage_url as homepageURL,
+                license, connect, requires, resources, built_in as builtIn,
+                raw_metadata as rawMetadata
+         FROM user_scripts`,
       );
-      return { scripts: rows.map((r) => ({
-        ...r,
-        enabled: !!r.enabled,
-        matches: typeof r.matches === "string" ? JSON.parse(r.matches) : r.matches,
-        excludes: typeof r.excludes === "string" ? JSON.parse(r.excludes || "[]") : (r.excludes || []),
-      })) };
+      return {
+        scripts: rows.map((r: Record<string, any>) => ({
+          ...r,
+          enabled: !!r.enabled,
+          noframes: !!r.noframes,
+          builtIn: !!r.builtIn,
+          matches: parseJSON(r.matches, []),
+          excludes: parseJSON(r.excludes, []),
+          includes: parseJSON(r.includes, []),
+          grants: parseJSON(r.grants, []),
+          connect: parseJSON(r.connect, []),
+          requires: parseJSON(r.requires, []),
+          resources: parseJSON(r.resources, []),
+        })),
+      };
     };
     const raw = await cacheSystem.get<{ scripts: IUserScript[] }>("userscripts", callback);
     const storedScripts = Array.isArray(raw?.scripts) ? raw.scripts : [];
@@ -60,8 +88,23 @@ export class UserScriptController {
       appDb.run("DELETE FROM user_scripts");
       for (const s of allScripts) {
         appDb.run(
-          "INSERT INTO user_scripts (id, name, source, enabled, matches, excludes, run_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-          [s.id, s.name, s.source, s.enabled ? 1 : 0, JSON.stringify(s.matches || []), JSON.stringify(s.excludes || []), s.runAt, s.createdAt || Date.now(), s.updatedAt || Date.now()],
+          `INSERT INTO user_scripts (
+            id, name, source, enabled, matches, excludes, run_at, created_at, updated_at,
+            namespace, version, description, author, grants, includes, noframes,
+            icon, download_url, update_url, support_url, homepage_url, license,
+            connect, requires, resources, built_in, raw_metadata
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            s.id, s.name, s.source, s.enabled ? 1 : 0,
+            JSON.stringify(s.matches || []), JSON.stringify(s.excludes || []),
+            s.runAt, s.createdAt || Date.now(), s.updatedAt || Date.now(),
+            s.namespace || "", s.version || "", s.description || "", s.author || "",
+            JSON.stringify(s.grants || []), JSON.stringify(s.includes || []),
+            s.noframes ? 1 : 0, s.icon || "", s.downloadURL || "", s.updateURL || "",
+            s.supportURL || "", s.homepageURL || "", s.license || "",
+            JSON.stringify(s.connect || []), JSON.stringify(s.requires || []),
+            JSON.stringify(s.resources || []), s.builtIn ? 1 : 0, s.rawMetadata || "",
+          ],
         );
       }
     });
@@ -90,17 +133,24 @@ export class UserScriptController {
     return script;
   }
 
-  async importScriptFromFile(filePath: string) {
+  async importScriptFromFile() {
     await this.initialize();
+    const result = await dialog.showOpenDialog({
+      properties: ["openFile"],
+      filters: [{ name: "UserScripts", extensions: ["js", "user.js"] }],
+    });
+    if (result.canceled || !result.filePaths.length) return null;
+    const filePath = result.filePaths[0];
     const source = await fs.readFile(filePath, "utf-8");
+    const { parseUserScriptMetadata, metadataToPartialScript } = await import("../parser");
+    const meta = parseUserScriptMetadata(source);
+    const partial = meta ? metadataToPartialScript(meta) : {};
     return this.saveScript(
       new UserScript({
+        ...partial,
         source,
         enabled: false,
-        name: `ImportScript-${Date.now()}`,
         id: uuid_v7(),
-        matches: ["*"],
-        runAt: "document-start",
       }),
     );
   }

@@ -11,15 +11,6 @@ type Preference = {
   neverTranslateLanguages: string[];
 };
 
-type SelectionItem = {
-  id: string;
-  sourceText: string;
-  translatedText: string;
-  sourceLanguage: string;
-  targetLanguage: string;
-  createdAt: number;
-};
-
 const defaultPreference: Preference = {
   sourceLanguage: "auto",
   targetLanguage: "en",
@@ -37,7 +28,6 @@ const splitLines = (value: string) =>
 
 const App = () => {
   const [preference, setPreference] = React.useState<Preference>(defaultPreference);
-  const [recentSelections, setRecentSelections] = React.useState<SelectionItem[]>([]);
   const [alwaysDomainsText, setAlwaysDomainsText] = React.useState("");
   const [neverDomainsText, setNeverDomainsText] = React.useState("");
   const [neverLanguagesText, setNeverLanguagesText] = React.useState("");
@@ -51,7 +41,6 @@ const App = () => {
         const data = JSON.parse(raw);
         const nextPreference = { ...defaultPreference, ...(data.preference || {}) };
         setPreference(nextPreference);
-        setRecentSelections(Array.isArray(data.recentSelections) ? data.recentSelections : []);
         setAlwaysDomainsText((nextPreference.alwaysTranslateDomains || []).join("\n"));
         setNeverDomainsText((nextPreference.neverTranslateDomains || []).join("\n"));
         setNeverLanguagesText((nextPreference.neverTranslateLanguages || []).join("\n"));
@@ -97,8 +86,6 @@ const App = () => {
   };
 
   const inputStyle: React.CSSProperties = {
-    // border: "1px solid #cbd5e1",
-    // borderRadius: "8px",
     padding: "8px",
     fontSize: "12px",
     width: "100%",
@@ -107,141 +94,73 @@ const App = () => {
 
   return (
     <div
-      className="flex flex-col max-w-4xl w-full h-full max-h-[84vh] overflow-hidden rounded-xl"
+      className="flex flex-col max-w-lg w-full rounded-xl"
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="flex flex-1 overflow-hidden w-full gap-4">
-        <div className="w-1/4 shrink-0">
-          <div className="text-white font-medium">Translate Preferences</div>
-          <label style={{ ...labelStyle, marginBottom: "8px" }}>
-            <span className="text-white/60 font-medium">Source language</span>
-            <input
-              className="text-white bg-white/5 rounded-md border border-slate-400"
-              value={preference.sourceLanguage}
-              onChange={(event) => setPreference((prev) => ({ ...prev, sourceLanguage: event.target.value }))}
-              style={inputStyle}
-              placeholder="auto"
-            />
-          </label>
-          <label style={{ ...labelStyle, marginBottom: "8px" }}>
-            <span>Target language</span>
-            <input
-              className="text-white bg-white/5 rounded-md border border-slate-400"
-              value={preference.targetLanguage}
-              onChange={(event) => setPreference((prev) => ({ ...prev, targetLanguage: event.target.value }))}
-              style={inputStyle}
-              placeholder="en"
-            />
-          </label>
-          <label
-            className="text-white"
-            style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", fontSize: "12px" }}
-          >
-            <input
-              className="text-white bg-white/5 rounded-md border border-slate-400"
-              type="checkbox"
-              checked={preference.autoTranslate}
-              onChange={(event) => setPreference((prev) => ({ ...prev, autoTranslate: event.target.checked }))}
-            />
-            Enable auto-translate prompts
-          </label>
-          <label style={{ ...labelStyle, marginBottom: "8px" }}>
-            <span>Always translate domains (one per line)</span>
-            <textarea
-              className="text-white bg-white/5 rounded-md border border-slate-400"
-              value={alwaysDomainsText}
-              onChange={(event) => setAlwaysDomainsText(event.target.value)}
-              style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
-              placeholder="news.example.com"
-            />
-          </label>
-          <label style={{ ...labelStyle, marginBottom: "8px" }}>
-            <span>Never translate domains (one per line)</span>
-            <textarea
-              className="text-white bg-white/5 rounded-md border border-slate-400"
-              value={neverDomainsText}
-              onChange={(event) => setNeverDomainsText(event.target.value)}
-              style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
-              placeholder="mail.example.com"
-            />
-          </label>
-          <label style={labelStyle}>
-            <span>Never translate languages (one per line, ex: ja)</span>
-            <textarea
-              className="text-white bg-white/5 rounded-md border border-slate-400"
-              value={neverLanguagesText}
-              onChange={(event) => setNeverLanguagesText(event.target.value)}
-              style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
-              placeholder="en"
-            />
-          </label>
-        </div>
-        <div className="flex flex-col overflow-hidden min-h-0">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingBottom: "10px",
-            }}
-          >
-            <div className="text-white font-medium">Selection Translate History</div>
-          </div>
-          <div
-            className="overflow-auto flex flex-col gap-2 h-full flex-1"
-            style={{
-              scrollbarWidth: "thin",
-              scrollbarColor: "#94a3b8 transparent",
-              scrollbarGutter: "stable",
-            }}
-          >
-            {!recentSelections.length && (
-              <div style={{ color: "#94a3b8", fontSize: "12px" }}>No selection translations yet.</div>
-            )}
-            {recentSelections.map((item) => (
-              <div
-                key={item.id}
-                className="bg-slate-800/80 border border-slate-700/60"
-                style={{
-                  // border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  padding: "10px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "4px",
-                }}
-              >
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
-                  {item.sourceLanguage} -&gt; {item.targetLanguage}
-                </div>
-                <div style={{ fontSize: "12px" }} className="text-white/60">
-                  {item.sourceText}
-                </div>
-                <div style={{ fontSize: "12px", fontWeight: 500 }} className="text-white">
-                  {item.translatedText}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="flex justify-end gap-4 shrink-0 p-2 border-t border-slate-200">
-        <button
-          type="button"
-          onClick={() => setRecentSelections([])}
-          style={{
-            height: "30px",
-            padding: "0 12px",
-            borderRadius: "8px",
-            border: "1px solid #fecaca",
-            background: "#fee2e2",
-            color: "#b91c1c",
-            cursor: "pointer",
-            fontSize: "12px",
-          }}
-        >
-          Clear History
-        </button>
+      <div className="text-white font-medium mb-4">Translate Preferences</div>
+      <label style={{ ...labelStyle, marginBottom: "8px" }}>
+        <span className="text-white/60 font-medium">Source language</span>
+        <input
+          className="text-white bg-white/5 rounded-md border border-slate-400"
+          value={preference.sourceLanguage}
+          onChange={(event) => setPreference((prev) => ({ ...prev, sourceLanguage: event.target.value }))}
+          style={inputStyle}
+          placeholder="auto"
+        />
+      </label>
+      <label style={{ ...labelStyle, marginBottom: "8px" }}>
+        <span>Target language</span>
+        <input
+          className="text-white bg-white/5 rounded-md border border-slate-400"
+          value={preference.targetLanguage}
+          onChange={(event) => setPreference((prev) => ({ ...prev, targetLanguage: event.target.value }))}
+          style={inputStyle}
+          placeholder="en"
+        />
+      </label>
+      <label
+        className="text-white"
+        style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", fontSize: "12px" }}
+      >
+        <input
+          className="text-white bg-white/5 rounded-md border border-slate-400"
+          type="checkbox"
+          checked={preference.autoTranslate}
+          onChange={(event) => setPreference((prev) => ({ ...prev, autoTranslate: event.target.checked }))}
+        />
+        Enable auto-translate prompts
+      </label>
+      <label style={{ ...labelStyle, marginBottom: "8px" }}>
+        <span>Always translate domains (one per line)</span>
+        <textarea
+          className="text-white bg-white/5 rounded-md border border-slate-400"
+          value={alwaysDomainsText}
+          onChange={(event) => setAlwaysDomainsText(event.target.value)}
+          style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
+          placeholder="news.example.com"
+        />
+      </label>
+      <label style={{ ...labelStyle, marginBottom: "8px" }}>
+        <span>Never translate domains (one per line)</span>
+        <textarea
+          className="text-white bg-white/5 rounded-md border border-slate-400"
+          value={neverDomainsText}
+          onChange={(event) => setNeverDomainsText(event.target.value)}
+          style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
+          placeholder="mail.example.com"
+        />
+      </label>
+      <label style={labelStyle}>
+        <span>Never translate languages (one per line, ex: ja)</span>
+        <textarea
+          className="text-white bg-white/5 rounded-md border border-slate-400"
+          value={neverLanguagesText}
+          onChange={(event) => setNeverLanguagesText(event.target.value)}
+          style={{ ...inputStyle, minHeight: "92px", resize: "vertical" }}
+          placeholder="en"
+        />
+      </label>
+      <div className="flex justify-end gap-4 shrink-0 p-2 mt-4 border-t border-slate-200">
         <button
           type="button"
           onClick={handleCancel}

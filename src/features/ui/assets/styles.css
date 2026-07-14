@@ -24,7 +24,5 @@ body {
 .scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #6969dd transparent;
-  scrollbar-gutter: stable both-edges;
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-  scrollbar-width: none; /* Firefox, Safari 18.2+, Chromium 121+ */
+  scrollbar-gutter: stable;
 }

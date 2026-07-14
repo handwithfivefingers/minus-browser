@@ -1,5 +1,6 @@
 import { IExecutionContext, ITabLifecycleHooks, ITabPlugin } from "~/shared/types";
 import { userScriptController } from "../controllers";
+import { parseUserScriptMetadata } from "../parser";
 
 // import { ipcMain } from "electron";
 // import { IPC } from "~/features/system";
@@ -27,23 +28,31 @@ export class UserScriptTabPlugin implements ITabPlugin {
       if (!url) return;
       const scripts = await userScriptController.getScriptsForURL(url);
       for (const script of scripts) {
-        try {
+        const meta = parseUserScriptMetadata(script.source);
+        if (meta?.noframes) {
           const codeToInject = `
-            (function() {
-              const id = "__" + ${JSON.stringify(script.id)};
-              if (typeof window !== 'undefined' && !window[id]) {
-                window[id] = true;
-                try {
-                  ${script.source}
-                } catch (e) {
-                  console.error("Injected script error:", e);
-                }
+              if (window === window.top) {
+                (function() {
+                const id = "__userscript_injected_${script.id}";
+                  if (typeof window !== 'undefined' && !window[id]) {
+                    window[id] = true;
+                    try { ${script.source} } catch (e) { console.error("UserScript error [${script.name}]:", e); }
+                  }
+                })();
               }
-            })();
-          `;
-          ctx.webContents.executeJavaScript(codeToInject, true).catch((err) => console.error("Execution failed:", err));
-        } catch (error) {
-          console.error(`[UserScript:${script.name}] execution failed`, error);
+            `;
+          ctx.webContents.executeJavaScript(codeToInject, true).catch(() => {});
+        } else {
+          const codeToInject = `
+              (function() {
+                const id = "__userscript_injected_${script.id}";
+                if (typeof window !== 'undefined' && !window[id]) {
+                  window[id] = true;
+                  try { ${script.source} } catch (e) { console.error("UserScript error [${script.name}]:", e); }
+                }
+              })();
+            `;
+          ctx.webContents.executeJavaScript(codeToInject, true).catch(() => {});
         }
       }
     } catch (error) {

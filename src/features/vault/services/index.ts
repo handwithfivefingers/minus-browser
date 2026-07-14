@@ -51,7 +51,7 @@ export class VaultServices {
     return webContents.executeJavaScript(script, true);
   }
 
-  async confirmSave(webContents: Electron.WebContents, data: { username: string; site: string }) {
+  async confirmSave(webContents: Electron.WebContents, data: { username: string; site: string; isUpdate?: boolean }) {
     const script = `(${openVaultSaveConfirmDialog.toString()})(${JSON.stringify(data)});`;
     return webContents.executeJavaScript(script, true);
   }
@@ -320,7 +320,7 @@ export const openVaultCredentialPickerDialog = (candidates: { id: string; userna
   });
 };
 
-export const openVaultSaveConfirmDialog = (data: { username: string; site: string }) => {
+export const openVaultSaveConfirmDialog = (data: { username: string; site: string; isUpdate?: boolean }) => {
   const trustPolicy = (window as any)?.trustedTypes?.createPolicy("forceInner", {
     createHTML: (to_escape: string) => to_escape,
   });
@@ -328,6 +328,7 @@ export const openVaultSaveConfirmDialog = (data: { username: string; site: strin
     const old = document.getElementById("__minus_vault_save_confirm");
     if (old) old.remove();
 
+    const isUpdate = !!data?.isUpdate;
     const username = data?.username || "this account";
     const site = data?.site || "this site";
 
@@ -373,7 +374,7 @@ export const openVaultSaveConfirmDialog = (data: { username: string; site: strin
     header.style.marginBottom = "10px";
 
     const title = document.createElement("div");
-    title.textContent = "Save Credential?";
+    title.textContent = isUpdate ? "Update Credential?" : "Save Credential?";
     title.style.fontWeight = "600";
 
     const closeBtn = document.createElement("button");
@@ -395,7 +396,9 @@ export const openVaultSaveConfirmDialog = (data: { username: string; site: strin
     const desc = document.createElement("div");
     desc.style.fontSize = "13px";
     desc.style.marginBottom = "12px";
-    desc.innerHTML = trustPolicy.createHTML("Save credential for <b>" + username + "</b> on <b>" + site + "</b>?");
+    desc.innerHTML = trustPolicy.createHTML(
+      (isUpdate ? "Update credential for " : "Save credential for ") + "<b>" + username + "</b> on <b>" + site + "</b>?"
+    );
     panel.appendChild(desc);
 
     const actions = document.createElement("div");
@@ -414,7 +417,7 @@ export const openVaultSaveConfirmDialog = (data: { username: string; site: strin
     ignore.onclick = () => close(false);
 
     const save = document.createElement("button");
-    save.textContent = "Save";
+    save.textContent = isUpdate ? "Update" : "Save";
     save.style.height = "30px";
     save.style.padding = "0 10px";
     save.style.border = "1px solid transparent";

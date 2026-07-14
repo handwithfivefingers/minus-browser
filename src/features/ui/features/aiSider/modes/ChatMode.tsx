@@ -91,7 +91,7 @@ const ChatMode = () => {
             onKeyDown={handleKeyDown}
             placeholder="Ask anything..."
             // rows={1}
-            className="flex-1 bg-transparent resize-none text-sm outline-none text-slate-700 placeholder:text-slate-400 min-h-32 scrollbar"
+            className="flex-1 bg-transparent resize-none text-xs outline-none text-slate-700 placeholder:text-slate-400 min-h-32 scrollbar"
           />
           {isLoading ? (
             <button

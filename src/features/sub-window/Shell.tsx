@@ -15,8 +15,8 @@ export function Shell({ children, title, onClose }: ShellProps) {
       }}
     >
       <div className="fixed inset-0 bg-slate-950/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative animate-slide-down rounded-2xl border border-white/8 bg-slate-950/70 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_40px_80px_rgba(0,0,0,0.6)] backdrop-blur-xl overflow-hidden">
-        <div className="flex items-center justify-between border-b border-white/6 px-5 py-3">
+      <div className="max-h-[80vh] flex flex-col h-full relative animate-slide-down rounded-2xl border border-white/8 bg-slate-950/70 shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_40px_80px_rgba(0,0,0,0.6)] backdrop-blur-xl overflow-hidden">
+        <div className="shrink-0 flex items-center justify-between border-b border-white/6 px-5 py-3">
           <span className="text-sm font-semibold text-white/90">{title}</span>
           <button
             type="button"
@@ -26,7 +26,7 @@ export function Shell({ children, title, onClose }: ShellProps) {
             ✕
           </button>
         </div>
-        <div className="p-4">{children}</div>
+        <div className="flex-1 p-4 h-full overflow-hidden">{children}</div>
       </div>
     </div>
   );

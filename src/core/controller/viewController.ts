@@ -22,6 +22,9 @@ import {
   userScriptInvokeHandlers,
   vaultInvokeHandlers,
 } from "~/features/sub-window/ipc";
+import { registerGMAPIHandlers } from "~/features/userscript/gm-api";
+import { registerErrorHandler } from "~/features/userscript/services/error-service";
+import { startUpdateChecker } from "~/features/userscript/services/update-service";
 import { captureInvokeHandlers } from "~/features/sub-window/ipc/capture-hanlers";
 import { subWindowService } from "~/features/sub-window/service";
 import { tabGroupController } from "~/features/tabGroup";
@@ -148,6 +151,18 @@ export class ViewController {
         [IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE]: (data) => {
           this.window.webContents.send(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, data);
         },
+        [IPC_RENDERER_EVENT.VAULT_CREDENTIAL_DETECTED]: (data) => {
+          this.window.webContents.send(IPC_RENDERER_EVENT.VAULT_CREDENTIAL_DETECTED, data);
+        },
+        [IPC_RENDERER_EVENT.FILL_PASSWORD_REQUEST]: (data) => {
+          this.window.webContents.send(IPC_RENDERER_EVENT.FILL_PASSWORD_REQUEST, data);
+        },
+        [IPC_RENDERER_EVENT.TRANSLATE_LANGUAGE_DETECTED]: (data) => {
+          this.window.webContents.send(IPC_RENDERER_EVENT.TRANSLATE_LANGUAGE_DETECTED, data);
+        },
+        [IPC_RENDERER_EVENT.TRANSLATE_SELECTION_AVAILABLE]: (data) => {
+          this.window.webContents.send(IPC_RENDERER_EVENT.TRANSLATE_SELECTION_AVAILABLE, data);
+        },
       };
 
       this.listenerHandlers = {
@@ -242,6 +257,9 @@ export class ViewController {
     } catch (error) {
       console.error("[ERROR] View Controller -", error);
     } finally {
+      registerGMAPIHandlers();
+      registerErrorHandler();
+      startUpdateChecker();
       initAutoUpdate((channel, data) => this.forwardRendererEvent(channel, data), {
         autoDownload: this.userInterface?.autoDownload,
       });

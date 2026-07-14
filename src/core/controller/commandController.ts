@@ -32,8 +32,23 @@ export class CommandController {
         click: () => this.onOpenSpotlight(),
       }),
       new MenuItem({
+        label: "AI Sidebar",
+        accelerator: "CommandOrControl+Shift+K",
+        click: () => this.onToggleAiSidebar(),
+      }),
+      new MenuItem({
+        label: "Settings",
+        accelerator: "CommandOrControl+,",
+        click: () => this.onOpenSettings(),
+      }),
+      new MenuItem({
         label: "Toggle DevTools",
         accelerator: "F12",
+        click: () => this.onToggleDevTools(),
+      }),
+      new MenuItem({
+        label: "Toggle DevTools (Alternative)",
+        accelerator: "CommandOrControl+Alt+I",
         click: () => this.onToggleDevTools(),
       }),
       new MenuItem({
@@ -47,6 +62,16 @@ export class CommandController {
   onOpenHistory() {
     let view = BrowserWindow.getFocusedWindow();
     view?.webContents?.send("NAVIGATE_HISTORY");
+  }
+
+  onToggleAiSidebar() {
+    let view = BrowserWindow.getFocusedWindow();
+    view?.webContents?.send("TOGGLE_AI_SIDEBAR");
+  }
+
+  onOpenSettings() {
+    let view = BrowserWindow.getFocusedWindow();
+    view?.webContents?.send("NAVIGATE_SETTINGS");
   }
 
   onCreateTabCallback() {

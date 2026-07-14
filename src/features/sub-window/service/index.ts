@@ -83,6 +83,7 @@ export class SubWindowService {
         transparent: true,
       },
     });
+    // this.view.webContents.openDevTools();
     this.view.setBackgroundColor("#00000000");
     await this.view.webContents.loadURL(this.getURL()).catch(() => {});
   }
@@ -118,7 +119,7 @@ export class SubWindowService {
     this.mainWindow.on("resize", this.resizeHandler);
 
     this.blurHandler = () => this.close();
-    this.mainWindow.on("blur", this.blurHandler);
+    // this.mainWindow.on("blur", this.blurHandler);
 
     return true;
   }

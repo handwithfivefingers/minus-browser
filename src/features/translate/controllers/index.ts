@@ -1,6 +1,6 @@
 import { eventStore } from "~/core/stores";
 import { TranslateService } from "../services";
-import { ITranslatePreference, ITranslateSelection, ITranslateSelectionHistoryItem } from "../types";
+import { ITranslatePreference, ITranslateSelection } from "../types";
 import { BrowserWindow, WebContentsView } from "electron";
 
 export class TranslateController {
@@ -26,14 +26,16 @@ export class TranslateController {
     return this.service.scriptInjection(text, result);
   }
 
+  async showTranslatePrompt(data: { language: string }) {
+    await this.initialize();
+    if (!this.activeView) return;
+    const script = this.service.scriptTranslatePrompt(data.language);
+    await this.activeView.webContents.executeJavaScript(script, true);
+  }
+
   async getPreference() {
     await this.initialize();
     return this.service.getPreference();
-  }
-
-  async getRecentSelections() {
-    await this.initialize();
-    return this.service.getRecentSelections();
   }
 
   async savePreference(patch: Partial<ITranslatePreference>) {
@@ -47,7 +49,8 @@ export class TranslateController {
     return this.service.detectLanguage(data.text);
   }
 
-  shouldAutoTranslate(domain: string, language?: string) {
+  async shouldAutoTranslate(domain: string, language?: string) {
+    await this.initialize();
     return this.service.shouldAutoTranslate(domain, language);
   }
 
@@ -55,8 +58,6 @@ export class TranslateController {
     await this.initialize();
     if (!data?.tabId) throw new Error("Tab id is required");
     if (!this.activeView) return;
-    //   const tab = this.tabController?.getTabById(data.tabId);
-    //   if (!tab) throw new Error("Tab not found");
 
     let text = data?.text?.trim() || "";
     if (!text) {
@@ -82,7 +83,6 @@ export class TranslateController {
       await this.activeView.webContents.executeJavaScript(this.scriptInjection(text, translateResponse), true);
     }
     return result;
-    // return this.service.translateSelection(input);
   }
 
   buildTranslatePageUrl(input: { targetUrl: string; targetLanguage?: string }) {
@@ -113,7 +113,7 @@ export class TranslateController {
     return payload;
   }
 
-  applyManagerState(payload: { preference: ITranslatePreference; recentSelections: ITranslateSelectionHistoryItem[] }) {
+  applyManagerState(payload: { preference: ITranslatePreference }) {
     return this.service.applyManagerState(payload);
   }
 }
