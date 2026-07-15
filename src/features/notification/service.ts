@@ -1,18 +1,19 @@
 import { BrowserWindow, ipcMain, Notification } from "electron";
-import { useWebNotificationStore } from "./store";
+import { useWebNotificationStore } from "~/shared/store/useNotificationStore";
+import { WebNotification } from "~/shared/types/notification";
 import { NotificationViewService } from "./view/viewService";
-import type { WebNotification } from "./store";
-
 export class NotificationService {
   private mainWindow: BrowserWindow | null = null;
   private store = useWebNotificationStore;
   private viewService = new NotificationViewService();
   private isFocused = true;
   private retentionDays = 30;
+  private checkPermission: ((tabId: string) => boolean) | null = null;
 
-  init(mainWindow: BrowserWindow, retentionDays?: number) {
+  init(mainWindow: BrowserWindow, retentionDays?: number, checkPermission?: (tabId: string) => boolean) {
     this.mainWindow = mainWindow;
     this.retentionDays = retentionDays ?? 30;
+    this.checkPermission = checkPermission ?? null;
     this.viewService.init(mainWindow);
     this.viewService.setCallbacks({
       onNavigateToTab: (tabId) => this.handleOpenTabById(tabId),
@@ -31,16 +32,22 @@ export class NotificationService {
   }
 
   private registerNotificationHandler() {
-    ipcMain.on("WEB_NOTIFICATION", (_event, data: {
-      tabId: string;
-      title: string;
-      body: string;
-      tag: string;
-      tabTitle?: string;
-      favicon?: string;
-    }) => {
-      this.handleIncomingNotification(data);
-    });
+    ipcMain.on(
+      "WEB_NOTIFICATION",
+      (
+        _event,
+        data: {
+          tabId: string;
+          title: string;
+          body: string;
+          tag: string;
+          tabTitle?: string;
+          favicon?: string;
+        },
+      ) => {
+        this.handleIncomingNotification(data);
+      },
+    );
   }
 
   private registerFocusHandlers() {
@@ -63,6 +70,10 @@ export class NotificationService {
     tabTitle?: string;
     favicon?: string;
   }) {
+    if (this.checkPermission && !this.checkPermission(data.tabId)) {
+      return;
+    }
+
     const notification: WebNotification = {
       id: "",
       tabId: data.tabId,
@@ -90,12 +101,7 @@ export class NotificationService {
     }
   }
 
-  private showOsNotification(data: {
-    tabId: string;
-    title: string;
-    body: string;
-    tabTitle?: string;
-  }) {
+  private showOsNotification(data: { tabId: string; title: string; body: string; tabTitle?: string }) {
     const osNotification = new Notification({
       title: data.title,
       body: data.body || data.tabTitle || "",

@@ -1,4 +1,4 @@
-import { register } from "~/features/sub-window/registry";
+import { register } from "~/renderer/sub-window/registry";
 import UserscriptPage from "./overlay/App";
 
 register({

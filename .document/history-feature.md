@@ -10,28 +10,28 @@ No browser history existed. The `History` controller was a bare skeleton — it 
 
 | File | Purpose |
 |------|---------|
-| `src/core/controller/history/types.ts` | `IHistoryEntry` interface |
-| `src/core/controller/history/historyRoute.ts` | IPC channel → handler mapping + `historyController` singleton |
-| `src/features/ui/pages/history/index.tsx` | History UI page (search, date groups, delete, clear) |
+| `src/main/core/controller/history/types.ts` | `IHistoryEntry` interface |
+| `src/main/core/controller/history/historyRoute.ts` | IPC channel → handler mapping + `historyController` singleton |
+| `src/renderer/main-window/src/pages/history/index.tsx` | History UI page (search, date groups, delete, clear) |
 
 ### Files modified
 
 | File | Changes |
 |------|---------|
-| `src/core/controller/history/historyController.ts` | Full CRUD: `addEntry`, `getAll`, `search`, `getRecent`, `deleteEntry`, `clearAll`; dedup by URL; `cleanOldEntries()` with configurable `retentionDays`; periodic cleanup every hour; added `updateEntryMetadata()` for retroactive title/favicon correction |
-| `src/core/controller/history/index.ts` | Barrel re-export |
+| `src/main/core/controller/history/historyController.ts` | Full CRUD: `addEntry`, `getAll`, `search`, `getRecent`, `deleteEntry`, `clearAll`; dedup by URL; `cleanOldEntries()` with configurable `retentionDays`; periodic cleanup every hour; added `updateEntryMetadata()` for retroactive title/favicon correction |
+| `src/main/core/controller/history/index.ts` | Barrel re-export |
 | `src/shared/constants/ipc.ts` | Added `GET_HISTORY`, `SEARCH_HISTORY`, `DELETE_HISTORY`, `CLEAR_HISTORY`, `GET_RECENT_HISTORY` |
-| `src/core/controller/viewController.ts` | Spread `HistoryRoute` into `invokeHandlers`; init `historyController`; pass history to spotlight; wire retention setting on load; **fix**: check `isAlive` after `show()` in `handleShowViewById` to prevent double `createView` on hibernated tabs |
+| `src/main/core/controller/viewController.ts` | Spread `HistoryRoute` into `invokeHandlers`; init `historyController`; pass history to spotlight; wire retention setting on load; **fix**: check `isAlive` after `show()` in `handleShowViewById` to prevent double `createView` on hibernated tabs |
 | `src/features/tabs/models/tab.ts` | Import `historyController`, call `addEntry()` on `did-navigate` / `did-navigate-in-page` (skips `about:blank`); **fix**: `updateTitle()`/`updateFavicon()` now call `updateEntryMetadata()` to correct stale metadata; **fix**: removed stale `isMainFrame` guard from `did-navigate` (Electron 42 removed the param, causing `addEntry` to never fire); **fix**: `updateUrl` sends `{ url }` instead of `{ title }` to renderer |
-| `src/core/controller/commandController.ts` | Added "History" menu item (`CmdOrCtrl+Y`) → sends `NAVIGATE_HISTORY` to renderer |
-| `src/features/ui/constants/routes.tsx` | Added `/history` route |
-| `src/features/ui/components/sidebar/index.tsx` | Added `IconHistory` nav link in `SubMenuItem` |
-| `src/features/ui/pages/layout.tsx` | Added `NAVIGATE_HISTORY` IPC listener → navigates to `/history` |
+| `src/main/core/controller/commandController.ts` | Added "History" menu item (`CmdOrCtrl+Y`) → sends `NAVIGATE_HISTORY` to renderer |
+| `src/renderer/main-window/src/constants/routes.tsx` | Added `/history` route |
+| `src/renderer/main-window/src/components/sidebar/index.tsx` | Added `IconHistory` nav link in `SubMenuItem` |
+| `src/renderer/main-window/src/pages/layout.tsx` | Added `NAVIGATE_HISTORY` IPC listener → navigates to `/history` |
 | `src/shared/types/theme.d.ts` | Added `historyRetentionDays?: string` to `IUserInterface` |
-| `src/features/ui/interfaces/minusTheme.d.ts` | Added `setHistoryRetentionDays` action |
-| `src/features/ui/stores/useMinusTheme.tsx` | Default `"30"`, `setHistoryRetentionDays`, included in `saved()` payload |
-| `src/features/ui/pages/setting/components/Interface.tsx` | History settings card with retention days input |
-| `src/features/ui/pages/history/index.tsx` | Added 3-second auto-refresh interval and manual refresh button (`IconRefresh`) |
+| `src/renderer/main-window/src/interfaces/minusTheme.d.ts` | Added `setHistoryRetentionDays` action |
+| `src/renderer/main-window/src/stores/useMinusTheme.tsx` | Default `"30"`, `setHistoryRetentionDays`, included in `saved()` payload |
+| `src/renderer/main-window/src/pages/setting/components/Interface.tsx` | History settings card with retention days input |
+| `src/renderer/main-window/src/pages/history/index.tsx` | Added 3-second auto-refresh interval and manual refresh button (`IconRefresh`) |
 | `src/features/spotlight/controllers/index.ts` | Accepts `history?: IHistoryEntry[]` in `open()` |
 | `src/features/spotlight/service/index.ts` | Sends `GET_HISTORY` to overlay |
 | `src/features/spotlight/overlay/main.tsx` | Displays history entries in search results with `IconClock` |
@@ -40,7 +40,7 @@ No browser history existed. The `History` controller was a bare skeleton — it 
 ### Architecture
 
 **Backend:**
-- `History` class in `src/core/controller/history/` — CRUD on `history.json` via `StoreManager`
+- `History` class in `src/main/core/controller/history/` — CRUD on `history.json` via `StoreManager`
 - Singleton `historyController` exported from `historyRoute.ts`
 - Direct import into `Tab` model for navigation recording
 - Debounced save (500ms). Dedup by URL (increments `visitCount`, updates timestamp).

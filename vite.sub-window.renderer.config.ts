@@ -5,7 +5,7 @@ import path from "node:path";
 export default defineConfig({
   plugins: [tailwindcss()],
   base: "",
-  root: "src/features/sub-window",
+  root: "src/renderer/sub-window",
   build: {
     outDir: "../../../.vite/renderer/sub_window",
   },

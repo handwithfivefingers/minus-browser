@@ -1,7 +1,7 @@
 import { BrowserWindow, session, WebContentsView } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { appDb } from "~/core/stores";
+import { appDb } from "~/main/core/stores";
 import { ITranslateDetectResult, ITranslatePreference } from "../types";
 
 const SENTINEL = "__TRANSLATE_RESOLVE__:";
@@ -93,6 +93,7 @@ export class TranslateService {
   scriptTranslatePrompt(language: string) {
     const targetLanguage = this.preference.targetLanguage || "en";
     const sourceLabel = language !== "auto" ? language : "detected language";
+    if (sourceLabel === targetLanguage) return "";
     return `(() => {
       const old = document.getElementById("__minus_translate_prompt_banner");
       if (old) old.remove();
@@ -267,10 +268,7 @@ export class TranslateService {
     return `https://translate.google.com/translate?sl=auto&tl=${encodeURIComponent(targetLanguage)}&u=${encodeURIComponent(input.targetUrl)}`;
   }
 
-  async openManager(
-    win: BrowserWindow,
-    view: WebContentsView,
-  ): Promise<{ preference: ITranslatePreference } | null> {
+  async openManager(win: BrowserWindow, view: WebContentsView): Promise<{ preference: ITranslatePreference } | null> {
     const requestId = `translate-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const translateView = new WebContentsView({
       webPreferences: {
@@ -313,9 +311,7 @@ export class TranslateService {
         } catch {}
       };
 
-      const settle = (
-        value: { preference: ITranslatePreference } | null,
-      ) => {
+      const settle = (value: { preference: ITranslatePreference } | null) => {
         if (!isReady) return;
         if (!translateView.webContents.isDestroyed()) {
           translateView.webContents

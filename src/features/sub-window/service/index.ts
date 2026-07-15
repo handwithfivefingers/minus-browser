@@ -1,8 +1,7 @@
-import { BrowserWindow, ipcMain, session, WebContentsView } from "electron";
+import { BrowserWindow, session, WebContentsView } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { SUB_WINDOW_INVOKE, SUB_WINDOW_EMIT, SUB_WINDOW_RENDERER_EVENT } from "~/shared/constants/ipc/sub-window";
-import { IPC_EMIT_CHANNEL } from "~/shared/constants/ipc";
+import { SUB_WINDOW_EMIT } from "~/shared/constants/ipc/sub-window";
 
 const preloadPath = path.join(__dirname, "/preload.js");
 

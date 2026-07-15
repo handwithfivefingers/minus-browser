@@ -3,9 +3,8 @@ import * as fs from "node:fs";
 import path from "node:path";
 import { app } from "electron";
 import { NOTIFICATION_LIST_HTML } from "./index";
-import { useWebNotificationStore } from "../store";
-import type { WebNotification } from "../store";
-
+import { WebNotification } from "~/shared/types/notification";
+import { useWebNotificationStore } from "~/shared/store/useNotificationStore";
 export class NotificationViewService {
   private view: WebContentsView | null = null;
   private mainWindow: BrowserWindow | null = null;

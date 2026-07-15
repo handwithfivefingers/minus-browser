@@ -98,7 +98,7 @@ export const IPC_TAB_GROUP_RENDERER_EVENT = {
 
 ## 4. UI Components
 
-### `TabGroupHeader` (`src/features/ui/components/tabGroup/TabGroupHeader.tsx`)
+### `TabGroupHeader` (`src/renderer/main-window/src/components/tabGroup/TabGroupHeader.tsx`)
 
 Renders the group header row with:
 
@@ -110,7 +110,7 @@ Renders the group header row with:
 | **Hide toggle** (eye/eye-off) | Toggles `group.hidden`. Hidden groups are **removed from the sidebar** but still accessible via the **Group button** in the sidebar footer (see below). |
 | **Count badge** | Pill badge showing number of tabs, tinted with group color. |
 
-### `TabGroupContainer` (`src/features/ui/components/tabGroup/index.tsx`)
+### `TabGroupContainer` (`src/renderer/main-window/src/components/tabGroup/index.tsx`)
 
 Wraps a group with the following layout order:
 1. `TabGroupHeader` (name + controls)
@@ -139,7 +139,7 @@ The overlay (WebContentsView above tabs) supports:
 | **Create group** | "New group" in context menu | Name input + color swatches, "Create" button |
 | **Edit group** | Click Edit (pencil) on group header | Same form pre-filled, "Save" button calls `RENAME_TAB_GROUP` + `SET_TAB_GROUP_COLOR` |
 
-### Sidebar (`src/features/ui/components/sidebar/index.tsx`)
+### Sidebar (`src/renderer/main-window/src/components/sidebar/index.tsx`)
 
 **Group rendering:**
 - Only non-hidden groups (`!group.hidden`) are rendered in the sidebar
@@ -213,11 +213,11 @@ Tab groups saved to SQLite `tab_groups` table via `appDb`.
 | `src/shared/constants/ipc/tabGroup.ts` | Tab group IPC channel constants |
 | `src/features/tabGroup/controllers/index.ts` | `TabGroupController` |
 | `src/features/tabGroup/index.ts` | Barrel export |
-| `src/core/controller/tabGroup/tabGroupRoute.ts` | IPC handlers for tab groups |
-| `src/features/ui/stores/useTabGroupStore.ts` | Zustand store for renderer |
-| `src/features/ui/components/tabGroup/TabGroupHeader.tsx` | Group header with overlay Edit/Delete, Hide toggle |
-| `src/features/ui/components/tabGroup/index.tsx` | Group container (header + scrollable tabs + collapse at bottom) |
-| `src/features/ui/components/tabGroup/styles.module.css` | Group styles (container, scrollbar, collapse button, empty state) |
+| `src/features/tabGroup/controllers/index.ts` | IPC handlers for tab groups |
+| `src/renderer/main-window/src/stores/useTabGroupStore.ts` | Zustand store for renderer |
+| `src/renderer/main-window/src/components/tabGroup/TabGroupHeader.tsx` | Group header with overlay Edit/Delete, Hide toggle |
+| `src/renderer/main-window/src/components/tabGroup/index.tsx` | Group container (header + scrollable tabs + collapse at bottom) |
+| `src/renderer/main-window/src/components/tabGroup/styles.module.css` | Group styles (container, scrollbar, collapse button, empty state) |
 | `src/features/tabGroup/service/TabGroupOverlayService.ts` | WebContentsView lifecycle for overlay |
 | `src/features/tabGroup/service/index.ts` | Barrel export |
 | `src/features/tabGroup/controller/TabGroupOverlayController.ts` | Overlay controller wrapper |
@@ -238,17 +238,17 @@ Tab groups saved to SQLite `tab_groups` table via `appDb`.
 | `src/features/tabGroup/controllers/index.ts` | Add `hideGroup()`/`unhideGroup()` methods; `hidden` field in `createGroup()` |
 | `src/features/sub-window/ipc/tabgroup-handlers.ts` | Wire `HIDE_GROUP`/`UNHIDE_GROUP` IPC handlers |
 | `src/features/tabGroup/overlay/App.tsx` | Support edit mode (`editGroup` payload); add "Open all tabs" action |
-| `src/features/ui/components/sidebar/index.tsx` | Render group headers; filter hidden groups (`visibleGroups`); Group button opens overlay; update drag system for group-aware moves |
-| `src/features/ui/components/sidebar/styles.module.css` | Group-specific styles |
-| `src/features/ui/components/tab/index.tsx` | Accept `groupColor` prop for optional left-border indicator |
-| `src/features/ui/components/tabGroup/TabGroupHeader.tsx` | Edit/Delete as absolute overlay on name hover; Edit opens overlay modal; Hide Group toggle button |
-| `src/features/ui/components/tabGroup/index.tsx` | Layout: name → count → scrollable tab list (max 5) → collapse/expand at bottom |
-| `src/features/ui/components/tabGroup/styles.module.css` | Collapse button style, empty state, scrollbar, spacing |
+| `src/renderer/main-window/src/components/sidebar/index.tsx` | Render group headers; filter hidden groups (`visibleGroups`); Group button opens overlay; update drag system for group-aware moves |
+| `src/renderer/main-window/src/components/sidebar/styles.module.css` | Group-specific styles |
+| `src/renderer/main-window/src/components/tab/index.tsx` | Accept `groupColor` prop for optional left-border indicator |
+| `src/renderer/main-window/src/components/tabGroup/TabGroupHeader.tsx` | Edit/Delete as absolute overlay on name hover; Edit opens overlay modal; Hide Group toggle button |
+| `src/renderer/main-window/src/components/tabGroup/index.tsx` | Layout: name → count → scrollable tab list (max 5) → collapse/expand at bottom |
+| `src/renderer/main-window/src/components/tabGroup/styles.module.css` | Collapse button style, empty state, scrollbar, spacing |
 | `src/interface.d.ts` | Add `TAB_GROUP_UPDATED` to `LISTENER_CHANNEL` |
-| `src/features/ui/interfaces/tab.d.ts` | Add `groupId` to `Tab` class |
+| `src/renderer/main-window/src/interfaces/tab.d.ts` | Add `groupId` to `Tab` class |
 | `src/features/tabs/models/tab.ts` | Add `groupId` field, include in `toJSON()`, handle on creation |
 | `src/features/tabs/controllers/index.ts` | Integrate with `TabGroupController` on close/reorder |
-| `src/core/controller/viewController.ts` | Wire `TabGroupRoute`, init `tabGroupController` + `tabGroupOverlayController`, sync groups to renderer |
+| `src/main/core/controller/viewController.ts` | Wire `TabGroupRoute`, init `tabGroupController` + `tabGroupOverlayController`, sync groups to renderer |
 | `src/features/cacheSystem/index.ts` | Added `"tabGroups"` to `Collection` type and data record |
 
 ## 9. Drag & Drop Considerations

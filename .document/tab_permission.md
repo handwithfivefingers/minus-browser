@@ -82,7 +82,7 @@ blockedNotifications?: number;
 
 ### Phase 2: Permission Store (Persistence)
 
-**New file:** `src/core/stores/permission.store.ts`
+**New file:** `src/main/core/stores/permission.store.ts`
 
 - Use existing `StoreManager` pattern (like bookmark/history stores).
 - Load/save per-site permission map from `permission.json`.
@@ -187,7 +187,7 @@ In the `setDisplayMediaRequestHandler`, set `isUsingScreenShare = true` when act
 
 ### Phase 4: Tab Indicator UI (Renderer)
 
-**File:** `src/features/ui/components/tab/index.tsx`
+**File:** `src/renderer/main-window/src/components/tab/index.tsx`
 
 Replace the simple `IconVolume` with comprehensive indicators:
 
@@ -244,7 +244,7 @@ Replace the simple `IconVolume` with comprehensive indicators:
 </div>
 ```
 
-**File:** `src/features/ui/components/tab/styles.module.css`
+**File:** `src/renderer/main-window/src/components/tab/styles.module.css`
 
 Add styles for indicators:
 - `.indicator-audio`, `.indicator-muted`, `.indicator-camera`, `.indicator-mic`, `.indicator-screenshare`, `.indicator-notifications` — positioned absolute over favicon corners
@@ -252,11 +252,11 @@ Add styles for indicators:
 - `.badge-count` — small count badge for notification blocks
 - Hover states and cursor pointer for interactive indicators (mute toggle)
 
-**File:** `src/features/ui/pages/customApp/index.tsx`
+**File:** `src/renderer/main-window/src/pages/customApp/index.tsx`
 
 - Ensure new tab indicator props are passed to `TabItem`
 
-**File:** `src/core/controller/viewController.ts`
+**File:** `src/main/core/controller/viewController.ts`
 
 - Add IPC handler for `TOGGLE_MUTE_TAB`:
   ```typescript
@@ -288,8 +288,8 @@ Overlay component rendered inside a `<Shell>` backdrop:
 Registers the overlay at route `/permission` in the sub-window registry.
 
 **Integration:**
-- Imported in `src/features/sub-window/main.tsx` (side-effect import)
-- `@source` path added in `src/features/sub-window/assets/styles.css`
+- Imported in `src/renderer/sub-window/main.tsx` (side-effect import)
+- `@source` path added in `src/renderer/sub-window/assets/styles.css`
 - Triggered from `TabPermission.requestPermissions()` via `subWindowService.openWithResult("/permission", { permission, origin })`
 - Promise resolves when user responds → `request(decision)` called + optional permission store save
 
@@ -297,7 +297,7 @@ Registers the overlay at route `/permission` in the sub-window registry.
 
 ### Phase 6: Site Info Popup (Renderer)
 
-**File:** `src/features/ui/components/header.tsx`
+**File:** `src/renderer/main-window/src/components/header.tsx`
 
 - Add site info button next to the URL (lock/globe icon)
 - Click opens popover showing:
@@ -311,7 +311,7 @@ Registers the overlay at route `/permission` in the sub-window registry.
 
 ### Phase 7: Site Settings Page (Renderer)
 
-**File:** `src/features/ui/pages/setting/index.tsx`
+**File:** `src/renderer/main-window/src/pages/setting/index.tsx`
 
 - New "Site Settings" tab in settings page
 - Shows all sites with custom (non-default) permissions
@@ -324,7 +324,7 @@ Registers the overlay at route `/permission` in the sub-window registry.
 
 ### Phase 8: OS-Level Media Indicators (macOS)
 
-**File:** `src/main.ts`
+**File:** `src/main/index.ts`
 
 - Extend mic request to also request camera at startup:
   ```typescript
@@ -436,20 +436,20 @@ flowchart LR
 | `src/shared/types/permission.d.ts` | **Create** | Permission type enums and interfaces |
 | `src/shared/constants/ipc.ts` | **Edit** | Add permission/mute IPC channels |
 | `src/shared/types/tab.d.ts` | **Edit** | Add indicator fields to ITab |
-| `src/core/stores/permission.store.ts` | **Create** | Per-site permission persistence |
+| `src/main/core/stores/permission.store.ts` | **Create** | Per-site permission persistence |
 | `src/features/tabs/models/permission.ts` | **Create** | TabPermission base class — handler, media tracking, mute |
 | `src/features/tabs/models/tab.ts` | **Edit** | Extends TabPermission; removed inline permission logic |
-| `src/core/controller/viewController.ts` | **Edit** | Wire mute IPC, permission CRUD handlers, init permission store |
-| `src/features/ui/components/tab/index.tsx` | **Edit** | Comprehensive indicator UI with mute toggle |
-| `src/features/ui/pages/customApp/index.tsx` | **Edit** | Pass indicator state to TabItem |
+| `src/main/core/controller/viewController.ts` | **Edit** | Wire mute IPC, permission CRUD handlers, init permission store |
+| `src/renderer/main-window/src/components/tab/index.tsx` | **Edit** | Comprehensive indicator UI with mute toggle |
+| `src/renderer/main-window/src/pages/customApp/index.tsx` | **Edit** | Pass indicator state to TabItem |
 | `src/features/permission/overlay/App.tsx` | **Create** | Sub-window permission prompt overlay |
 | `src/features/permission/overlay.register.ts` | **Create** | Register /permission route in sub-window registry |
-| `src/features/sub-window/main.tsx` | **Edit** | Import permission overlay register |
-| `src/features/sub-window/assets/styles.css` | **Edit** | Add @source for permission |
-| `src/features/ui/components/header.tsx` | **Edit** | Site info popup with permission toggles |
-| `src/features/ui/pages/setting/index.tsx` | **Edit** | Add "Site Settings" tab |
-| `src/features/ui/pages/setting/components/SiteSettings.tsx` | **Create** | Site settings management UI |
-| `src/main.ts` | **Edit** | macOS camera + mic OS-level permission request |
+| `src/renderer/sub-window/main.tsx` | **Edit** | Import permission overlay register |
+| `src/renderer/sub-window/assets/styles.css` | **Edit** | Add @source for permission |
+| `src/renderer/main-window/src/components/header.tsx` | **Edit** | Site info popup with permission toggles |
+| `src/renderer/main-window/src/pages/setting/index.tsx` | **Edit** | Add "Site Settings" tab |
+| `src/renderer/main-window/src/pages/setting/components/SiteSettings.tsx` | **Create** | Site settings management UI |
+| `src/main/index.ts` | **Edit** | macOS camera + mic OS-level permission request |
 
 ---
 

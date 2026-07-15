@@ -29,7 +29,7 @@ Replace the separate `BrowserWindow` with a `WebContentsView` attached to the ma
 | `src/features/spotlight/service/index.ts` | Rewrite to create/manage `WebContentsView` instead of `BrowserWindow`. Store main window ref. Remove bounds file I/O. Add `activeTabId` to `SpotlightOpenPayload`. |
 | `src/features/spotlight/controllers/index.ts` | Add `init(mainWindow)` to pass main window ref to service. |
 | `src/features/spotlight/overlay/main.tsx` | Add `activeTabId` state. Replace `CREATE_TAB` with `VIEW_CHANGE_URL` to navigate current tab. Restructure actions to always include "Create new tab" option. |
-| `src/features/system/controller/viewController.ts` | Call `spotlightController.init(this.window)` before `warmup()`. Pass `activeTabId` when opening spotlight. |
+| `src/main/core/controller/viewController.ts` | Call `spotlightController.init(this.window)` before `warmup()`. Pass `activeTabId` when opening spotlight. |
 
 ### No changes needed
 
@@ -38,7 +38,7 @@ Replace the separate `BrowserWindow` with a `WebContentsView` attached to the ma
 | `src/features/spotlight/route-init.ts` | Singleton pattern unchanged. |
 | `vite.spotlight.renderer.config.ts` | Build config unchanged. |
 | `forge.config.ts` | Vite renderer registration unchanged. |
-| `src/preload.ts` | IPC bridge (`window.api`) works for any `WebContentsView`. |
+| `src/preload/preload.ts` | IPC bridge (`window.api`) works for any `WebContentsView`. |
 
 ---
 
@@ -76,7 +76,7 @@ Key API mapping:
 - Add `init(mainWindow: BrowserWindow)` method
 - Call `this.service.init(mainWindow)`
 
-### Step 3: Modify `ViewController` (`src/features/system/controller/viewController.ts`)
+### Step 3: Modify `ViewController` (`src/main/core/controller/viewController.ts`)
 
 - In constructor or `init()`, add `this.spotlightController.init(this.window)` before `warmup()`
 - Pass `activeTabId: this.tabController?.activeTab?.id` when calling `spotlightController.open()`

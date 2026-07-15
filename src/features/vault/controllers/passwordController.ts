@@ -1,7 +1,7 @@
 import { safeStorage } from "electron";
 import { v7 as uuid_v7 } from "uuid";
-import { IPasswordItem } from "../types/password";
-import { appDb } from "~/core/stores";
+import { IPasswordItem } from "../../../shared/types/password";
+import { appDb } from "~/main/core/stores";
 import { cacheSystem } from "~/features/cacheSystem";
 
 export class PasswordController {

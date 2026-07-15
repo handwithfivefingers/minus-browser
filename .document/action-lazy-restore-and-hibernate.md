@@ -21,7 +21,7 @@
 |------|---------|
 | `src/features/tabs/models/tab.ts` | Make `view` and `webContents` lazy; add `isHibernated`, `hibernate()`, `wake()`, `isAlive` |
 | `src/features/tabs/controllers/index.ts` | Lazy init in `initialize()`; add `hibernateTab()`, `restoreTab()`, hibernate interval; rename `hibernateMapping` |
-| `src/features/system/controller/viewController.ts` | Call `hibernate`/`restore` on show/hide; use `isAlive` in attach/detach |
+| `src/main/core/controller/viewController.ts` | Call `hibernate`/`restore` on show/hide; use `isAlive` in attach/detach |
 | `src/shared/types/index.ts` (or `ITab`) | Add `isHibernated` field if needed |
 
 ### Step 1: Make `Tab.view` + `webContents` lazy

@@ -2,11 +2,11 @@
 
 ## Goal
 
-Replace the 9 JSON files managed by `StoreManager` (`src/core/stores/storeManager.ts`) with a single SQLite database using `node:sqlite` (built into Node 22+), avoiding native compilation (no node-gyp).
+Replace the 9 JSON files managed by `StoreManager` (`src/main/core/stores/storeManager.ts`) with a single SQLite database using `node:sqlite` (built into Node 22+), avoiding native compilation (no node-gyp).
 
 ## Current Architecture
 
-### StoreManager (deleted — was `src/core/stores/storeManager.ts`)
+### StoreManager (deleted — was `src/main/core/stores/storeManager.ts`)
 
 | Store Name | JSON File | Used By | Data Shape |
 |---|---|---|---|
@@ -43,7 +43,7 @@ Plus a `CacheSystem` in-memory layer wraps most of these stores (now read-only).
 
 No `postinstall` script required — no native modules to rebuild.
 
-### New file: `src/core/stores/database.ts`
+### New file: `src/main/core/stores/database.ts`
 
 Singleton `AppDatabase` class wrapping `DatabaseSync` from `node:sqlite`:
 
@@ -70,7 +70,7 @@ class AppDatabase {
 }
 ```
 
-### New file: `src/core/stores/migrations.ts`
+### New file: `src/main/core/stores/migrations.ts`
 
 Versioned schema migrations in a `_migrations` table. Version 1 creates all initial tables.
 
@@ -213,12 +213,12 @@ Column `"index"` is double-quoted (SQLite reserved word).
 
 | File | What changed |
 |---|---|
-| `src/core/stores/index.ts` | Export `appDb`, removed `StoreManager` re-export |
-| `src/core/stores/storeManager.ts` | **Deleted** |
-| `src/core/stores/permission.store.ts` | StoreManager → `appDb` queries |
-| `src/core/controller/bookmark/bookmarkController.ts` | StoreManager → `appDb` |
-| `src/core/controller/history/historyController.ts` | Removed in-memory array + debounce; direct SQL |
-| `src/core/controller/viewController.ts` | `userStore`/`interfaceStore` → `appDb` |
+| `src/main/core/stores/index.ts` | Export `appDb`, removed `StoreManager` re-export |
+| `src/main/core/stores/storeManager.ts` | **Deleted** |
+| `src/main/core/stores/permission.store.ts` | StoreManager → `appDb` queries |
+| `src/main/core/controller/bookmark/bookmarkController.ts` | StoreManager → `appDb` |
+| `src/main/core/controller/history/historyController.ts` | Removed in-memory array + debounce; direct SQL |
+| `src/main/core/controller/viewController.ts` | `userStore`/`interfaceStore` → `appDb` |
 | `src/features/tabs/controllers/index.ts` | Tab persistence via `appDb` |
 | `src/features/tabs/models/tab.ts` | Removed `StoreManager("interface")` |
 | `src/features/tabGroup/controllers/index.ts` | Groups via `appDb` |

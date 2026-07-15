@@ -64,13 +64,13 @@ Use the existing **SubWindowService** (shared `WebContentsView`) — register a 
 | # | File | Changes |
 |---|------|---------|
 | 1 | `src/shared/constants/ipc.ts` | Add `CAPTURE_PAGE`, `CAPTURE_SELECTION` to `IPC_INVOKE_CHANNEL` |
-| 2 | `src/core/controller/viewController.ts` | Add invoke handlers for `CAPTURE_PAGE`/`CAPTURE_SELECTION`; wire `captureController` |
+| 2 | `src/main/core/controller/viewController.ts` | Add invoke handlers for `CAPTURE_PAGE`/`CAPTURE_SELECTION`; wire `captureController` |
 | 3 | `src/features/tabs/models/tab.ts` | Register `CaptureTabPlugin` in `registerPlugin()` |
-| 4 | `src/features/ui/features/aiSider/stores/useAiSidebarStore.ts` | Add `capturedImage: string | null` state, extend `AiSidebarMode` with `"capture"` |
-| 5 | `src/features/ui/features/aiSider/components/AiSidebar.tsx` | Add Capture tab (camera icon), render `<CaptureMode />` |
-| 6 | `src/features/ui/features/aiSider/modes/CaptureMode.tsx` | New: shows captured screenshot thumbnail + AI action buttons |
-| 7 | `src/core/controller/context/index.ts` | Add "Capture Page" / "Capture Selection" context menu items |
-| 8 | `src/features/ui/components/toolbar/index.tsx` (or similar) | Add camera icon button with dropdown |
+| 4 | `src/renderer/main-window/src/features/aiSider/stores/useAiSidebarStore.ts` | Add `capturedImage: string | null` state, extend `AiSidebarMode` with `"capture"` |
+| 5 | `src/renderer/main-window/src/features/aiSider/components/AiSidebar.tsx` | Add Capture tab (camera icon), render `<CaptureMode />` |
+| 6 | `src/renderer/main-window/src/features/aiSider/modes/CaptureMode.tsx` | New: shows captured screenshot thumbnail + AI action buttons |
+| 7 | `src/main/core/controller/context/index.ts` | Add "Capture Page" / "Capture Selection" context menu items |
+| 8 | `src/renderer/main-window/src/components/toolbar/index.tsx` (or similar) | Add camera icon button with dropdown |
 
 ## 4. IPC Channels
 

@@ -62,6 +62,12 @@ const config: ForgeConfig = {
     },
     icon: "./images/icon",
     asar: true,
+    protocols: [
+      {
+        name: "HTTP URL",
+        schemes: ["http", "https"],
+      },
+    ],
   },
   rebuildConfig: {},
   plugins: [
@@ -71,12 +77,12 @@ const config: ForgeConfig = {
       build: [
         {
           // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
-          entry: "src/main.ts",
+          entry: "src/main/index.ts",
           config: "vite.main.config.ts",
           target: "main",
         },
         {
-          entry: "src/preload.ts",
+          entry: "src/preload/preload.ts",
           config: "vite.preload.config.ts",
           target: "preload",
         },
@@ -98,6 +104,11 @@ const config: ForgeConfig = {
         {
           entry: "src/features/notification/notification-preload.ts",
           config: "vite.notification-preload.config.ts",
+          target: "preload",
+        },
+        {
+          entry: "src/features/media/media-preload.ts",
+          config: "vite.media-preload.config.ts",
           target: "preload",
         },
         {

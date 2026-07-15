@@ -1,6 +1,6 @@
 import { v7 as uuid_v7 } from "uuid";
 import { cacheSystem } from "~/features/cacheSystem";
-import { appDb } from "~/core/stores";
+import { appDb } from "~/main/core/stores";
 import { ITabGroup } from "~/shared/types/tab-group";
 
 export class TabGroupController {

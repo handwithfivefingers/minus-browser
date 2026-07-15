@@ -108,3 +108,8 @@ interface.json
 appData
 release*
 extensions
+.opencode
+.todo
+.qodo
+.plan
+.performance

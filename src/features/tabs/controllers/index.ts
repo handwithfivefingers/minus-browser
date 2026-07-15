@@ -1,7 +1,7 @@
 import log from "electron-log";
 import { cacheSystem } from "~/features/cacheSystem";
 import { Tab } from "../models/tab";
-import { appDb } from "~/core/stores";
+import { appDb } from "~/main/core/stores";
 import { IUserInterface, ITab } from "~/shared/types";
 import { tabGroupController } from "~/features/tabGroup";
 

@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import path from "node:path";
 
 // https://vitejs.dev/config
 export default defineConfig({
@@ -9,7 +10,7 @@ export default defineConfig({
     alias: [
       {
         find: "~",
-        replacement: "/src",
+        replacement: path.resolve(__dirname, "src"),
       },
     ],
   },
@@ -24,5 +25,15 @@ export default defineConfig({
   define: {
     "process.platform": JSON.stringify(process.platform),
     ELECTRON_DISABLE_GPU: JSON.stringify(process.env.ELECTRON_DISABLE_GPU),
+  },
+  build: {
+    lib: {
+      entry: "src/main/index.ts",
+      formats: ["cjs"],
+      fileName: () => "main.js",
+    },
+    rollupOptions: {
+      external: ["node:sqlite"],
+    },
   },
 });

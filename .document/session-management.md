@@ -73,10 +73,10 @@ export { browserSession, sessionInitPromise };
 **Files to change:**
 | File | Change |
 |---|---|
-| `src/core/services/session/index.ts` | Strip `save/load/watch/parseCookies`; simplify to partition creation + export |
-| `src/main.ts` | Remove `minusSessionManager.load()` and `minusSessionManager.watch()` |
-| `src/features/system/controller/viewController.ts:106-108` | Remove `minusSessionManager.load()` and `minusSessionManager.watch()` |
-| `src/features/system/controller/viewController.ts:417` | Remove `minusSessionManager.save()` (keep `cookies.flushStore()` + `flushStorageData()`) |
+| `src/main/core/services/session/index.ts` | Strip `save/load/watch/parseCookies`; simplify to partition creation + export |
+| `src/main/index.ts` | Remove `minusSessionManager.load()` and `minusSessionManager.watch()` |
+| `src/main/core/controller/viewController.ts:106-108` | Remove `minusSessionManager.load()` and `minusSessionManager.watch()` |
+| `src/main/core/controller/viewController.ts:417` | Remove `minusSessionManager.save()` (keep `cookies.flushStore()` + `flushStorageData()`) |
 
 ### Phase 2: Reliable Migration on Version Upgrade
 
@@ -165,10 +165,10 @@ app.whenReady()
 
 | File | Role |
 |---|---|
-| `src/core/services/session/index.ts` | Session creation, version upgrade handling, cookie change forwarding |
-| `src/core/services/session/migrator.ts` | userData migration, `.app-info` version tracking, legacy session.json restore |
+| `src/main/core/services/session/index.ts` | Session creation, version upgrade handling, cookie change forwarding |
+| `src/main/core/services/session/migrator.ts` | userData migration, `.app-info` version tracking, legacy session.json restore |
 | `src/features/tabs/models/tab.ts` | Tab hibernate/wake with referrer + scroll preservation |
-| `src/features/system/controller/viewController.ts` | Removed manual cookie save/load/watch; passes URL to `wake()` to avoid double-load |
+| `src/main/core/controller/viewController.ts` | Removed manual cookie save/load/watch; passes URL to `wake()` to avoid double-load |
 | `src/shared/constants/ipc.ts` | Added `COOKIE_CHANGED` renderer event |
 
 ### Partition Assignment

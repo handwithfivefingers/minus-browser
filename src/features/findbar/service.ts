@@ -1,8 +1,8 @@
 import { app, BrowserWindow, ipcMain, IpcMainEvent, WebContentsView } from "electron";
 import * as fs from "node:fs";
 import path from "node:path";
-import { searchController } from "~/features/search/controllers";
-import { eventStore } from "~/core/stores";
+import { searchController } from "~/features/search/controllers/index.js";
+import { eventStore } from "~/main/core/stores/index.js";
 import { FINDBAR_HTML } from "./index.js";
 
 export class FindbarService {

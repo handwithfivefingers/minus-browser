@@ -4,3 +4,6 @@ export * from "./tab";
 export * from "./theme";
 export * from "./tab-group";
 export * from "./permission";
+export * from './password'
+export * from './route'
+export * from './vault'
