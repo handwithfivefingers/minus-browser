@@ -75,7 +75,7 @@ const SideMenu = () => {
     position: "before" | "after";
     groupId?: string;
   } | null>(null);
-  // Group creation is handled by the overlay (SHOW_TAB_GROUP_CONTEXT_MENU)
+  // Group creation is handled by the overlay (SHOW_TAB_CONTEXT_MENU)
   const dropTargetRef = useRef<{ tabId: string; position: "before" | "after"; groupId?: string } | null>(null);
   const dragState = useRef<(DragState & { groupId?: string }) | null>(null);
   const active = useRef(false);
@@ -127,7 +127,7 @@ const SideMenu = () => {
       e.preventDefault();
       const tab = tabs.find((t) => t.id === tabId);
       const group = groups.find((g) => g.tabIds.includes(tabId));
-      window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU, {
+      window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_CONTEXT_MENU, {
         tabId,
         currentGroupId: group?.id || tab?.groupId,
         x: e.clientX,
@@ -139,7 +139,7 @@ const SideMenu = () => {
 
   const handleGroupContextMenu = useCallback((e: React.MouseEvent, groupId: string) => {
     e.preventDefault();
-    window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU, {
+    window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_CONTEXT_MENU, {
       groupId,
       x: e.clientX,
       y: e.clientY,
@@ -362,7 +362,7 @@ const SideMenu = () => {
               if (tabs.length > 0) {
                 const activeId = tabs.find((t) => t.isFocused)?.id || tabs[0]?.id;
                 const group = groups.find((g) => g.tabIds.includes(activeId));
-                window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU, {
+                window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_CONTEXT_MENU, {
                   x: 100,
                   y: 100,
                 });

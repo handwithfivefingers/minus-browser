@@ -1,4 +1,4 @@
-import { IconBell, IconClock, IconDatabase, IconDeviceFloppy, IconLayoutGrid, IconRefresh } from "@tabler/icons-react";
+import { IconBell, IconClock, IconDatabase, IconDeviceFloppy, IconLayoutGrid, IconRefresh, IconTrash } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useMinusThemeStore } from "~/renderer/main-window/src/stores/useMinusTheme";
 import { useUpdateStore } from "~/renderer/main-window/src/stores/useUpdateStore";
@@ -195,6 +195,45 @@ export const Interface = () => {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-5 mt-4">
+        <div className="flex items-center gap-2 mb-4">
+          <IconTrash size={18} className="text-slate-700" />
+          <h2 className="text-lg font-semibold text-slate-900">Privacy & Browsing Data</h2>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={async () => {
+              await window.api.INVOKE(IPC_INVOKE_CHANNEL.CLEAR_BROWSING_DATA);
+              notify({ type: "success", title: "Browsing data cleared", duration: 3000 });
+            }}
+            className="h-10 px-4 rounded-lg bg-red-50 text-red-700 text-sm inline-flex items-center gap-2 hover:bg-red-100 border border-red-200 cursor-pointer w-fit"
+          >
+            <IconTrash size={16} />
+            Clear All Browsing Data
+          </button>
+          <span className="text-xs text-slate-400">
+            Clears cache, cookies, history, site permissions, and adblock filters.
+          </span>
+
+          <button
+            type="button"
+            onClick={async () => {
+              await window.api.INVOKE(IPC_INVOKE_CHANNEL.FORCE_CLEAR_CACHE_HARD_RELOAD);
+              notify({ type: "info", title: "Cache cleared — reloading active tab", duration: 3000 });
+            }}
+            className="h-10 px-4 rounded-lg bg-orange-50 text-orange-700 text-sm inline-flex items-center gap-2 hover:bg-orange-100 border border-orange-200 cursor-pointer w-fit"
+          >
+            <IconRefresh size={16} />
+            Force Clear Cache & Hard Reload
+          </button>
+          <span className="text-xs text-slate-400">
+            Clears cached resources and forces a full reload of the active tab.
+          </span>
         </div>
       </div>
 

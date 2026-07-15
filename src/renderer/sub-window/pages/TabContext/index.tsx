@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SUB_WINDOW_RENDERER_EVENT } from "~/shared/constants/ipc/sub-window";
-import { IPC_TAB_GROUP_INVOKE } from "~/shared/constants/ipc/tabGroup";
+import { IPC_TAB_GROUP_INVOKE, IPC_TAB_GROUP_EMIT } from "~/shared/constants/ipc/tabGroup";
+import { IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
 import { register } from "../../registry";
 
 const GROUP_COLORS = ["#6366f1", "#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#06b6d4"];
@@ -24,7 +25,7 @@ interface ContextPayload {
   editGroup?: { id: string; name: string; color: string };
 }
 
-export function TabGroup() {
+export function TabContext() {
   const [view, setView] = useState<View>(null);
   const [tabId, setTabId] = useState<string | null>(null);
   const [currentGroupId, setCurrentGroupId] = useState<string | null>(null);
@@ -160,30 +161,27 @@ export function TabGroup() {
 
   const openGroupTabs = useCallback(
     (groupId: string) => {
-      // if (!contextGroupId) return;
       const group = groups.find((g) => g.id === groupId);
       if (group) {
         window.api.INVOKE(IPC_TAB_GROUP_INVOKE.OPEN_GROUP_TAB, groupId);
-        // for (const tid of group.tabIds) {
-        // }
       }
       hide();
     },
     [groups, hide],
   );
+
   const onSwitchGroup = (targetGroupId: string) => {
     removeFromGroup();
     addToGroup(targetGroupId);
   };
 
   if (!view) return null;
-  const isGroupContext = !!contextGroupId && tabId;
 
   const menuX = Math.min(position.x, window.innerWidth - 200);
   const menuY = Math.min(position.y, window.innerHeight - 360);
   const createX = Math.max(8, Math.min(position.x, window.innerWidth - 272));
   const createY = Math.max(8, Math.min(position.y, window.innerHeight - 260));
-  // alert([`currentGroupId`, currentGroupId, `tabId`, tabId].join(", "));
+
   if (view === "context-menu") {
     return (
       <div className="fixed inset-0">
@@ -192,8 +190,26 @@ export function TabGroup() {
           className="fixed bg-white rounded-lg shadow-xl border border-slate-200 pt-1 min-w-44"
           style={{ left: menuX, top: menuY, pointerEvents: "auto" }}
         >
+          <button
+            type="button"
+            onClick={() => {
+              window.api.INVOKE(IPC_INVOKE_CHANNEL.FORCE_CLEAR_CACHE_HARD_RELOAD, { tabId });
+              hide();
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-orange-50 hover:text-orange-600 text-left cursor-pointer"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Force Reload">
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            Force Clear Cache & Hard Reload
+          </button>
+
           {tabId && !currentGroupId ? (
             <>
+              <div className="border-t border-slate-100 my-1" />
+
               <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                 Add to group
               </div>
@@ -265,8 +281,10 @@ export function TabGroup() {
                 Remove from group
               </button>
 
+              <div className="border-t border-slate-100 my-1" />
+
               <div className="flex flex-col">
-                <span className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400  text-left">
+                <span className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400 text-left">
                   <svg
                     width="12"
                     height="12"
@@ -398,9 +416,9 @@ export function TabGroup() {
   );
 }
 
-export const TabGroupRegister = register({
-  path: "/tabgroup",
-  name: "Tab Group",
-  component: TabGroup,
+export const TabContextRegister = register({
+  path: "/tab-context",
+  name: "Tab Context",
+  component: TabContext,
   shell: false,
 });

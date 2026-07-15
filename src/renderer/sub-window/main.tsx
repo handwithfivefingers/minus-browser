@@ -9,7 +9,7 @@ import "./assets/styles.css";
 // Register all overlays (side-effect imports)
 import "./pages/capture";
 import "./pages/spotlight";
-import "./pages/tabGroup";
+import "./pages/TabContext";
 import "~/features/permission/overlay.register";
 import "~/features/permission/siteInfo.register";
 import "~/features/translate/overlay.register";

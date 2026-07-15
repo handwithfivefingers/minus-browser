@@ -1,6 +1,6 @@
 import { IconBell, IconBellFilled } from "@tabler/icons-react";
 import clsx from "clsx";
-import { useWebNotificationStore } from "~/shared/store/useNotificationStore";
+import { useWebNotificationStore } from "../store";
 
 export const NotificationBell = () => {
   const unreadCount = useWebNotificationStore((s) => s.unreadCount);

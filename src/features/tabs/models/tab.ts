@@ -502,6 +502,9 @@ export class Tab extends TabPermission {
   clearCache() {
     if (!this._view) return;
     this._view.webContents.session.clearCache();
+    this._view.webContents.session.clearStorageData({
+      origin: this.url,
+    });
   }
 
   toJSON() {

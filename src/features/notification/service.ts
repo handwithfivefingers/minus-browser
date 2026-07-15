@@ -8,10 +8,12 @@ export class NotificationService {
   private viewService = new NotificationViewService();
   private isFocused = true;
   private retentionDays = 30;
+  private checkPermission: ((tabId: string) => boolean) | null = null;
 
-  init(mainWindow: BrowserWindow, retentionDays?: number) {
+  init(mainWindow: BrowserWindow, retentionDays?: number, checkPermission?: (tabId: string) => boolean) {
     this.mainWindow = mainWindow;
     this.retentionDays = retentionDays ?? 30;
+    this.checkPermission = checkPermission ?? null;
     this.viewService.init(mainWindow);
     this.viewService.setCallbacks({
       onNavigateToTab: (tabId) => this.handleOpenTabById(tabId),
@@ -68,6 +70,10 @@ export class NotificationService {
     tabTitle?: string;
     favicon?: string;
   }) {
+    if (this.checkPermission && !this.checkPermission(data.tabId)) {
+      return;
+    }
+
     const notification: WebNotification = {
       id: "",
       tabId: data.tabId,

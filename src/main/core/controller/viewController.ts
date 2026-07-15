@@ -147,6 +147,24 @@ export class ViewController {
           quitAndInstall();
           return { success: true };
         },
+        [IPC_INVOKE_CHANNEL.CLEAR_BROWSING_DATA]: async () => {
+          await browserSession.clearStorageData();
+          historyController.clearAll();
+          permissionStore.resetAllPermissions();
+          adblocker.clearCache();
+          (["tab", "password", "userscripts", "passwordVault", "translate", "interface", "session", "tabGroups"] as const).forEach((k) => { cacheSystem.delete(k); });
+          return { success: true };
+        },
+        [IPC_INVOKE_CHANNEL.FORCE_CLEAR_CACHE_HARD_RELOAD]: async (data?: { tabId?: string }) => {
+          const tab = data?.tabId
+            ? this.tabController?.getTabById(data.tabId)
+            : this.tabController?.activeTab;
+          if (tab?.isAlive) {
+            tab.clearCache();
+            tab.onReload();
+          }
+          return { success: true };
+        },
         [IPC_EMIT_CHANNEL.PIP_EXITED]: (data) => this.handleOpenTabById(data),
         [IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE]: (data) => {
           this.window.webContents.send(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, data);
@@ -240,7 +258,16 @@ export class ViewController {
       this.setupPermissionHandler();
       this.setupDisplayMediaHandler();
       const retentionDays = Number(this.userInterface?.notificationRetentionDays) || 30;
-      this.notificationService.init(this.window, retentionDays);
+      this.notificationService.init(this.window, retentionDays, (tabId) => {
+        const tab = this.tabController?.getTabById(tabId);
+        if (!tab?.url) return true;
+        try {
+          const origin = new URL(tab.url).origin;
+          return permissionStore.getSitePermission(origin, "notifications") !== "deny";
+        } catch {
+          return true;
+        }
+      });
       if (this.userInterface?.extension?.adblock) {
         adblocker.isCosmeticFilteringEnabled = this.userInterface?.extension?.cosmeticFiltering ?? true;
         adblocker.enable();

@@ -50,7 +50,7 @@ export const tabGroupInvokeHandlers = {
 };
 
 export const tabGroupEmitHandlers = {
-  [IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU]: (data: any) => {
-    subWindowService.open("/tabgroup", data);
+  [IPC_TAB_GROUP_EMIT.SHOW_TAB_CONTEXT_MENU]: (data: any) => {
+    subWindowService.open("/tab-context", data);
   },
 };

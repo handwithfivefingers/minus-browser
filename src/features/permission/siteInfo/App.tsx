@@ -99,11 +99,11 @@ export default function SiteInfoOverlay() {
     : { position: 'fixed', top: 8, left: '50%', transform: 'translateX(-50%)' };
 
   return (
-    <div className="fixed inset-0 z-[9999]" onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
+    <div className="fixed inset-0 z-9999" onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
       <div className="w-80 animate-slide-down" style={popupStyle}>
         <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs flex-shrink-0">
+            <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
               {hostname.charAt(0).toUpperCase()}
             </div>
             <span className="text-xs font-semibold text-slate-700 truncate">{hostname}</span>

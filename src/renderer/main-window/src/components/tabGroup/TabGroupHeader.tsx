@@ -17,7 +17,7 @@ const TabGroupHeader = memo(({ group, tabCount, onContextMenu }: TabGroupHeaderP
   const editGroup = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_GROUP_CONTEXT_MENU, {
+      window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_CONTEXT_MENU, {
         editGroup: { id: group.id, name: group.name, color: group.color },
         x: e.clientX || 100,
         y: e.clientY || 100,
