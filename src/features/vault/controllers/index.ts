@@ -1,9 +1,9 @@
-import { eventStore } from "~/core/stores";
+import { eventStore } from "~/main/core/stores";
 import { VaultServices } from "../services";
-import { Vault } from "../types";
-import { IPasswordItem } from "../types/password";
+import { IPasswordItem } from "../../../shared/types/password";
 import { PasswordController } from "./passwordController";
 import { Notification, WebContentsView } from "electron";
+import { Vault } from "~/shared/types";
 
 export class VaultController {
   private passwordController: PasswordController = new PasswordController();

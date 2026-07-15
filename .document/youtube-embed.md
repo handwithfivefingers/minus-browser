@@ -20,7 +20,7 @@ Detects YouTube watch URLs in tabs and creates a floating overlay window that pl
 ### Dependencies
 
 - `src/features/adblocker/services/youtube-embed.ts` — provides `extractVideoId()`, `isYouTubeWatchUrl()`, `buildEmbedDataUrl()`
-- `src/core/stores/minusEventEmitter.ts` — `eventStore` for view changes and drag events
+- `src/main/core/stores/minusEventEmitter.ts` — `eventStore` for view changes and drag events
 - `src/shared/types/tab-plugin.d.ts` — `ITabPlugin`, `ITabLifecycleHooks` interfaces
 
 ## Plugin (`plugin/index.ts`)

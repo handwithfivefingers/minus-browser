@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { BrowserWindow, session, WebContentsView } from "electron";
-import { eventStore } from "~/core/stores";
+import { eventStore } from "~/main/core/stores";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { IUserScript } from "../types";

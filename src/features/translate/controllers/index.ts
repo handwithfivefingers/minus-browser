@@ -1,4 +1,4 @@
-import { eventStore } from "~/core/stores";
+import { eventStore } from "~/main/core/stores";
 import { TranslateService } from "../services";
 import { ITranslatePreference, ITranslateSelection } from "../types";
 import { BrowserWindow, WebContentsView } from "electron";

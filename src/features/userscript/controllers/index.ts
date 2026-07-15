@@ -1,13 +1,13 @@
 import fs from "node:fs/promises";
 import { dialog } from "electron";
 import { v7 as uuid_v7 } from "uuid";
-import { appDb } from "~/core/stores";
+import { appDb } from "~/main/core/stores";
 import { IUserScript } from "../types";
 import { UserScript } from "../models/userScript";
 import { isUrlMatchedByPatterns } from "~/shared/utils";
 import { cacheSystem } from "~/features/cacheSystem";
 import { UserScriptService } from "../services";
-import { eventStore } from "~/core/stores";
+import { eventStore } from "~/main/core/stores";
 import { WebContentsView } from "electron";
 
 function parseJSON(val: unknown, fallback: any = []): any {

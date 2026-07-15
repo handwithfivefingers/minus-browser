@@ -1,4 +1,4 @@
-import { appDb } from "~/core/stores";
+import { appDb } from "~/main/core/stores";
 
 export async function handleStorage(
   scriptId: string,

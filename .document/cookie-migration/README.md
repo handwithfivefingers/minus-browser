@@ -20,7 +20,7 @@ Additionally, `EnableCookieEncryption` in `forge.config.ts` means the SQLite DB 
 
 ## Solution: `migrateUserData()`
 
-A new migration module at `src/features/system/services/session/migrator.ts` that runs before the session is initialized:
+A new migration module at `src/main/core/services/session/migrator.ts` that runs before the session is initialized:
 
 ### Flow
 
@@ -105,16 +105,16 @@ This chains the two handlers: `main.ts` explicitly waits for `session/index.ts`'
 
 | File | Change |
 |------|--------|
-| `src/features/system/services/session/migrator.ts` | **New** — migration logic |
-| `src/features/system/services/session/index.ts` | Import `migrateUserData` + `sessionInitPromise` export; call migration before `SimpleSessionManager` construction |
-| `src/main.ts` | Import `sessionInitPromise`; `await sessionInitPromise` before `createWindow()` |
+| `src/main/core/services/session/migrator.ts` | **New** — migration logic |
+| `src/main/core/services/session/index.ts` | Import `migrateUserData` + `sessionInitPromise` export; call migration before `SimpleSessionManager` construction |
+| `src/main/index.ts` | Import `sessionInitPromise`; `await sessionInitPromise` before `createWindow()` |
 | `.document/cookie-migration/README.md` | This file |
 
 ## Related Fixes
 
 Alongside migration, the cookie handling was also fixed:
 
-1. **`src/features/system/services/session/index.ts:56`** — `sameSite: "no_restriction"` → `cookie.sameSite || "no_restriction"`. Preserves the original SameSite attribute per-cookie instead of forcing all to `SameSite=None`, which was breaking Google's signed cookie validation.
+1. **`src/main/core/services/session/index.ts:56`** — `sameSite: "no_restriction"` → `cookie.sameSite || "no_restriction"`. Preserves the original SameSite attribute per-cookie instead of forcing all to `SameSite=None`, which was breaking Google's signed cookie validation.
 
 ## Caveats
 

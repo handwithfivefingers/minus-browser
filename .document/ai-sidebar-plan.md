@@ -12,7 +12,7 @@ Add a **collapsible AI-powered sidebar** to MinusBrowser (similar to the Sider C
 - **AI Provider**: Use the existing `openai` SDK with the `GROQ_AI_API_KEY` from `.env`. Groq provides OpenAI-compatible API endpoints (fast LLM inference). Alternatively, support multiple AI providers (Groq, OpenAI, Anthropic) via a provider abstraction.
 - **State**: New Zustand store (`useAiSidebarStore`) for sidebar open/close, active mode, conversation history, settings.
 - **Persistence**: Conversation history and AI preferences saved via the existing `StoreManager` pattern.
-- **All code lives under** `src/features/ui/features/aiSider/` — since AI is purely a frontend feature, it lives inside the UI feature tree, not at the top-level `src/features/`.
+- **All code lives under** `src/renderer/main-window/src/features/aiSider/` — since AI is purely a frontend feature, it lives inside the UI feature tree, not at the top-level `src/features/`.
 
 ---
 
@@ -36,12 +36,12 @@ Add a **collapsible AI-powered sidebar** to MinusBrowser (similar to the Sider C
 **Files to create/modify:**
 | File | Change |
 |------|--------|
-| `src/features/ui/features/aiSider/components/AiSidebar.tsx` | New: Right sidebar container (collapsible, resizable, mode tabs) |
-| `src/features/ui/features/aiSider/components/styles.module.css` | New: CSS module for AiSidebar |
-| `src/features/ui/features/aiSider/stores/useAiSidebarStore.ts` | New: Zustand store (isOpen, activeMode, width) |
-| `src/features/ui/pages/layout.tsx` | Modify: Render `<AiSidebar />` alongside `<SideMenu />` |
-| `src/features/ui/components/sidebar/index.tsx` (or header) | Modify: Add toggle button for AI sidebar |
-| `src/features/ui/components/index.ts` | Modify: Export AiSidebar |
+| `src/renderer/main-window/src/features/aiSider/components/AiSidebar.tsx` | New: Right sidebar container (collapsible, resizable, mode tabs) |
+| `src/renderer/main-window/src/features/aiSider/components/styles.module.css` | New: CSS module for AiSidebar |
+| `src/renderer/main-window/src/features/aiSider/stores/useAiSidebarStore.ts` | New: Zustand store (isOpen, activeMode, width) |
+| `src/renderer/main-window/src/pages/layout.tsx` | Modify: Render `<AiSidebar />` alongside `<SideMenu />` |
+| `src/renderer/main-window/src/components/sidebar/index.tsx` (or header) | Modify: Add toggle button for AI sidebar |
+| `src/renderer/main-window/src/components/index.ts` | Modify: Export AiSidebar |
 
 **Key decisions:**
 - Sidebar width: default 380px, resizable (min 300px, max 600px), collapsible to 0.
@@ -56,12 +56,12 @@ Add a **collapsible AI-powered sidebar** to MinusBrowser (similar to the Sider C
 **Files to create:**
 | File | Change |
 |------|--------|
-| `src/features/ui/features/aiSider/services/aiProvider.ts` | New: Provider abstraction (OpenAI-compatible). Handles Groq/OpenAI config from env. |
-| `src/features/ui/features/aiSider/services/pageReader.ts` | New: Extract page text content from active tab (inject content script or use IPC to get page text). |
-| `src/features/ui/features/aiSider/services/promptTemplates.ts` | New: Prompt templates for summarize, explain, grammar fix, tone change, etc. |
-| `src/features/ui/features/aiSider/hooks/useAiChat.ts` | New: React hook wrapping AI provider (streaming response, loading state, error handling). |
+| `src/renderer/main-window/src/features/aiSider/services/aiProvider.ts` | New: Provider abstraction (OpenAI-compatible). Handles Groq/OpenAI config from env. |
+| `src/renderer/main-window/src/features/aiSider/services/pageReader.ts` | New: Extract page text content from active tab (inject content script or use IPC to get page text). |
+| `src/renderer/main-window/src/features/aiSider/services/promptTemplates.ts` | New: Prompt templates for summarize, explain, grammar fix, tone change, etc. |
+| `src/renderer/main-window/src/features/aiSider/hooks/useAiChat.ts` | New: React hook wrapping AI provider (streaming response, loading state, error handling). |
 | `src/shared/constants/ipc.ts` | Modify: Add new IPC channels for AI operations. |
-| `src/features/system/controller/viewController.ts` | Modify: Add IPC handlers for page text extraction and AI inference. |
+| `src/main/core/controller/viewController.ts` | Modify: Add IPC handlers for page text extraction and AI inference. |
 
 **Key decisions:**
 - Use **streaming responses** (SSE-like via OpenAI SDK) for Chat mode.
@@ -76,9 +76,9 @@ Add a **collapsible AI-powered sidebar** to MinusBrowser (similar to the Sider C
 **Files to create/modify:**
 | File | Change |
 |------|--------|
-| `src/features/ui/features/aiSider/modes/ChatMode.tsx` | New: Chat UI (message list, input box, send button, markdown rendering) |
-| `src/features/ui/features/aiSider/components/MessageBubble.tsx` | New: Single message component (user/assistant, markdown, code blocks, copy button) |
-| `src/features/ui/features/aiSider/components/ModelSelector.tsx` | New: Dropdown to switch between available models |
+| `src/renderer/main-window/src/features/aiSider/modes/ChatMode.tsx` | New: Chat UI (message list, input box, send button, markdown rendering) |
+| `src/renderer/main-window/src/features/aiSider/components/MessageBubble.tsx` | New: Single message component (user/assistant, markdown, code blocks, copy button) |
+| `src/renderer/main-window/src/features/aiSider/components/ModelSelector.tsx` | New: Dropdown to switch between available models |
 
 **Features:**
 - Markdown rendering for assistant responses (use a lightweight library like `react-markdown` or `marked`).
@@ -95,8 +95,8 @@ Add a **collapsible AI-powered sidebar** to MinusBrowser (similar to the Sider C
 **Files to create/modify:**
 | File | Change |
 |------|--------|
-| `src/features/ui/features/aiSider/modes/SummaryMode.tsx` | New: Summarize UI (summary display, copy, regenerate) |
-| `src/features/ui/features/aiSider/services/summarizer.ts` | New: Orchestrates page text extraction + LLM summarization |
+| `src/renderer/main-window/src/features/aiSider/modes/SummaryMode.tsx` | New: Summarize UI (summary display, copy, regenerate) |
+| `src/renderer/main-window/src/features/aiSider/services/summarizer.ts` | New: Orchestrates page text extraction + LLM summarization |
 
 **Flow:**
 1. User clicks "Summarize" button.
@@ -113,8 +113,8 @@ Add a **collapsible AI-powered sidebar** to MinusBrowser (similar to the Sider C
 **Files to create/modify:**
 | File | Change |
 |------|--------|
-| `src/features/ui/features/aiSider/modes/GenerateMode.tsx` | New: Generate UI (template selector, prompt input, output area) |
-| `src/features/ui/features/aiSider/services/generator.ts` | New: Orchestrates generation requests |
+| `src/renderer/main-window/src/features/aiSider/modes/GenerateMode.tsx` | New: Generate UI (template selector, prompt input, output area) |
+| `src/renderer/main-window/src/features/aiSider/services/generator.ts` | New: Orchestrates generation requests |
 
 **Templates:**
 - Email (formal, casual)
@@ -131,8 +131,8 @@ Add a **collapsible AI-powered sidebar** to MinusBrowser (similar to the Sider C
 **Files to create/modify:**
 | File | Change |
 |------|--------|
-| `src/features/ui/features/aiSider/modes/ExplainMode.tsx` | New: Explain selected text UI |
-| `src/features/ui/features/aiSider/components/QuickActions.tsx` | New: Quick action buttons (fix grammar, simplify, translate, change tone) |
+| `src/renderer/main-window/src/features/aiSider/modes/ExplainMode.tsx` | New: Explain selected text UI |
+| `src/renderer/main-window/src/features/aiSider/components/QuickActions.tsx` | New: Quick action buttons (fix grammar, simplify, translate, change tone) |
 | `src/features/tabPluginManager/...` | Modify or create `AiTabPlugin` to inject context menu / selection handler |
 
 **Context menu integration:**
@@ -146,8 +146,8 @@ Add a **collapsible AI-powered sidebar** to MinusBrowser (similar to the Sider C
 
 | File | Change |
 |------|--------|
-| `src/features/ui/pages/setting/index.tsx` | Modify: Add "AI" tab to settings page |
-| `src/features/ui/pages/setting/AiSettings.tsx` | New: AI settings panel (API key, model selection, default mode, shortcuts) |
+| `src/renderer/main-window/src/pages/setting/index.tsx` | Modify: Add "AI" tab to settings page |
+| `src/renderer/main-window/src/pages/setting/AiSettings.tsx` | New: AI settings panel (API key, model selection, default mode, shortcuts) |
 
 **Settings options:**
 - AI Provider: Groq / OpenAI / Custom
@@ -161,10 +161,10 @@ Add a **collapsible AI-powered sidebar** to MinusBrowser (similar to the Sider C
 
 ## 4. Proposed Directory Structure
 
-All AI sidebar code lives under `src/features/ui/features/aiSider/` — a single unified tree.
+All AI sidebar code lives under `src/renderer/main-window/src/features/aiSider/` — a single unified tree.
 
 ```
-src/features/ui/features/aiSider/
+src/renderer/main-window/src/features/aiSider/
 ├── components/
 │   ├── AiSidebar.tsx              # Main sidebar container
 │   ├── styles.module.css          # Styles
@@ -255,7 +255,7 @@ IPC_RENDERER_EVENT: {
 
 ```
 # Create directory structure (single tree under ui/features)
-mkdir -p src/features/ui/features/aiSider/{components,modes,hooks,services,stores}
+mkdir -p src/renderer/main-window/src/features/aiSider/{components,modes,hooks,services,stores}
 
 # Install new dependencies
 npm install react-markdown remark-gfm rehype-highlight

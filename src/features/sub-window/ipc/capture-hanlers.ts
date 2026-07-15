@@ -1,5 +1,5 @@
 import { clipboard } from "electron";
-import { ViewController } from "~/core/controller/viewController";
+import { ViewController } from "~/main/core/controller/viewController";
 import { capturePage } from "~/features/capture/services";
 import { IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
 import { subWindowService } from "../service";

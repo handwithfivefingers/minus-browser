@@ -43,6 +43,6 @@ Protection does not prevent manual hibernation via `hibernateTab(id)`.
 - `src/features/tabs/models/tab.ts` — `preventHibernate` field, `hibernate()`/`wake()` lifecycle
 - `src/shared/types/tab.d.ts` — `ITab.preventHibernate`
 - `src/shared/types/theme.d.ts` — `IUserInterface.hibernateMode`, `.hibernateCustomMinutes`
-- `src/features/ui/stores/useMinusTheme.tsx` — Renderer-side hibernate state & save
-- `src/features/ui/pages/setting/components/HibernateSetting.tsx` — Settings UI
-- `src/features/ui/components/header.tsx` — Per-tab protection toggle button
+- `src/renderer/main-window/src/stores/useMinusTheme.tsx` — Renderer-side hibernate state & save
+- `src/renderer/main-window/src/pages/setting/components/HibernateSetting.tsx` — Settings UI
+- `src/renderer/main-window/src/components/header.tsx` — Per-tab protection toggle button

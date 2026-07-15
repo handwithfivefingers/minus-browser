@@ -33,19 +33,19 @@ update-electron-app (auto-check every 10 min)
 |---|---|
 | `src/features/autoUpdate/types.ts` | `UpdateStatusEvent` — discriminated union for all update states |
 | `src/features/autoUpdate/autoUpdate.init.ts` | `initAutoUpdate(emit)`, `checkForUpdates()`, `quitAndInstall()` |
-| `src/features/ui/stores/useUpdateStore.ts` | Zustand store (`status`, `checkForUpdate`, `quitAndInstall`) + `setupUpdateListener()` |
-| `src/features/ui/components/UpdateBanner.tsx` | Top-of-screen banner: download progress, restart button, retry, dismiss |
+| `src/renderer/main-window/src/stores/useUpdateStore.ts` | Zustand store (`status`, `checkForUpdate`, `quitAndInstall`) + `setupUpdateListener()` |
+| `src/renderer/main-window/src/components/UpdateBanner.tsx` | Top-of-screen banner: download progress, restart button, retry, dismiss |
 
 ### Modified
 
 | File | Change |
 |---|---|
-| `src/main.ts` | Removed `updateElectronApp()` call (moved to ViewController) |
+| `src/main/index.ts` | Removed `updateElectronApp()` call (moved to ViewController) |
 | `src/shared/constants/ipc.ts` | Added `CHECK_FOR_UPDATE`, `QUIT_AND_INSTALL_UPDATE` (invoke), `UPDATE_STATUS` (renderer event) |
-| `src/core/controller/viewController.ts` | Imports autoUpdate, registers invoke handlers, calls `initAutoUpdate()` in `init()` |
-| `src/features/ui/pages/layout.tsx` | Renders `<UpdateBanner />`, calls `setupUpdateListener()` |
-| `src/features/ui/components/index.ts` | Exports `UpdateBanner` |
-| `src/features/ui/pages/setting/components/Interface.tsx` | Added "Updates" section under System settings |
+| `src/main/core/controller/viewController.ts` | Imports autoUpdate, registers invoke handlers, calls `initAutoUpdate()` in `init()` |
+| `src/renderer/main-window/src/pages/layout.tsx` | Renders `<UpdateBanner />`, calls `setupUpdateListener()` |
+| `src/renderer/main-window/src/components/index.ts` | Exports `UpdateBanner` |
+| `src/renderer/main-window/src/pages/setting/components/Interface.tsx` | Added "Updates" section under System settings |
 
 ## IPC Protocol
 

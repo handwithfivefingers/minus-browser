@@ -2,7 +2,7 @@ import { BrowserWindow, session, WebContentsView } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { Tab } from "~/features/tabs/models/tab";
-import { IHistoryEntry } from "~/core/controller/history";
+import { IHistoryEntry } from "~/main/core/controller/history";
 
 type SpotlightOpenPayload = {
   query?: string;

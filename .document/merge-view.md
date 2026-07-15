@@ -52,7 +52,7 @@ src/features/vault/overlay.register.ts
 Sub-window imports all registered overlays at the top of `main.tsx`:
 
 ```
-src/features/sub-window/
+src/renderer/sub-window/
 ├── registry.ts   ← register() / getRegistered() API, Map-based
 ├── index.html
 ├── main.tsx      ← imports all overlay.register, builds hash router, listens for NAVIGATE/PAYLOAD
@@ -60,7 +60,8 @@ src/features/sub-window/
 ├── Shell.tsx     ← layout wrapper (header, close btn, backdrop)
 ├── pages/
 │   └── overlay-page.tsx  ← renders registered component inside Shell
-└── ipc/          ← centralized IPC handlers (see above)
+└── assets/
+    └── styles.css        ← Tailwind imports + @source directives
 ```
 
 Adding a new overlay feature = create `overlay.register.ts` + add import in `main.tsx`. Zero ViewController coupling.
@@ -120,13 +121,14 @@ this.invokeHandlers = {
 
 ## Phase 1 — Foundation
 
-1. Create `src/features/sub-window/` with:
+1. Create `src/renderer/sub-window/` with:
    - `index.html` — shell
    - `main.tsx` — React root + hash router, imports all `overlay.register.ts`
    - `routes.tsx` — builds routes from registry entries
    - `registry.ts` — register/getRegistered API
    - `Shell.tsx` — shared overlay chrome (backdrop, close btn)
    - `pages/overlay-page.tsx` — renders registered component inside Shell
+   - `assets/styles.css` — Tailwind imports + @source directives
 2. Add `vite.sub-window.renderer.config.ts`
 3. Register in `forge.config.ts` renderer array
 4. Create/reuse preload script for sub_window
@@ -192,7 +194,7 @@ After `close()`:
 
 With `root: "src/features/sub-window"` in the Vite config, Tailwind CSS v4's automatic content scanner only scanned files **inside** that directory. Overlay components at `src/features/spotlight/`, `src/features/vault/`, etc. were outside the root, so their Tailwind classes (e.g., `animate-fade-in` in Spotlight) were omitted from the built CSS. Built CSS was 13.6 kB vs the expected ~67 kB.
 
-**Fix:** Added `@source` directives in `src/features/sub-window/assets/styles.css` pointing to all 5 overlay directories, telling Tailwind to scan them explicitly:
+**Fix:** Added `@source` directives in `src/renderer/sub-window/assets/styles.css` pointing to all 5 overlay directories, telling Tailwind to scan them explicitly:
 ```css
 @source "../../spotlight/";
 @source "../../vault/";
@@ -223,9 +225,9 @@ With `root: "src/features/sub-window"` in the Vite config, Tailwind CSS v4's aut
 - `src/features/tabGroup/overlay.register.ts`
 
 ### Modified files
-- `src/core/controller/viewController.ts` — imports from `sub-window/ipc` instead of individual route-init files; removed `spotlightController` field
-- `src/features/sub-window/main.tsx` — uses `SUB_WINDOW_EMIT` constants; re-registers `NAVIGATE`/`PAYLOAD` listeners
-- `src/features/sub-window/pages/overlay-page.tsx` — uses `SUB_WINDOW_RENDERER_EVENT.CLOSE` constant
+- `src/main/core/controller/viewController.ts` — imports from `sub-window/ipc` instead of individual route-init files; removed `spotlightController` field
+- `src/renderer/sub-window/main.tsx` — uses `SUB_WINDOW_EMIT` constants; re-registers `NAVIGATE`/`PAYLOAD` listeners
+- `src/renderer/sub-window/pages/overlay-page.tsx` — uses `SUB_WINDOW_RENDERER_EVENT.CLOSE` constant
 - `src/features/sub-window/service/index.ts` — uses IPC constants instead of hardcoded strings
 - `src/shared/constants/ipc/sub-window.ts` — added `SUB_WINDOW_INVOKE.RESOLVE`, `SUB_WINDOW_RENDERER_EVENT.RESOLVE`
 - `src/features/vault/overlay/App.tsx` — sessionStorage + SUB_WINDOW_RESOLVE pattern
@@ -233,7 +235,7 @@ With `root: "src/features/sub-window"` in the Vite config, Tailwind CSS v4's aut
 - `src/features/userscript/overlay/App.tsx` — sessionStorage + SUB_WINDOW_RESOLVE pattern
 - `src/features/spotlight/overlay/App.tsx` — sessionStorage for open payload, no SPOTLIGHT_OPEN listener
 - `src/features/spotlight/index.ts` — removed `export * from "./route-init"`
-- `src/core/controller/tabGroup/tabGroupRoute.ts` — removed `TabGroupRoute` export, kept `tabGroupController`
+- `src/features/tabGroup/controllers/index.ts` — removed `TabGroupRoute` export, kept `tabGroupController`
 - `src/features/tabGroup/controller/index.ts` — cleared (overlay barrel)
 - `src/features/tabGroup/service/index.ts` — cleared (overlay barrel)
 
@@ -248,5 +250,5 @@ With `root: "src/features/sub-window"` in the Vite config, Tailwind CSS v4's aut
 ### Phase 5 changes
 - `src/features/spotlight/overlay/App.tsx` — removed Cmd+K keydown handler (eliminates double-fire race with ApplicationMenu accelerator)
 - `src/features/sub-window/service/index.ts` — `close()` now destroys webContents, nullifies `this.view`/`this.readyPromise`; removed `openDevTools()` call
-- `src/features/sub-window/assets/styles.css` — added `@source` directives for all 5 overlay directories
+- `src/renderer/sub-window/assets/styles.css` — added `@source` directives for all 5 overlay directories
 - `scripts/build-renderers.mjs` — replaced old renderer entries with `sub_window`

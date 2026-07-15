@@ -1,5 +1,5 @@
 import { BrowserWindow } from "electron";
-import { appDb } from "~/core/stores";
+import { appDb } from "~/main/core/stores";
 
 export async function handleOpenInTab(args: any[]): Promise<any> {
   const [url, options] = args;

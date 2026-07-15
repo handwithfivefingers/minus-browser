@@ -1,9 +1,9 @@
 import clsx from "clsx";
 import { useFieldArray, useFormContext } from "react-hook-form";
-import { Button } from "~/features/ui/components";
-import FormControl from "../components/formControl";
-import Input from "../components/input";
-import Select from "../components/select";
+import { Button } from "~/renderer/main-window/src/components";
+import FormControl from "~/renderer/sub-window/components/formControl";
+import Input from "~/renderer/sub-window/components/input";
+import Select from "~/renderer/sub-window/components/select";
 import type { UserScriptSchema } from "../schema/userscript";
 import Editor from "react-simple-code-editor";
 import Prism from "prismjs";

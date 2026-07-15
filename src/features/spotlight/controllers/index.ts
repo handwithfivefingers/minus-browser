@@ -1,7 +1,7 @@
 import { BrowserWindow } from "electron";
 import { SpotlightService } from "../service";
 import { Tab } from "~/features/tabs/models/tab";
-import { IHistoryEntry } from "~/core/controller/history";
+import { IHistoryEntry } from "~/main/core/controller/history";
 
 export class SpotlightController {
   private service = new SpotlightService();

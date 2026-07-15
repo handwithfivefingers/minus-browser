@@ -58,21 +58,21 @@ Clear errors on successful navigation (in `did-navigate` for non-error status co
 | `HTTP_4xx` | This page isn't working | HTTP 404 Not Found |
 | `HTTP_5xx` | This page isn't working | HTTP 500 Internal Server Error |
 
-### 3. `src/features/ui/interfaces/tab.d.ts` — Mirror error field
+### 3. `src/renderer/main-window/src/interfaces/tab.d.ts` — Mirror error field
 
 Add to renderer-side `Tab` class:
 ```typescript
 error?: { code: string; description: string; url: string; httpResponseCode?: number; isCertError?: boolean } | null;
 ```
 
-### 4. `src/features/ui/pages/customApp/index.tsx` — Show error components
+### 4. `src/renderer/main-window/src/pages/customApp/index.tsx` — Show error components
 
 In `CustomApp`:
 - When `tab?.error` is truthy, render `<TabErrorPage>` instead of `<WebViewInstance>`
 - On retry: clear error in store → call `handleSearch(url)` to re-navigate
 - Error updates arrive via existing `subscribeTab` / `TAB_INFORMATION_UPDATED` mechanism
 
-### 5. NEW: `src/features/ui/components/tab/TabErrorPage.tsx`
+### 5. NEW: `src/renderer/main-window/src/components/tab/TabErrorPage.tsx`
 
 Create React component:
 - Error icon (from `@tabler/icons-react`, e.g. `IconPlayerX`, `IconCloudOff`)
