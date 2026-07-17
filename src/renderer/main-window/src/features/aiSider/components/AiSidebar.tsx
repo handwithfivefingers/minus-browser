@@ -65,7 +65,7 @@ const AiSidebar = () => {
     <div
       ref={sidebarRef}
       className={clsx(
-        "shrink-0 flex flex-col bg-white transition-all duration-200 overflow-hidden h-full",
+        "shrink-0 flex flex-col bg-white dark:bg-slate-800 transition-all duration-200 overflow-hidden h-full",
         styles.sidebar,
         {
           "w-0 opacity-0": !isOpen,
@@ -94,14 +94,14 @@ const AiSidebar = () => {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 shrink-0">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-slate-700 shrink-0">
         <div className="flex gap-2 items-center text-sm font-semibold text-indigo-500">
           <IconBrain size={16} />
           <span>AI Sidebar</span>
         </div>
         <button
           onClick={close}
-          className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 cursor-pointer transition-colors"
+          className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer transition-colors"
           title="Close AI sidebar"
         >
           <IconX size={16} />
@@ -109,7 +109,7 @@ const AiSidebar = () => {
       </div>
 
       {/* Mode tabs */}
-      <div className="flex border-b border-slate-200 shrink-0">
+      <div className="flex border-b border-slate-200 dark:border-slate-700 shrink-0">
         {MODE_TABS.map((tab) => (
           <button
             key={tab.key}
@@ -117,8 +117,8 @@ const AiSidebar = () => {
             className={clsx(
               "flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium cursor-pointer transition-colors",
               {
-                "text-indigo-600 border-b-2 border-indigo-500 bg-indigo-50/50": activeMode === tab.key,
-                "text-slate-500 hover:text-slate-700 hover:bg-slate-50": activeMode !== tab.key,
+                "text-indigo-600 border-b-2 border-indigo-500 bg-indigo-50/50 dark:text-indigo-400 dark:border-indigo-400 dark:bg-indigo-900/20": activeMode === tab.key,
+                "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700": activeMode !== tab.key,
               },
             )}
             title={tab.label}
@@ -130,15 +130,15 @@ const AiSidebar = () => {
       </div>
 
       {/* Language selector */}
-      <div className="flex items-center justify-between px-3 py-1 border-b border-slate-100 shrink-0">
+      <div className="flex items-center justify-between px-3 py-1 border-b border-slate-100 dark:border-slate-700 shrink-0">
         <div className="flex items-center gap-1.5">
-          <IconLanguage size={12} className="text-slate-400" />
-          <span className="text-[10px] text-slate-500">Language</span>
+          <IconLanguage size={12} className="text-slate-400 dark:text-slate-500" />
+          <span className="text-[10px] text-slate-500 dark:text-slate-400">Language</span>
         </div>
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="text-[10px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-slate-600 outline-none focus:border-indigo-300"
+          className="text-[10px] border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 outline-none focus:border-indigo-300"
         >
           {LANGUAGE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>

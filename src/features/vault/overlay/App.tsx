@@ -99,274 +99,131 @@ const App = () => {
     setShowPassword(false);
   };
 
-  const inputStyle: React.CSSProperties = {
-    // border: "1px solid #cbd5e1",
-    // borderRadius: "8px",
-    padding: "8px",
-    fontSize: "12px",
-    width: "100%",
-    outline: "none",
-    // background: "#fff",
-  };
-
   return (
     <div
-      className="w-200 h-[80vh]overflow-hidden rounded grid text-white"
+      className="w-200 h-[80vh]overflow-hidden rounded grid text-slate-800 dark:text-white"
       style={{
         gridTemplateColumns: "300px 1fr",
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div
-        style={{
-          borderRight: "1px solid #e2e8f0",
-          padding: "12px",
-          overflow: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: "8px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
+      <div className="border-r border-slate-200 dark:border-slate-700 p-3 overflow-auto flex flex-col gap-2">
+        <div className="flex items-center justify-between">
           <button
             type="button"
-            className="border border-slate-600 bg-[#0f172a] text-white hover:bg-slate-600 transition-colors"
+            className="border border-slate-600 bg-slate-900 dark:bg-slate-700 text-white hover:bg-slate-600 dark:hover:bg-slate-600 transition-colors h-7 px-2.5 rounded-lg cursor-pointer text-xs"
             onClick={createNew}
-            style={{
-              height: "28px",
-              padding: "0 10px",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "12px",
-            }}
           >
             + New
           </button>
         </div>
 
         {items.length === 0 && (
-          <div style={{ fontSize: "12px", color: "#94a3b8", padding: "4px 0" }}>No credentials yet.</div>
+          <div className="text-xs text-slate-400 dark:text-slate-500 py-1">No credentials yet.</div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+        <div className="flex flex-col gap-1.5">
           {items.map((item) => (
             <button
               type="button"
               key={item.id}
               onClick={() => setSelectedId(item.id)}
-              className={clsx("border border-white/50", {
-                ["bg-slate-800 text-white"]: selectedId === item.id,
-                ["bg-white text-slate-800"]: selectedId !== item.id,
+              className={clsx("border border-white/50 dark:border-slate-600 rounded-lg text-left p-2 cursor-pointer", {
+                ["bg-slate-800 dark:bg-slate-700 text-white"]: selectedId === item.id,
+                ["bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"]: selectedId !== item.id,
               })}
-              style={{
-                borderRadius: "8px",
-                // background: selectedId === item.id ? "#e2e8f0" : "#fff",
-                textAlign: "left",
-                padding: "8px 10px",
-                cursor: "pointer",
-              }}
             >
-              <div className="font-medium text-sm ">{item.site || "new site"}</div>
+              <div className="font-medium text-sm">{item.site || "new site"}</div>
               <div className="font-light text-xs">{item.username || "—"}</div>
             </button>
           ))}
         </div>
       </div>
 
-      <div
-        style={{
-          padding: "16px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "10px",
-          overflow: "auto",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ fontWeight: 600, fontSize: "14px" }}>
+      <div className="p-4 flex flex-col gap-2.5 overflow-auto">
+        <div className="flex justify-between items-center">
+          <div className="font-semibold text-sm">
             {selected ? "Edit Credential" : "Select a credential"}
           </div>
         </div>
 
         {selected ? (
           <>
-            <label
-              className="text-white font-medium text-xs"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
-              }}
-            >
+            <label className="text-slate-800 dark:text-white font-medium text-xs flex flex-col gap-1">
               <span>Domain</span>
               <input
                 value={selected.site}
-                className="text-white bg-white/5 rounded-md border border-slate-400"
+                className="text-slate-800 dark:text-white bg-white dark:bg-white/5 rounded-md border border-slate-300 dark:border-slate-400 px-2 py-1.5 text-xs outline-none"
                 onChange={(e) => setSelectedField("site", e.target.value)}
                 placeholder="example.com"
-                style={inputStyle}
               />
             </label>
 
-            <label
-              className="text-white font-medium text-xs"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
-              }}
-            >
+            <label className="text-slate-800 dark:text-white font-medium text-xs flex flex-col gap-1">
               <span>Email / Username</span>
               <input
-                className="text-white bg-white/5 rounded-md border border-slate-400"
+                className="text-slate-800 dark:text-white bg-white dark:bg-white/5 rounded-md border border-slate-300 dark:border-slate-400 px-2 py-1.5 text-xs outline-none"
                 value={selected.username}
                 onChange={(e) => setSelectedField("username", e.target.value)}
                 placeholder="user@example.com"
-                style={inputStyle}
               />
             </label>
 
-            <label
-              className="text-white font-medium text-xs"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
-              }}
-            >
+            <label className="text-slate-800 dark:text-white font-medium text-xs flex flex-col gap-1">
               <span>Password</span>
-              <div style={{ position: "relative" }}>
+              <div className="relative">
                 <input
-                  className="text-white bg-white/5 rounded-md border border-slate-400"
+                  className="text-slate-800 dark:text-white bg-white dark:bg-white/5 rounded-md border border-slate-300 dark:border-slate-400 px-2 py-1.5 text-xs outline-none w-full pr-[60px]"
                   type={showPassword ? "text" : "password"}
                   value={selected.password}
                   onChange={(e) => setSelectedField("password", e.target.value)}
                   placeholder="••••••••"
-                  style={{ ...inputStyle, paddingRight: "60px" }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  style={{
-                    position: "absolute",
-                    right: "8px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    border: "none",
-                    background: "none",
-                    cursor: "pointer",
-                    fontSize: "11px",
-                    color: "#64748b",
-                    padding: "2px 4px",
-                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 border-none bg-none cursor-pointer text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
             </label>
 
-            <label
-              className="text-white"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 500,
-                }}
-              >
-                Notes
-              </span>
+            <label className="text-slate-800 dark:text-white flex flex-col gap-1">
+              <span className="text-xs font-medium">Notes</span>
               <textarea
-                className="text-white bg-white/5 rounded-md border border-slate-400"
+                className="text-slate-800 dark:text-white bg-white dark:bg-white/5 rounded-md border border-slate-300 dark:border-slate-400 px-2 py-1.5 text-xs outline-none min-h-[90px] resize-y"
                 value={selected.notes ?? ""}
                 onChange={(e) => setSelectedField("notes", e.target.value)}
                 placeholder="Optional notes…"
-                style={{
-                  ...inputStyle,
-                  minHeight: "90px",
-                  resize: "vertical",
-                }}
               />
             </label>
           </>
         ) : (
-          <div style={{ color: "#94a3b8", fontSize: "13px" }}>Pick a credential from the list or create a new one.</div>
+          <div className="text-xs text-slate-400 dark:text-slate-500">Pick a credential from the list or create a new one.</div>
         )}
 
-        <div
-          style={{
-            marginTop: "auto",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            paddingTop: "8px",
-            borderTop: "1px solid #f1f5f9",
-          }}
-        >
+        <div className="mt-auto flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700">
           <button
             type="button"
             onClick={removeSelected}
             disabled={!selected}
-            style={{
-              height: "30px",
-              padding: "0 12px",
-              borderRadius: "8px",
-              border: "1px solid #fecaca",
-              background: selected ? "#fee2e2" : "#f8fafc",
-              color: selected ? "#b91c1c" : "#cbd5e1",
-              cursor: selected ? "pointer" : "not-allowed",
-              fontSize: "12px",
-            }}
+            className="h-[30px] px-3 rounded-lg border text-xs disabled:cursor-not-allowed border-red-200 dark:border-red-800 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-300 dark:disabled:text-slate-600"
           >
             Delete
           </button>
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={handleCancel}
-              style={{
-                height: "30px",
-                padding: "0 12px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                background: "#e2e8f0",
-                color: "#334155",
-                cursor: "pointer",
-                fontSize: "12px",
-              }}
+              className="h-[30px] px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer text-xs"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSave}
-              style={{
-                height: "30px",
-                padding: "0 12px",
-                borderRadius: "8px",
-                border: "1px solid transparent",
-                background: "#4f46e5",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: "12px",
-              }}
+              className="h-[30px] px-3 rounded-lg border border-transparent bg-indigo-600 text-white cursor-pointer text-xs hover:bg-indigo-500"
             >
               Save
             </button>

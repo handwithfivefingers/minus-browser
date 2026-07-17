@@ -17,8 +17,8 @@ interface TabErrorPageProps {
     httpResponseCode?: number;
     isCertError?: boolean;
   };
-  onRetry: () => void;
-  onGoHome: () => void;
+  onRetry?: () => void;
+  onGoHome?: () => void;
 }
 
 const getErrorTitle = (code: string): string => {

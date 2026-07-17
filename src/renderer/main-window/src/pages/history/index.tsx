@@ -14,8 +14,8 @@ interface IHistoryEntry {
 }
 
 const CLASSES = {
-  BASIC: "bg-slate-50 w-full h-full p-6",
-  FLOATING: "bg-slate-50 w-full h-full rounded-xl p-6",
+  BASIC: "bg-slate-50 dark:bg-slate-950 w-full h-full p-4",
+  FLOATING: "bg-slate-50 dark:bg-slate-950 w-full h-full rounded-xl p-4",
 };
 
 function formatRelativeTime(ts: number): string {
@@ -99,38 +99,38 @@ const History = () => {
   const groupOrder = ["Today", "Yesterday", "Last 7 Days", "Older"];
 
   return (
-    <div className="relative bg-slate-800 h-full w-full">
+    <div className="relative bg-slate-100 dark:bg-slate-950 h-full w-full">
       <div className={CLASSES[layout as keyof typeof CLASSES]}>
-        <div className="h-full rounded-xl border border-slate-200 bg-slate-100 flex flex-col overflow-hidden">
-          <div className="flex items-center gap-3 p-4 border-b border-slate-200 bg-white shrink-0">
-            <IconHistory size={20} className="text-slate-600" />
-            <h1 className="text-lg font-semibold text-slate-800 flex-1">History</h1>
+        <div className="h-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 flex flex-col overflow-hidden">
+          <div className="flex items-center gap-3 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
+            <IconHistory size={20} className="text-slate-600 dark:text-slate-400" />
+            <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex-1">History</h1>
             <div className="relative max-w-xs w-full">
-              <IconSearch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <IconSearch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <input
                 ref={inputRef}
                 type="text"
                 placeholder="Search history..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg border border-slate-300 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
+                className="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 dark:text-slate-200"
               />
               {search && (
-                <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer">
+                <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer">
                   <IconX size={14} />
                 </button>
               )}
             </div>
             <button
               onClick={loadHistory}
-              className="text-sm text-slate-600 hover:text-slate-800 flex items-center gap-1 cursor-pointer px-2 py-1 rounded hover:bg-slate-200"
+              className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 cursor-pointer px-2 py-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700"
             >
               <IconRefresh size={14} />
             </button>
             {entries.length > 0 && (
               <button
                 onClick={clearAll}
-                className="text-sm text-red-600 hover:text-red-700 flex items-center gap-1 cursor-pointer px-2 py-1 rounded hover:bg-red-50"
+                className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1 cursor-pointer px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
               >
                 <IconTrash size={14} />
                 Clear All
@@ -138,9 +138,9 @@ const History = () => {
             )}
           </div>
 
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 overflow-auto p-4 scrollbar">
             {entries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
+              <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 gap-3">
                 <IconClock size={48} />
                 <p className="text-lg font-medium">No history yet</p>
                 <p className="text-sm">Start browsing to see your history here</p>
@@ -151,30 +151,30 @@ const History = () => {
                 if (!items || items.length === 0) return null;
                 return (
                   <div key={group} className="mb-6">
-                    <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 px-1">{group}</h2>
+                    <h2 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2 px-1">{group}</h2>
                     <div className="space-y-0.5">
                       {items.map((entry) => (
                         <div
                           key={entry.id}
-                          className="group flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white cursor-pointer transition-colors"
+                          className="group flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 cursor-pointer transition-colors"
                           onClick={() => openUrl(entry.url)}
                         >
                           {entry.favicon ? (
                             <img src={entry.favicon} alt="" className="w-5 h-5 rounded shrink-0" />
                           ) : (
-                            <div className="w-5 h-5 rounded bg-slate-300 shrink-0 flex items-center justify-center text-xs text-slate-500">
+                            <div className="w-5 h-5 rounded bg-slate-300 dark:bg-slate-600 shrink-0 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
                               {entry.title.charAt(0).toUpperCase()}
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-slate-800 truncate">{entry.title}</div>
-                            <div className="text-xs text-slate-400 truncate">{entry.url}</div>
+                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{entry.title}</div>
+                            <div className="text-xs text-slate-400 dark:text-slate-500 truncate">{entry.url}</div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {entry.visitCount > 1 && (
-                              <span className="text-xs text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded-full">{entry.visitCount}</span>
+                              <span className="text-xs text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">{entry.visitCount}</span>
                             )}
-                            <span className="text-xs text-slate-400 hidden sm:inline">{formatRelativeTime(entry.timestamp)}</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">{formatRelativeTime(entry.timestamp)}</span>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

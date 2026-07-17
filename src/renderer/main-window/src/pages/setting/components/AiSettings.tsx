@@ -71,14 +71,14 @@ const AiSettings = () => {
   return (
     <div className="space-y-4">
       {/* Model selection */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-center gap-2 mb-4">
-          <IconBrain size={18} className="text-slate-700" />
-          <h2 className="text-lg font-semibold text-slate-900">AI Model</h2>
+          <IconBrain size={18} className="text-slate-700 dark:text-slate-300" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">AI Model</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-600">Default Model</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Default Model</span>
             <div className="relative">
               <select
                 value={models.length > 0 && models.find((m) => m.id === defaultModel) ? defaultModel : ""}
@@ -88,7 +88,7 @@ const AiSettings = () => {
                   if (e.target.value) setDefaultModel(e.target.value);
                 }}
                 disabled={modelsLoading}
-                className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm w-full disabled:opacity-50 disabled:cursor-wait"
+                className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200 w-full disabled:opacity-50 disabled:cursor-wait"
               >
                 {modelsLoading && <option value="">Loading models...</option>}
                 {modelsError && !modelsLoading && <option value="">Failed to load — click to retry</option>}
@@ -120,7 +120,7 @@ const AiSettings = () => {
                     setModelsFetched(false);
                     loadModels();
                   }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-indigo-500 cursor-pointer transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 dark:text-slate-500 hover:text-indigo-500 cursor-pointer transition-colors"
                   title="Refresh models"
                 >
                   <IconRefresh size={14} />
@@ -130,11 +130,11 @@ const AiSettings = () => {
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-600">Default Mode</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Default Mode</span>
             <select
               value={defaultMode}
               onChange={(e) => setDefaultMode(e.target.value as DefaultMode)}
-              className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm"
+              className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200"
             >
               {MODES.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -147,18 +147,18 @@ const AiSettings = () => {
       </div>
 
       {/* Provider & API Key */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-center gap-2 mb-4">
-          <IconCloud size={18} className="text-slate-700" />
-          <h2 className="text-lg font-semibold text-slate-900">Provider & API Key</h2>
+          <IconCloud size={18} className="text-slate-700 dark:text-slate-300" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Provider & API Key</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-600">Provider</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Provider</span>
             <select
               value={provider}
               onChange={(e) => setProvider(e.target.value)}
-              className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm"
+              className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200"
             >
               {PROVIDERS.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -169,7 +169,7 @@ const AiSettings = () => {
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-600">API Key</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">API Key</span>
             <input
               type="password"
               value={apiKey}
@@ -181,19 +181,19 @@ const AiSettings = () => {
                     ? "sk-..."
                     : "Enter your API key"
               }
-              className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm font-mono"
+              className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200 font-mono"
             />
           </label>
 
           {provider === "custom" && (
             <label className="flex flex-col gap-1.5 md:col-span-2">
-              <span className="text-sm text-slate-600">Base URL</span>
+              <span className="text-sm text-slate-600 dark:text-slate-400">Base URL</span>
               <input
                 type="text"
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
                 placeholder="https://api.example.com/v1"
-                className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm font-mono"
+                className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200 font-mono"
               />
             </label>
           )}
@@ -201,18 +201,18 @@ const AiSettings = () => {
       </div>
 
       {/* Language */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-center gap-2 mb-4">
-          <IconLanguage size={18} className="text-slate-700" />
-          <h2 className="text-lg font-semibold text-slate-900">Default Language</h2>
+          <IconLanguage size={18} className="text-slate-700 dark:text-slate-300" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Default Language</h2>
         </div>
         <div className="max-w-60">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-600">Response Language</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Response Language</span>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm"
+              className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200"
             >
               {LANGUAGE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -225,14 +225,14 @@ const AiSettings = () => {
       </div>
 
       {/* Generation params */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-center gap-2 mb-4">
-          <IconRobot size={18} className="text-slate-700" />
-          <h2 className="text-lg font-semibold text-slate-900">Generation Parameters</h2>
+          <IconRobot size={18} className="text-slate-700 dark:text-slate-300" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Generation Parameters</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-600">
+            <span className="text-sm text-slate-600 dark:text-slate-400">
               Temperature: <strong>{temperature.toFixed(1)}</strong>
             </span>
             <input
@@ -244,14 +244,14 @@ const AiSettings = () => {
               onChange={(e) => setTemperature(parseFloat(e.target.value))}
               className="w-full accent-indigo-500"
             />
-            <div className="flex justify-between text-[10px] text-slate-400">
+            <div className="flex justify-between text-[10px] text-slate-400 dark:text-slate-500">
               <span>Precise (0)</span>
               <span>Creative (2)</span>
             </div>
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-600">Max Tokens</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Max Tokens</span>
             <input
               type="number"
               min={256}
@@ -259,21 +259,21 @@ const AiSettings = () => {
               step={256}
               value={maxTokens}
               onChange={(e) => setMaxTokens(Math.max(256, parseInt(e.target.value) || 4096))}
-              className="h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm"
+              className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200"
             />
           </label>
         </div>
       </div>
 
       {/* Behavior */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-center gap-2 mb-4">
-          <IconRobot size={18} className="text-slate-700" />
-          <h2 className="text-lg font-semibold text-slate-900">Behavior</h2>
+          <IconRobot size={18} className="text-slate-700 dark:text-slate-300" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Behavior</h2>
         </div>
-        <div className="w-60 bg-slate-100 rounded flex flex-col gap-2 p-2 border border-slate-200">
+        <div className="w-60 bg-slate-100 dark:bg-slate-800/50 rounded flex flex-col gap-2 p-2 border border-slate-200 dark:border-slate-700">
           <div className="flex gap-2 items-center">
-            <label className="text-slate-600 flex-1 text-sm">Show floating AI button on pages</label>
+            <label className="text-slate-600 dark:text-slate-400 flex-1 text-sm">Show floating AI button on pages</label>
             <Switch
               title="Show floating AI button"
               value={showFloatingButton}
@@ -287,7 +287,7 @@ const AiSettings = () => {
         <button
           type="button"
           onClick={reset}
-          className="h-10 px-4 rounded-lg border border-slate-300 text-slate-600 text-sm hover:bg-slate-50 cursor-pointer"
+          className="h-10 px-4 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
         >
           Reset to Defaults
         </button>

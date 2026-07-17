@@ -1,26 +1,34 @@
 import { useEffect, useLayoutEffect } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import { Outlet, useNavigate } from "react-router";
-import { IUserInterface } from "~/shared/types";
+import { Outlet, useNavigate, useParams } from "react-router";
 import { IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
-import { AiSidebar, SideMenu, NotificationContainer, UpdateBanner } from "../components";
-
+import { IUserInterface } from "~/shared/types";
+import { AiSidebar, NotificationContainer, SideMenu, UpdateBanner } from "../components";
+import { useWebNotificationStore } from "~/shared/store/useNotificationStore";
+import Header from "../components/header";
 import { useAiSidebarStore } from "../features/aiSider/stores/useAiSidebarStore";
+import { useTabEvents } from "../hooks/useTabEvents";
+import { useTranslation } from "../hooks/useTranslation";
+import { useUserScript } from "../hooks/useUserScript";
+import { useVault } from "../hooks/useVault";
 import { tabServices } from "../services/tab.service";
 import { useMinusThemeStore } from "../stores/useMinusTheme";
 import { useTabStore } from "../stores/useTabStore";
 import { setupUpdateListener } from "../stores/useUpdateStore";
-import { useWebNotificationStore } from "~/shared/store/useNotificationStore";
 
 const LAYOUT_CLASS = {
-  BASIC: "flex h-screen overflow-hidden bg-slate-800",
-  FLOATING: "flex h-screen overflow-hidden bg-slate-800 p-1 gap-1",
+  BASIC: "flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950",
+  FLOATING: "flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 p-1 gap-1",
 };
 const Layout = () => {
   const layout = useMinusThemeStore().layout || "FLOATING";
   const { setTabs } = useTabStore();
   const navigate = useNavigate();
-
+  const { customApp: tabId } = useParams();
+  const tabEvent = useTabEvents(tabId || "");
+  const translate = useTranslation(tabEvent?.tab);
+  const vault = useVault(tabEvent?.tab);
+  const userScript = useUserScript(tabEvent?.tab);
   useEffect(() => {
     let timeout = setInterval(async () => {
       const tabs = await tabServices.getTabs();
@@ -96,13 +104,33 @@ const Layout = () => {
   return (
     <LayoutSideEffect>
       <div className="flex flex-col h-screen">
+        <Header
+          key={tabId}
+          id={tabId || ""}
+          title={tabEvent?.tab?.title}
+          url={tabEvent?.tab?.url}
+          onSearch={tabEvent?.handleSearch}
+          onBackWard={tabEvent?.onBackWard}
+          onToggleDevTools={tabEvent?.onToggleDevTools}
+          onReload={tabEvent?.onReload}
+          onRequestPIP={tabEvent?.onRequestPIP}
+          onOpenVaultManager={vault.onOpenVaultManager}
+          onOpenUserscriptManager={userScript?.onOpenUserscriptManager}
+          onTranslatePage={translate?.onTranslatePage}
+          onOpenTranslateManager={translate?.onOpenTranslateManager}
+          onOpenSpotlight={(query) => window.api.EMIT("SPOTLIGHT_OPEN", { query, activeTabId: tabId })}
+          isLoading={tabEvent?.loading}
+          preventHibernate={tabEvent?.tab?.preventHibernate}
+          onTogglePreventHibernate={() => window.api.INVOKE("TOGGLE_PREVENT_HIBERNATE", { id: tabId })}
+          onCapturePage={() => window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_PAGE)}
+        />
         <NotificationContainer />
         <UpdateBanner />
         <div className={LAYOUT_CLASS[layout as keyof typeof LAYOUT_CLASS]}>
           <SideMenu />
           <div className="h-full overflow-auto w-full">
             <ErrorBoundary fallback={<p>⚠️Something went wrong</p>}>
-              <Outlet />
+              <Outlet context={tabEvent} />
             </ErrorBoundary>
           </div>
           <AiSidebar />

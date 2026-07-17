@@ -101,32 +101,32 @@ export default function SiteInfoOverlay() {
   return (
     <div className="fixed inset-0 z-9999" onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
       <div className="w-80 animate-slide-down" style={popupStyle}>
-        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs shrink-0">
+            <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs shrink-0">
               {hostname.charAt(0).toUpperCase()}
             </div>
-            <span className="text-xs font-semibold text-slate-700 truncate">{hostname}</span>
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{hostname}</span>
             <button
               type="button"
               onClick={handleClose}
-              className="ml-auto text-slate-400 hover:text-slate-600 cursor-pointer bg-transparent border-none p-0.5"
+              className="ml-auto text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer bg-transparent border-none p-0.5"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
 
-          <div className="text-[10px] text-slate-400 mb-2">Permissions</div>
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 mb-2">Permissions</div>
 
           {originStr && permissions && Object.keys(permissions).length > 0 ? (
             <div className="flex flex-col gap-1.5">
               {Object.entries(permissions).map(([perm, decision]) => (
                 <div key={perm} className="flex items-center justify-between text-xs">
-                  <span className="text-slate-600">{getPermissionLabel(perm as PermissionType)}</span>
+                  <span className="text-slate-600 dark:text-slate-400">{getPermissionLabel(perm as PermissionType)}</span>
                   <select
                     value={decision}
                     onChange={(e) => handleToggle(perm as PermissionType, e.target.value as PermissionDecision)}
-                    className="text-xs border border-slate-200 rounded px-1.5 py-0.5 bg-white text-slate-700 cursor-pointer"
+                    className="text-xs border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer"
                   >
                     <option value="grant">Allow</option>
                     <option value="deny">Block</option>
@@ -136,14 +136,14 @@ export default function SiteInfoOverlay() {
               ))}
             </div>
           ) : (
-            <div className="text-xs text-slate-400">No custom permissions set</div>
+            <div className="text-xs text-slate-400 dark:text-slate-500">No custom permissions set</div>
           )}
 
-          <div className="mt-3 pt-2 border-t border-slate-100 flex gap-2">
+          <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700 flex gap-2">
             <button
               type="button"
               onClick={handleResetAll}
-              className="text-[10px] text-red-500 hover:text-red-700 cursor-pointer bg-transparent border-none"
+              className="text-[10px] text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 cursor-pointer bg-transparent border-none"
             >
               Reset all permissions
             </button>

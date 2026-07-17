@@ -11,7 +11,6 @@ import { SearchTabPlugin } from "~/features/search/plugin";
 import { TabPluginManager } from "~/features/tabPluginManager";
 import { TranslateTabPlugin } from "~/features/translate/plugin";
 import { AiTabPlugin } from "~/renderer/main-window/src/features/aiSider/plugin";
-// import { UserScriptTabPlugin } from "~/features/userscript/plugin";
 import { VaultTabPlugin } from "~/features/vault";
 import { ITab, IUserInterface } from "~/shared/types";
 import { TabPermission } from "./permission";
@@ -130,7 +129,7 @@ export class Tab extends TabPermission {
     this.createContextMenu();
     this.requestPermissions(this._webContents);
     this.registerCommonEvent();
-    this.registerMediaEvents(this._webContents, this.peristInformationToRenderer.bind(this));
+    this.registerMediaEvents(this._webContents, this.persistInformationToRenderer.bind(this));
     this.isHibernated = false;
     this.pluginReady ??= this.registerPlugin();
   }
@@ -152,7 +151,7 @@ export class Tab extends TabPermission {
     this._view = null;
     this._webContents = null;
     this.resetMediaStates();
-    this.peristInformationToRenderer({
+    this.persistInformationToRenderer({
       audible: false,
       isUsingCamera: false,
       isUsingMicrophone: false,
@@ -320,7 +319,7 @@ export class Tab extends TabPermission {
   clearError() {
     if (!this.error) return;
     this.error = null;
-    this.peristInformationToRenderer({ error: null });
+    this.persistInformationToRenderer({ error: null });
   }
 
   handleNavigationError(errorCode: string, errorDescription: string, url: string, httpResponseCode?: number) {
@@ -331,8 +330,7 @@ export class Tab extends TabPermission {
       httpResponseCode,
     };
     this.error = tabError;
-    this.loadErrorPage(tabError);
-    this.peristInformationToRenderer({ error: tabError });
+    this.persistInformationToRenderer({ error: tabError });
   }
 
   private formatErrorDescription(errorCode: string, _errorDescription: string): string {
@@ -399,7 +397,7 @@ export class Tab extends TabPermission {
 
   updateAudioState({ audible }: WebContentsAudioStateChangedEventParams) {
     this.audible = audible;
-    this.peristInformationToRenderer({ audible });
+    this.persistInformationToRenderer({ audible });
   }
 
   updateFavicon(event: any, favicons: string[]) {
@@ -412,13 +410,13 @@ export class Tab extends TabPermission {
     };
     this.updateTitle();
     this.updateUrl(pageUrl);
-    this.peristInformationToRenderer(metaData);
+    this.persistInformationToRenderer(metaData);
     if (pageUrl && pageUrl !== "about:blank") {
       historyController.updateEntryMetadata(pageUrl, undefined, this.favicon);
     }
   }
 
-  peristInformationToRenderer(information: Partial<ITab>) {
+  persistInformationToRenderer(information: Partial<ITab>) {
     const browser = BrowserWindow.getFocusedWindow();
     browser?.webContents?.send(`TAB_INFORMATION_UPDATED:${this.id}`, information);
   }
@@ -427,7 +425,7 @@ export class Tab extends TabPermission {
     if (this._webContents) {
       this.title = this._webContents.getTitle();
     }
-    this.peristInformationToRenderer({ title: this.title });
+    this.persistInformationToRenderer({ title: this.title });
     if (this.url && this.url !== "about:blank") {
       historyController.updateEntryMetadata(this.url, this.title);
     }
@@ -435,7 +433,7 @@ export class Tab extends TabPermission {
 
   async updateUrl(url: string) {
     this.url = url;
-    this.peristInformationToRenderer({ url: this.url });
+    this.persistInformationToRenderer({ url: this.url });
   }
 
   updateTab(tab: Partial<ITab>) {
@@ -459,7 +457,7 @@ export class Tab extends TabPermission {
     if (!this._view) return;
     this.isMuted = !this.isMuted;
     this._view.webContents.setAudioMuted(this.isMuted);
-    this.peristInformationToRenderer({ isMuted: this.isMuted });
+    this.persistInformationToRenderer({ isMuted: this.isMuted });
   }
   onRequestPIP() {
     if (!this.isAlive) return;

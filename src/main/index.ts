@@ -9,6 +9,8 @@ import { createMainWindow, loadAppURL, setupLogging, setupUserAgent, setupWindow
 import { findbarService } from "../features/findbar/service";
 import path from "node:path";
 
+app.commandLine.appendSwitch("disable-blink-features", "AutomationControlled");
+
 Object.assign(console, log.functions);
 
 if (started) app.quit();
@@ -31,9 +33,11 @@ let browser: BrowserWindow | null = null;
 let viewController: ViewController | null = null;
 let isPersistingBeforeQuit = false;
 let didRunBeforeQuit = false;
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock && process.env.NODE_ENV !== "development") {
-  app.quit();
+if (process.env.NODE_ENV !== "development") {
+  const gotTheLock = app.requestSingleInstanceLock();
+  if (!gotTheLock) {
+    app.quit();
+  }
 }
 
 async function flushPersistenceOnQuit() {
@@ -56,9 +60,9 @@ async function createWindow() {
     viewController = new ViewController(win);
     findbarService.init(win);
     await viewController.ready();
-    // if (Notification.isSupported()) {
-    //   new Notification({ title: "Minus Browser", body: "Welcome to Minus Browser!" }).show();
-    // }
+    if (Notification.isSupported()) {
+      new Notification({ title: "Minus Browser", body: "Welcome to Minus Browser!" }).show();
+    }
     const commandController = new CommandController(viewController);
     menuApplication.rebuild(commandController.menuItems);
 

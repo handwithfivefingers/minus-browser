@@ -2,6 +2,9 @@ import { IconBell, IconBellFilled, IconPlus, IconSquare, IconSquareCheck, IconTr
 import clsx from "clsx";
 import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 import { useWebNotificationStore } from "~/shared/store/useNotificationStore";
+import { GravityStarsBackground } from "../../components/gravityStarsBackground";
+// @ts-ignore
+import styles from "./styles.module.css";
 
 interface ITodoItem {
   label: string;
@@ -12,7 +15,7 @@ interface ITodoItem {
 
 const Home = () => {
   return (
-    <div className="relative px-2 bg-slate-800 h-full w-full">
+    <div className="relative px-2 bg-slate-100 dark:bg-slate-950 h-full w-full">
       <TodoHome />
     </div>
   );
@@ -84,29 +87,34 @@ const TodoHome = () => {
   };
 
   const recentNotifications = notifications.slice(0, 5);
-  console.log("recentNotifications", recentNotifications);
   return (
     <div className="flex justify-center h-full items-start-safe py-20 flex-col gap-8 w-full">
-      <div className="flex justify-center w-full gap-8">
+      <GravityStarsBackground className="absolute top-0 left-0 w-full h-full text-indigo-500" />
+      <div className={clsx("flex justify-center w-full gap-8", styles.fadeSection)} style={{ animationDelay: "0.05s" }}>
         <div className="flex flex-col items-center gap-4">
           <div className="flex-1 shrink-0 gap-2 flex">
-            <span className="font-medium text-3xl text-white">{DATE_OUTPUT[new Date().getDay()]}</span>
-            <span className="font-medium text-3xl text-white">
+            <span className="font-medium text-3xl text-slate-900 dark:text-white">
+              {DATE_OUTPUT[new Date().getDay()]}
+            </span>
+            <span className="font-medium text-3xl text-slate-900 dark:text-white">
               {new Date().getDate()}/{new Date().getMonth()}/{new Date().getFullYear()}
             </span>
           </div>
-          <div className="flex-1 shrink-0">
-            <span ref={hourRef} className="font-medium text-8xl text-white" />
-            <span className="font-medium text-8xl text-white">:</span>
-            <span ref={minRef} className="font-medium text-8xl text-white" />
+          <div className={clsx("flex-1 shrink-0", styles.clockFloat)}>
+            <span ref={hourRef} className="font-medium text-8xl text-slate-900 dark:text-white" />
+            <span className="font-medium text-8xl text-slate-900 dark:text-white">:</span>
+            <span ref={minRef} className="font-medium text-8xl text-slate-900 dark:text-white" />
           </div>
         </div>
       </div>
 
-      <div className="flex gap-4 w-full max-w-3xl mx-auto flex-1 overflow-hidden">
+      <div
+        className={clsx("flex gap-4 w-full max-w-3xl mx-auto flex-1 overflow-hidden", styles.fadeSection)}
+        style={{ animationDelay: "0.15s" }}
+      >
         <div className="flex-1 h-full flex gap-2 flex-col">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white w-full">Todos</h2>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white w-full">Todos</h2>
           </div>
           <div className="flex gap-2 flex-col overflow-x-hidden overflow-y-auto scrollbar">
             {todos?.map((item) => {
@@ -124,8 +132,11 @@ const TodoHome = () => {
           </button>
         </div>
 
-        <div className="w-80 h-full flex gap-2 flex-col">
-          <div className="flex items-center gap-2 text-white cursor-pointer">
+        <div
+          className={clsx("w-80 h-full flex gap-2 flex-col", styles.fadeSection)}
+          style={{ animationDelay: "0.25s" }}
+        >
+          <div className="flex items-center gap-2 text-slate-900 dark:text-white cursor-pointer">
             {unreadCount > 0 ? <IconBellFilled size={20} /> : <IconBell size={20} />}
             <h2 className="text-lg font-semibold ">Notifications</h2>
             {unreadCount > 0 && (
@@ -199,7 +210,7 @@ const TodoItem = ({
     };
   }, [todo]);
   return (
-    <div className="flex bg-linear-to-br from-white/10 via-slate-700/10 to-white/5 backdrop-blur-md p-2 px-4 gap-4 rounded-md group relative border border-slate-500/20">
+    <div className="flex bg-linear-to-br from-slate-950 to-slate-500 dark:from-white/10 dark:via-slate-700/10 dark:to-white/5 backdrop-blur-md p-2 px-4 gap-4 rounded-md group relative border border-slate-500/20">
       <span
         className="cursor-pointer text-indigo-500"
         onClick={() => setTodo((prev) => ({ ...prev, checked: !prev.checked }))}

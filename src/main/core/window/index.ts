@@ -42,15 +42,13 @@ export function loadAppURL(browser: BrowserWindow) {
 
 function buildUserAgent(): string {
   const chromeVersion = process.versions.chrome;
-  return `Minus/${app.getVersion()} Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
+  // Minus/${app.getVersion()}
+  return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`;
 }
 
 export function setupUserAgent(browser: BrowserWindow, session: Electron.Session) {
   const userAgent = buildUserAgent();
-  session.webRequest.onBeforeSendHeaders((details, callback) => {
-    details.requestHeaders["User-Agent"] = userAgent;
-    callback({ cancel: false, requestHeaders: details.requestHeaders });
-  });
+  session.setUserAgent(userAgent);
 }
 
 export function setupWindowCrashHandlers(browser: BrowserWindow) {
