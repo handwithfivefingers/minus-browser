@@ -32,13 +32,13 @@ const Modal = ({
   return (
     <div className="fixed inset-0 z-[2000] bg-slate-900/55 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="w-full max-w-3xl max-h-[88vh] overflow-auto rounded-xl bg-white border border-slate-200 shadow-2xl"
+        className="w-full max-w-3xl max-h-[88vh] overflow-auto rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 bg-white px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-          <div className="font-semibold text-slate-900">{title}</div>
+        <div className="sticky top-0 z-10 bg-white dark:bg-slate-800 px-5 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div className="font-semibold text-slate-900 dark:text-slate-100">{title}</div>
           <button
-            className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-slate-300 text-slate-500 hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
             onClick={onClose}
             type="button"
           >
@@ -124,15 +124,15 @@ const VaultSection = () => {
   }, [items, query]);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
       <div className="flex items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
-          <IconShieldLock size={18} className="text-slate-700" />
-          <h2 className="text-lg font-semibold text-slate-900">Password Vault</h2>
+          <IconShieldLock size={18} className="text-slate-700 dark:text-slate-300" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Password Vault</h2>
         </div>
         <button
           type="button"
-          className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 cursor-pointer"
+          className="h-9 px-3 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 dark:hover:bg-slate-200 cursor-pointer"
           onClick={openCreateModal}
         >
           <IconPlus size={15} />
@@ -141,9 +141,9 @@ const VaultSection = () => {
       </div>
 
       <div className="relative mb-3">
-        <IconSearch size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <IconSearch size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
         <input
-          className="w-full h-10 pl-9 pr-3 rounded-lg border border-slate-300 text-sm"
+          className="w-full h-10 pl-9 pr-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200"
           placeholder="Search by domain"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -154,16 +154,16 @@ const VaultSection = () => {
         {filtered.map((item) => (
           <div
             key={item.id}
-            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 flex items-center justify-between gap-3"
+            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2.5 flex items-center justify-between gap-3"
           >
             <div className="min-w-0">
-              <div className="text-sm font-medium text-slate-900 truncate">Domain: {item.site}</div>
-              <div className="text-xs font-light text-black/80 truncate">{item.username}</div>
+              <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">Domain: {item.site}</div>
+              <div className="text-xs font-light text-black/80 dark:text-slate-300 truncate">{item.username}</div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                className="h-8 px-2.5 rounded-md border border-slate-300 text-slate-700 text-xs inline-flex items-center gap-1 hover:bg-white cursor-pointer"
+                className="h-8 px-2.5 rounded-md border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-xs inline-flex items-center gap-1 hover:bg-white dark:hover:bg-slate-700 cursor-pointer"
                 onClick={() => openEditModal(item)}
               >
                 <IconEdit size={14} />
@@ -189,36 +189,36 @@ const VaultSection = () => {
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-600">Domain</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Domain</span>
             <input
-              className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+              className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200"
               placeholder="example.com"
               value={form.site}
               onChange={(event) => setForm((prev) => ({ ...prev, site: event.target.value }))}
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-slate-600">Email / Username</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Email / Username</span>
             <input
-              className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+              className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200"
               placeholder="john@company.com"
               value={form.username}
               onChange={(event) => setForm((prev) => ({ ...prev, username: event.target.value }))}
             />
           </label>
           <label className="flex flex-col gap-1.5 md:col-span-2">
-            <span className="text-sm text-slate-600">Password</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Password</span>
             <input
               type="password"
-              className="h-10 px-3 rounded-lg border border-slate-300 text-sm"
+              className="h-10 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200"
               value={form.password}
               onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
             />
           </label>
           <label className="flex flex-col gap-1.5 md:col-span-2">
-            <span className="text-sm text-slate-600">Notes</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400">Notes</span>
             <textarea
-              className="min-h-[120px] p-3 rounded-lg border border-slate-300 text-sm"
+              className="min-h-[120px] p-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200"
               value={form.notes}
               onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
             />
@@ -228,14 +228,14 @@ const VaultSection = () => {
         <div className="pt-4 flex items-center justify-end gap-2">
           <button
             type="button"
-            className="h-9 px-3 rounded-lg border border-slate-300 text-slate-700 text-sm cursor-pointer"
+            className="h-9 px-3 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm cursor-pointer"
             onClick={() => setModalOpen(false)}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="h-9 px-3 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 cursor-pointer"
+            className="h-9 px-3 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm inline-flex items-center gap-1.5 hover:bg-slate-700 dark:hover:bg-slate-200 cursor-pointer"
             onClick={onSaveVault}
           >
             <IconDeviceFloppy size={14} />

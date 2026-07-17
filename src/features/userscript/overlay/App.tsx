@@ -20,17 +20,8 @@ const Button = ({ onClick, children, style }: { onClick: () => void; children?: 
     <button
       type="button"
       onClick={onClick}
-      style={{
-        height: "30px",
-        padding: "0 10px",
-        borderRadius: "8px",
-        border: "1px solid transparent",
-        background: "#0f172a",
-        color: "#fff",
-        cursor: "pointer",
-        marginBottom: "8px",
-        ...style,
-      }}
+      className="h-[30px] px-2.5 rounded-lg border border-transparent bg-slate-900 dark:bg-slate-700 text-white cursor-pointer mb-2"
+      style={style}
     >
       {children}
     </button>
@@ -148,15 +139,8 @@ const App = () => {
         <div>
           <button
             type="button"
-            className="border border-slate-600 bg-[#0f172a] text-white hover:bg-slate-600 transition-colors"
+            className="border border-slate-600 bg-slate-900 dark:bg-slate-700 text-white hover:bg-slate-600 dark:hover:bg-slate-600 transition-colors h-7 px-2.5 rounded-lg cursor-pointer text-xs"
             onClick={createNew}
-            style={{
-              height: "28px",
-              padding: "0 10px",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "12px",
-            }}
           >
             + New
           </button>
@@ -176,22 +160,15 @@ const App = () => {
                 padding: "8px",
                 cursor: "pointer",
               }}
-              className={clsx("border border-white/50", {
-                ["bg-slate-800 text-white"]: selected?.id !== item.id,
-                ["bg-white text-slate-800"]: selected?.id === item.id,
+              className={clsx("border border-white/50 dark:border-slate-600", {
+                ["bg-slate-800 dark:bg-slate-700 text-white"]: selected?.id !== item.id,
+                ["bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"]: selected?.id === item.id,
               })}
             >
-              <div
-                style={{
-                  fontWeight: 500,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
+              <div className="font-medium truncate">
                 {item.name || "Unnamed Script"}
               </div>
-              <div className="mt-0.5 text-slate-500 text-xs">
+              <div className="mt-0.5 text-slate-500 dark:text-slate-400 text-xs">
                 {item.enabled ? "ON" : "OFF"} &bull; {item.runAt || "document-end"}
               </div>
             </button>
@@ -202,7 +179,7 @@ const App = () => {
       <div className="px-3 flex flex-col h-full gap-2 overflow-auto">
         <FormProvider {...form}>
           <div className="flex justify-between items-center">
-            <div className="font-medium text-white">Edit Script</div>
+            <div className="font-medium text-slate-800 dark:text-white">Edit Script</div>
           </div>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col gap-1 p-2 overflow-hidden">
             {selected ? <UserScriptForm /> : null}

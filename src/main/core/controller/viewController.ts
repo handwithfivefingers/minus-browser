@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Notification, WebContentsView, webContents } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme, Notification, WebContentsView, webContents } from "electron";
 import log from "electron-log";
 import { historyController, HistoryRoute } from "~/main/core/controller/history";
 import { TodoRoute } from "~/main/core/controller/todo";
@@ -152,13 +152,24 @@ export class ViewController {
           historyController.clearAll();
           permissionStore.resetAllPermissions();
           adblocker.clearCache();
-          (["tab", "password", "userscripts", "passwordVault", "translate", "interface", "session", "tabGroups"] as const).forEach((k) => { cacheSystem.delete(k); });
+          (
+            [
+              "tab",
+              "password",
+              "userscripts",
+              "passwordVault",
+              "translate",
+              "interface",
+              "session",
+              "tabGroups",
+            ] as const
+          ).forEach((k) => {
+            cacheSystem.delete(k);
+          });
           return { success: true };
         },
         [IPC_INVOKE_CHANNEL.FORCE_CLEAR_CACHE_HARD_RELOAD]: async (data?: { tabId?: string }) => {
-          const tab = data?.tabId
-            ? this.tabController?.getTabById(data.tabId)
-            : this.tabController?.activeTab;
+          const tab = data?.tabId ? this.tabController?.getTabById(data.tabId) : this.tabController?.activeTab;
           if (tab?.isAlive) {
             tab.clearCache();
             tab.onReload();
@@ -208,6 +219,10 @@ export class ViewController {
         [IPC_EMIT_CHANNEL.NOTIFICATION_TOGGLE_LIST]: () => {
           this.notificationService.toggleList();
         },
+        [IPC_EMIT_CHANNEL.THEME_MODE_CHANGED]: (data: { mode: string }) => {
+          nativeTheme.themeSource = data.mode === "auto" ? "system" : data.mode as "light" | "dark";
+          subWindowService.send(IPC_EMIT_CHANNEL.THEME_MODE_CHANGED, data);
+        },
       };
     } catch (err) {
       console.error("initializeHandlers Error");
@@ -255,7 +270,6 @@ export class ViewController {
       await this.loadUserInterface();
       this.tabController?.setUserInterface(this.userInterface!);
       await adblocker.initializeForSession(browserSession, this.userInterface?.extension?.disabledFilters);
-      this.setupPermissionHandler();
       this.setupDisplayMediaHandler();
       const retentionDays = Number(this.userInterface?.notificationRetentionDays) || 30;
       this.notificationService.init(this.window, retentionDays, (tabId) => {
@@ -661,9 +675,10 @@ export class ViewController {
       subWindowService.ensureOnTop();
     }
     // Notification layer (zIndex=3) always on top of everything
+    this.setupPermissionHandler(view);
     this.notificationService.ensureOnTop();
   }
-  
+
   detachChildView(view: WebContentsView) {
     eventStore.broadcast("viewChanges", undefined);
     this.window.contentView.removeChildView(view);
@@ -750,7 +765,7 @@ export class ViewController {
           const tab = this.findTabByWebContents(wc);
           if (tab) {
             tab.isUsingScreenShare = true;
-            tab.peristInformationToRenderer({ isUsingScreenShare: true });
+            tab.persistInformationToRenderer({ isUsingScreenShare: true });
           }
         }
         const stream = request.frame || undefined;
@@ -760,21 +775,26 @@ export class ViewController {
     );
   }
 
-  private setupPermissionHandler() {
-    browserSession.setPermissionRequestHandler(async (wc, permission, request) => {
+  private setupPermissionHandler(view: WebContentsView) {
+    console.log("Permission handler");
+    view.webContents.session.setPermissionRequestHandler(async (wc, permission, request) => {
+      console.log("permission", permission);
       const permissionType = permission as PermissionType;
-
-      const autoDenyPermissions: PermissionType[] = [
-        "unknown", "fileSystem", "storage-access",
-        "top-level-storage-access", "mediaKeySystem",
-      ];
-      if (autoDenyPermissions.includes(permissionType)) {
-        return request(false);
-      }
+      // const autoDenyPermissions: PermissionType[] = [
+      //   "unknown", "fileSystem", "storage-access",
+      //   "top-level-storage-access", "mediaKeySystem",
+      // ];
+      // if (autoDenyPermissions.includes(permissionType)) {
+      //   return request(false);
+      // }
 
       const autoGrantPermissions: PermissionType[] = [
-        "clipboard-write", "pointerLock", "fullscreen",
-        "midi", "midiSysex",
+        "clipboard-write",
+        "clipboard-sanitized-write",
+        "pointerLock",
+        "fullscreen",
+        "midi",
+        "midiSysex",
       ];
       if (autoGrantPermissions.includes(permissionType)) {
         return request(true);
@@ -792,13 +812,10 @@ export class ViewController {
       if (stored === "grant") {
         return request(true);
       }
+  
       if (stored === "deny") {
         if (permissionType === "notifications") {
-          const tab = this.findTabByWebContents(wc);
-          if (tab) {
-            tab.blockedNotifications += 1;
-            tab.peristInformationToRenderer({ blockedNotifications: tab.blockedNotifications });
-          }
+          this.trackBlockedNotification(wc);
         }
         return request(false);
       }
@@ -812,6 +829,9 @@ export class ViewController {
         if (remember) {
           permissionStore.setSitePermission(origin, permissionType, decision ? "grant" : "deny");
         }
+        if (!decision && permissionType === "notifications") {
+          this.trackBlockedNotification(wc);
+        }
         request(!!decision);
       } catch {
         request(false);
@@ -822,6 +842,14 @@ export class ViewController {
   private findTabByWebContents(wc: Electron.WebContents): Tab | undefined {
     const tabs = this.tabController?.getTabInstances() || [];
     return tabs.find((t) => t.isAlive && t.webContents?.id === wc.id);
+  }
+
+  private trackBlockedNotification(wc: Electron.WebContents) {
+    const tab = this.findTabByWebContents(wc);
+    if (tab) {
+      tab.blockedNotifications += 1;
+      tab.persistInformationToRenderer({ blockedNotifications: tab.blockedNotifications });
+    }
   }
 
   showNotification({ title, description }: { title: string; description: string }) {

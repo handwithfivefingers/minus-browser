@@ -23,8 +23,9 @@ const sessionInitPromise = app.whenReady().then(async () => {
   // Register userscript preload for GM API support
   const userscriptPreload = path.join(__dirname, "userscript-preload.js");
   const mediaPreload = path.join(__dirname, "media-preload.js");
+  const spoofPreload = path.join(__dirname, "browser-spoof-preload.js");
   const existing = browserSession.getPreloads();
-  const toAdd = [userscriptPreload, mediaPreload].filter((p) => !existing.includes(p));
+  const toAdd = [spoofPreload, userscriptPreload, mediaPreload].filter((p) => !existing.includes(p));
   if (toAdd.length > 0) {
     browserSession.setPreloads([...existing, ...toAdd]);
   }

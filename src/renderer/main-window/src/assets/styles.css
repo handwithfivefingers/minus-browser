@@ -1,6 +1,8 @@
 /* @import url("https://fonts.googleapis.com/css2?family=Noto+Serif+Display:ital,wght@0,100..900;1,100..900&family=Outfit:wght@100..900&display=swap"); */
 @import "tailwindcss";
 @import "./font.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
 body {
   font-family:
     /* "Outfit", */

@@ -3,8 +3,11 @@ import { createHashRouter, RouterProvider } from "react-router";
 import { SUB_WINDOW_EMIT } from "~/shared/constants/ipc/sub-window";
 import { setPayload } from "./payload-store";
 import { buildRoutes } from "./routes";
+import { initTheme } from "./hooks/useTheme";
 // @ts-ignore
 import "./assets/styles.css";
+
+initTheme();
 
 // Register all overlays (side-effect imports)
 import "./pages/capture";

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ITab } from "~/features/browsers";
+import { ITab } from "~/shared/types";
 
 export const useTab = () => {
   const apis = useMemo(() => {

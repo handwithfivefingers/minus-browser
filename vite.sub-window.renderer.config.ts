@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [tailwindcss()],
   base: "",
   root: "src/renderer/sub-window",
+  cacheDir: "node_modules/.vite_subwindow",
   build: {
     outDir: "../../../.vite/renderer/sub_window",
   },

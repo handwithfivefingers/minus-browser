@@ -2,8 +2,6 @@
   border-left: 1px solid #e2e8f0;
 }
 
-@media (prefers-color-scheme: dark) {
-  .sidebar {
-    border-left-color: #334155;
-  }
+:global(.dark) .sidebar {
+  border-left-color: #334155;
 }

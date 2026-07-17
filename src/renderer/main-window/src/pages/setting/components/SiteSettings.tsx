@@ -57,7 +57,7 @@ export const SiteSettings = () => {
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-slate-800">Site Settings</h2>
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Site Settings</h2>
         <div className="flex items-center gap-3">
           {sites.length > 0 && (
             <input
@@ -65,7 +65,7 @@ export const SiteSettings = () => {
               placeholder="Search by domain..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="text-xs border border-slate-200 rounded px-2 py-1 bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:border-indigo-400 w-48"
+              className="text-xs border border-slate-200 dark:border-slate-700 rounded px-2 py-1 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-400 w-48"
             />
           )}
           {sites.length > 0 && (
@@ -81,13 +81,13 @@ export const SiteSettings = () => {
       </div>
 
       {filteredSites.length === 0 ? (
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-400 dark:text-slate-500">
           {search ? "No sites match your search." : "No sites have custom permissions yet."}
         </p>
       ) : (
         <div className="flex flex-col gap-3">
           {filteredSites.map((site) => (
-            <div key={site.origin} className="bg-white rounded-lg border border-slate-200 p-4">
+            <div key={site.origin} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
@@ -99,7 +99,7 @@ export const SiteSettings = () => {
                       }
                     })()}
                   </div>
-                  <span className="text-sm font-medium text-slate-700">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                     {(() => {
                       try {
                         return new URL(site.origin).hostname;
@@ -112,7 +112,7 @@ export const SiteSettings = () => {
                 <button
                   type="button"
                   onClick={() => handleResetSite(site.origin)}
-                  className="text-[10px] text-slate-400 hover:text-red-500 cursor-pointer bg-transparent border-none"
+                  className="text-[10px] text-slate-400 dark:text-slate-500 hover:text-red-500 cursor-pointer bg-transparent border-none"
                 >
                   Reset
                 </button>
@@ -120,13 +120,13 @@ export const SiteSettings = () => {
               <div className="flex flex-col gap-2">
                 {Object.entries(site.permissions).map(([perm, decision]) => (
                   <div key={perm} className="flex items-center justify-between text-xs py-1">
-                    <span className="text-slate-600">{getPermissionLabel(perm as PermissionType)}</span>
+                    <span className="text-slate-600 dark:text-slate-400">{getPermissionLabel(perm as PermissionType)}</span>
                     <select
                       value={decision}
                       onChange={(e) =>
                         handleTogglePermission(site.origin, perm as PermissionType, e.target.value as PermissionDecision)
                       }
-                      className="text-xs border border-slate-200 rounded px-2 py-1 bg-white text-slate-700 cursor-pointer"
+                      className="text-xs border border-slate-200 dark:border-slate-700 rounded px-2 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer"
                     >
                       <option value="grant">Allow</option>
                       <option value="deny">Block</option>

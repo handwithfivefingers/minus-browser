@@ -1,6 +1,8 @@
+export type ThemeMode = "light" | "dark" | "auto";
+
 export interface IUserInterface {
   layout: string;
-  mode: string;
+  mode: ThemeMode;
   savedCookies?: "0" | "1";
   extension: {
     adblock: boolean;

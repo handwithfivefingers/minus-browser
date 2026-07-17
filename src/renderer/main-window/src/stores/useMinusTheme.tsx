@@ -4,7 +4,7 @@ import { IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
 
 const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
   layout: "FLOATING",
-  mode: "light",
+  mode: "auto",
   dataSync: {
     intervalTime: "15",
     hardwareAcceleration: "on",
@@ -28,7 +28,7 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
   setLayout: (layout: "BASIC" | "FLOATING") => {
     set({ layout });
   },
-  setMode: (mode: "light" | "dark") => {
+  setMode: (mode: "light" | "dark" | "auto") => {
     set({ mode });
   },
   setCookieMode: (mode: "0" | "1") => {

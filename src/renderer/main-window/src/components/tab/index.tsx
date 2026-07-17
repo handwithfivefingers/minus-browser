@@ -77,11 +77,11 @@ const TabItem = memo(
             to={`/${id}`}
             viewTransition
             className={clsx(
-              `z-0 h-10 w-full p-1  flex flex-row gap-1 justify-start items-center cursor-pointer hover:bg-white hover:text-indigo-500 transition-colors relative overflow-hidden`,
-              {
-                [`bg-white text-indigo-500 shadow-md`]: location.pathname == `/${id}`,
-                [`text-indigo-500`]: location.pathname !== `/${id}`,
-              },
+               `z-0 h-10 w-full p-1  flex flex-row gap-1 justify-start items-center cursor-pointer hover:bg-white dark:hover:bg-slate-800 hover:text-indigo-500 transition-colors relative overflow-hidden`,
+               {
+                 [`bg-white dark:bg-slate-700 text-indigo-500 dark:text-indigo-300 shadow-md`]: location.pathname == `/${id}`,
+                 [`text-indigo-500 dark:text-indigo-400`]: location.pathname !== `/${id}`,
+               },
               className,
             )}
             title={tab?.title}
@@ -97,7 +97,7 @@ const TabItem = memo(
                   title="Mute tab"
                   type="button"
                 >
-                  <IconVolume className="text-slate-700" size={12} />
+                  <IconVolume className="text-slate-700 dark:text-slate-300" size={12} />
                 </button>
               )}
 
@@ -108,7 +108,7 @@ const TabItem = memo(
                   title="Unmute tab"
                   type="button"
                 >
-                  <IconVolumeOff className="text-slate-700" size={12} />
+                  <IconVolumeOff className="text-slate-700 dark:text-slate-300" size={12} />
                 </button>
               )}
 
@@ -152,7 +152,7 @@ const TabItem = memo(
           <div
             className={clsx(
               styles.actionsOverlay,
-              "border-l border-slate-200 hidden group-hover:flex flex-col right-0",
+              "border-l border-slate-200 dark:border-slate-700 hidden group-hover:flex flex-col right-0",
               {},
             )}
           >

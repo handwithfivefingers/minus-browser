@@ -93,10 +93,6 @@ const SideMenu = () => {
     });
   }, []);
 
-  const onClose = useCallback(() => {
-    window.api.EMIT("CLOSE_APP");
-  }, []);
-
   const onAddNewTab = async (payload: Partial<Tab>) => {
     const tab = await window.api.INVOKE<Tab>("CREATE_TAB", payload);
     setTimeout(() => {
@@ -256,26 +252,14 @@ const SideMenu = () => {
     <ErrorBoundary FallbackComponent={(fallbackProps) => <ComponentError {...fallbackProps} />}>
       <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={clsx(styles.sidebar)}>
         <div className="flex gap-1 flex-col flex-1 overflow-y-auto overflow-x-hidden h-full" style={{}}>
-          <div className={clsx("w-full flex gap-0.5 items-center h-8 sticky z-1 top-0 bg-slate-100 pb-2")}>
-            <button className={clsx("w-4 h-4 text-black", styles.appbar)}>
-              <IconGripVertical size={14} />
-            </button>
-            <button
-              className="w-3 h-3 bg-red-600/50 text-transparent rounded-full cursor-pointer hover:bg-red-600 hover:text-white"
-              onClick={onClose}
-            >
-              <IconX size={12} />
-            </button>
-          </div>
-
           <Link
             to={"/"}
             viewTransition
             className={clsx(
-              `h-8 flex flex-col shrink-0 px-0.5 transition-all rounded-md items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800`,
+              `h-8 flex flex-col shrink-0 px-0.5 transition-all rounded-md items-center justify-center cursor-pointer hover:text-indigo-500  relative overflow-hidden text-slate-800 dark:text-slate-200`,
               {
-                [`bg-white text-slate-500 shadow-md`]: pathname === "/",
-                [`text-slate-500`]: pathname !== "/",
+                [`bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 shadow-md`]: pathname === "/",
+                [`text-slate-500 dark:text-slate-400`]: pathname !== "/",
               },
             )}
           >
@@ -356,51 +340,49 @@ const SideMenu = () => {
           </div>
         </div>
 
-        <div className="sticky bottom-0 border-t border-slate-300 flex flex-col items-center py-2">
-          <button
-            onClick={() => {
-              if (tabs.length > 0) {
-                const activeId = tabs.find((t) => t.isFocused)?.id || tabs[0]?.id;
-                const group = groups.find((g) => g.tabIds.includes(activeId));
-                window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_CONTEXT_MENU, {
-                  x: 100,
-                  y: 100,
-                });
-              }
-            }}
-            className=" z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-500 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1"
-            title="Group tabs together — right-click any tab to add it to a group"
-          >
-            <IconComponents size={16} />
-            <span className="text-[10px] font-medium">Groups</span>
-          </button>
-
-          <button
-            onClick={() => onAddNewTab({})}
-            className=" z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-500 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1"
-          >
-            <IconPlus size={16} />
-            <span className="text-[10px] font-medium">New Tab</span>
-          </button>
-          <NotificationBell />
-          <SubMenuItem size={tabs?.length} />
-        </div>
+        <SubMenuItem tabs={tabs} onAddNewTab={onAddNewTab} />
       </ResizableSidebar>
     </ErrorBoundary>
   );
 };
 
-const SubMenuItem = ({ size }: { size: number }) => {
+const SubMenuItem = ({ tabs, onAddNewTab }: { tabs: Tab[]; onAddNewTab: (tab: Partial<Tab>) => void }) => {
   const pathname = useLocation().pathname;
   return (
-    <>
+    <div className="sticky bottom-0 border-t border-slate-300 dark:border-slate-700 flex flex-col items-center py-2">
+      <button
+        onClick={() => {
+          if (tabs.length > 0) {
+            const activeId = tabs.find((t) => t.isFocused)?.id || tabs[0]?.id;
+            // const group = groups.find((g) => g.tabIds.includes(activeId));
+            window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_CONTEXT_MENU, {
+              x: 100,
+              y: 100,
+            });
+          }
+        }}
+        className=" z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors overflow-hidden text-slate-500 dark:text-slate-400 hover:text-indigo-500 shrink-0 gap-1 flex-col py-1"
+        title="Group tabs together — right-click any tab to add it to a group"
+      >
+        <IconComponents size={16} />
+        <span className="text-[10px] font-medium">Groups</span>
+      </button>
+
+      <button
+        onClick={() => onAddNewTab({})}
+        className=" z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors overflow-hidden text-slate-500 dark:text-slate-400 hover:text-indigo-500 shrink-0 gap-1 flex-col py-1"
+      >
+        <IconPlus size={16} />
+        <span className="text-[10px] font-medium">New Tab</span>
+      </button>
+      <NotificationBell />
       <Link
         to="/history"
         className={clsx(
-          " z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1",
+          " z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors overflow-hidden text-slate-400 dark:text-slate-400 hover:text-indigo-500 shrink-0 gap-1 flex-col py-1",
           {
-            [`bg-white text-slate-500 shadow-md`]: pathname === "/history",
-            [`text-slate-500`]: pathname !== "/history",
+            [`bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 shadow-md`]: pathname === "/history",
+            // [`text-slate-500 dark:text-slate-500`]: pathname !== "/history",
           },
         )}
       >
@@ -410,24 +392,25 @@ const SubMenuItem = ({ size }: { size: number }) => {
       <Link
         to="/setting"
         className={clsx(
-          " z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white transition-colors overflow-hidden text-slate-400 hover:text-indigo-500 shrink-0 bg-slate-100 gap-1 flex-col py-1",
+          " z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors overflow-hidden text-slate-400 dark:text-slate-400 hover:text-indigo-500 shrink-0 gap-1 flex-col py-1",
           {
-            [`bg-white text-slate-500 shadow-md`]: pathname === "/setting",
-            [`text-slate-500`]: pathname !== "/setting",
+            [`bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 shadow-md`]: pathname === "/setting",
+            // [`text-slate-500 dark:text-slate-500`]: pathname !== "/setting",
           },
         )}
       >
         <IconSettings size={16} />
         <span className="text-[10px] font-medium">Setting</span>
       </Link>
-      {/* <span className="font-normal text-xs text-center">Tab: {size > 0 ? size : "0"}</span> */}
-    </>
+    </div>
   );
 };
 
 const LAYOUT_SIDEBAR_CLASS = {
-  BASIC: "flex-shrink-0 flex flex-col px-1 py-2 bg-slate-100 gap-1.5 transition-all h-full border-r border-slate-300",
-  FLOATING: "flex-shrink-0 flex flex-col px-1 py-2 bg-slate-100 gap-1.5 transition-all rounded-lg h-full",
+  BASIC:
+    "flex-shrink-0 flex flex-col px-1 py-2 bg-slate-100 dark:bg-slate-900 gap-1.5 transition-all h-full border-r border-slate-300 dark:border-slate-700",
+  FLOATING:
+    "flex-shrink-0 flex flex-col px-1 py-2 bg-slate-100 dark:bg-slate-900 gap-1.5 transition-all rounded-lg h-full",
 };
 
 const ResizableSidebar = ({
@@ -499,7 +482,7 @@ const ResizableSidebar = ({
 
       {/* Resize handle */}
       <div
-        className="resize-handle hover:bg-slate-500"
+        className="resize-handle hover:bg-slate-500 dark:hover:bg-slate-400"
         onMouseDown={startResize}
         style={{
           position: "absolute",

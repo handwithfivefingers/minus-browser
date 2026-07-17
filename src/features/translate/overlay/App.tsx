@@ -80,7 +80,7 @@ const App = () => {
   return (
     <FormProvider {...form}>
       <form className="flex flex-col w-xl rounded-xl" onSubmit={form.handleSubmit(onSubmit, onErrors)}>
-        <div className="text-white font-medium mb-4">Translate Preferences</div>
+        <div className="text-slate-800 dark:text-white font-medium mb-4">Translate Preferences</div>
 
         <div className="grid grid-cols-2 gap-1">
           <FormControl name="sourceLanguage">
@@ -112,31 +112,13 @@ const App = () => {
           <button
             type="button"
             onClick={handleCancel}
-            style={{
-              height: "30px",
-              padding: "0 12px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              background: "#e2e8f0",
-              color: "#334155",
-              cursor: "pointer",
-              fontSize: "12px",
-            }}
+            className="h-[30px] px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer text-xs"
           >
             Cancel
           </button>
           <button
             type="submit"
-            style={{
-              height: "30px",
-              padding: "0 12px",
-              borderRadius: "8px",
-              border: "1px solid transparent",
-              background: "#4f46e5",
-              color: "#fff",
-              cursor: "pointer",
-              fontSize: "12px",
-            }}
+            className="h-[30px] px-3 rounded-lg border border-transparent bg-indigo-600 text-white cursor-pointer text-xs hover:bg-indigo-500"
           >
             Save
           </button>

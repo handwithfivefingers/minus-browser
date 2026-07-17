@@ -16,6 +16,10 @@
   text-transform: capitalize;
 }
 
+:global(.dark) .title {
+  color: #e2e8f0;
+}
+
 .tabItem {
   display: flex;
   position: relative;
@@ -43,6 +47,11 @@
   background: #fff;
   height: 100%;
 }
+
+:global(.dark) .actionsOverlay {
+  background: #334155;
+}
+
 .tabItem:hover .actionsOverlay {
   display: flex;
 }

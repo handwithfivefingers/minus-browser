@@ -15,13 +15,13 @@ export const HibernateSetting = () => {
 
   return (
     <>
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <div className="flex items-center gap-2 mb-4">
-          <IconSnowflake size={18} className="text-slate-700" />
-          <h2 className="text-lg font-semibold text-slate-900">Hibernate Settings</h2>
+          <IconSnowflake size={18} className="text-slate-700 dark:text-slate-300" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Hibernate Settings</h2>
         </div>
 
-        <p className="text-sm text-slate-500 mb-4">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
           Inactive tabs are automatically hibernated to free system resources. Choose how long a tab must be idle before
           it is hibernated.
         </p>
@@ -35,13 +35,13 @@ export const HibernateSetting = () => {
               className={clsx(
                 "h-auto p-4 rounded-lg border text-left cursor-pointer transition-all",
                 hibernateMode === option.value
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50",
+                  ? "bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100"
+                  : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700",
               )}
             >
               <div className="font-medium text-sm">{option.label}</div>
               <div
-                className={clsx("text-xs mt-1", hibernateMode === option.value ? "text-slate-300" : "text-slate-500")}
+                className={clsx("text-xs mt-1", hibernateMode === option.value ? "text-slate-300 dark:text-slate-700" : "text-slate-500 dark:text-slate-400")}
               >
                 {option.description}
               </div>
@@ -52,7 +52,7 @@ export const HibernateSetting = () => {
         {hibernateMode === "custom" && (
           <div className="mt-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm text-slate-600">Custom timeout (minutes)</span>
+              <span className="text-sm text-slate-600 dark:text-slate-400">Custom timeout (minutes)</span>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -60,9 +60,9 @@ export const HibernateSetting = () => {
                   max={1440}
                   value={hibernateCustomMinutes || 60}
                   onChange={(e) => setHibernateCustomMinutes(Math.max(1, Number(e.target.value)))}
-                  className="h-10 w-32 px-3 rounded-lg border border-slate-300 bg-white text-sm"
+                  className="h-10 w-32 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm dark:text-slate-200"
                 />
-                <span className="text-xs text-slate-400">min (1 - 1440)</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">min (1 - 1440)</span>
               </div>
             </label>
           </div>
@@ -73,7 +73,7 @@ export const HibernateSetting = () => {
         <button
           type="button"
           onClick={saved}
-          className="h-10 px-4 rounded-lg bg-slate-900 text-white text-sm inline-flex items-center gap-2 hover:bg-slate-700 cursor-pointer"
+          className="h-10 px-4 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-sm inline-flex items-center gap-2 hover:bg-slate-700 dark:hover:bg-slate-200 cursor-pointer"
         >
           <IconSnowflake size={16} />
           Save Hibernate Settings

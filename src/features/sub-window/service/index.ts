@@ -85,6 +85,7 @@ export class SubWindowService {
     // this.view.webContents.openDevTools();
     this.view.setBackgroundColor("#00000000");
     await this.view.webContents.loadURL(this.getURL()).catch(() => {});
+    // this.view.webContents.reloadIgnoringCache();
   }
 
   ensureOnTop() {

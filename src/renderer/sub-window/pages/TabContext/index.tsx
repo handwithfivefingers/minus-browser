@@ -187,48 +187,60 @@ export function TabContext() {
       <div className="fixed inset-0">
         <div
           ref={menuRef}
-          className="fixed bg-white rounded-lg shadow-xl border border-slate-200 pt-1 min-w-44"
+          className="fixed bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 pt-1 min-w-44"
           style={{ left: menuX, top: menuY, pointerEvents: "auto" }}
         >
-          <button
-            type="button"
-            onClick={() => {
-              window.api.INVOKE(IPC_INVOKE_CHANNEL.FORCE_CLEAR_CACHE_HARD_RELOAD, { tabId });
-              hide();
-            }}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-orange-50 hover:text-orange-600 text-left cursor-pointer"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Force Reload">
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-            Force Clear Cache & Hard Reload
-          </button>
-
           {tabId && !currentGroupId ? (
             <>
-              <div className="border-t border-slate-100 my-1" />
+              <button
+                type="button"
+                onClick={() => {
+                  window.api.INVOKE(IPC_INVOKE_CHANNEL.FORCE_CLEAR_CACHE_HARD_RELOAD, { tabId });
+                  hide();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-600 dark:hover:text-orange-400 text-left cursor-pointer"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-label="Force Reload"
+                >
+                  <polyline points="23 4 23 10 17 10" />
+                  <polyline points="1 20 1 14 7 14" />
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Force Clear Cache & Hard Reload
+              </button>
 
-              <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              <div className="border-t border-slate-100 dark:border-slate-700 my-1" />
+
+              <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 Add to group
               </div>
 
-              {groups.length === 0 && <div className="px-3 py-2 text-xs text-slate-400 italic">No groups yet</div>}
+              {groups.length === 0 && (
+                <div className="px-3 py-2 text-xs text-slate-400 dark:text-slate-500 italic">No groups yet</div>
+              )}
 
               {groups.map((group) => (
                 <button
                   type="button"
                   key={group.id}
                   onClick={() => addToGroup(group.id)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 text-left"
                 >
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
                   <span className="truncate">{group.name}</span>
                 </button>
               ))}
 
-              <div className="border-t border-slate-100 my-1" />
+              <div className="border-t border-slate-100 dark:border-slate-700 my-1" />
 
               <button
                 type="button"
@@ -236,7 +248,7 @@ export function TabContext() {
                   setView("create-group");
                   setGroupColor(GROUP_COLORS[0]);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400"
               >
                 <svg
                   width="14"
@@ -261,7 +273,7 @@ export function TabContext() {
               <button
                 type="button"
                 onClick={removeFromGroup}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left cursor-pointer"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 text-left cursor-pointer"
               >
                 <svg
                   width="14"
@@ -281,10 +293,10 @@ export function TabContext() {
                 Remove from group
               </button>
 
-              <div className="border-t border-slate-100 my-1" />
+              <div className="border-t border-slate-100 dark:border-slate-700 my-1" />
 
               <div className="flex flex-col">
-                <span className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400 text-left">
+                <span className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400 dark:text-slate-500 text-left">
                   <svg
                     width="12"
                     height="12"
@@ -303,7 +315,7 @@ export function TabContext() {
                   </svg>
                   Switch to Group
                 </span>
-                <div className="border-t border-slate-200 mt-1" />
+                <div className="border-t border-slate-200 dark:border-slate-700 mt-1" />
                 <div className="rounded-b-md py-2">
                   {groups
                     ?.filter((item) => item.id !== currentGroupId)
@@ -312,7 +324,7 @@ export function TabContext() {
                         type="button"
                         key={group.id}
                         onClick={() => onSwitchGroup(group.id)}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left cursor-pointer"
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 text-left cursor-pointer"
                       >
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
                         <span className="truncate">{group.name}</span>
@@ -323,18 +335,20 @@ export function TabContext() {
             </>
           ) : (
             <>
-              <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 Open Group
               </div>
 
-              {groups.length === 0 && <div className="px-3 py-2 text-xs text-slate-400 italic">No groups yet</div>}
+              {groups.length === 0 && (
+                <div className="px-3 py-2 text-xs text-slate-400 dark:text-slate-500 italic">No groups yet</div>
+              )}
 
               {groups.map((group) => (
                 <button
                   type="button"
                   key={group.id}
                   onClick={() => openGroupTabs(group.id)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 text-left"
                 >
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
                   <span className="truncate">{group.name}</span>
@@ -351,15 +365,17 @@ export function TabContext() {
     <div className="fixed inset-0">
       <div
         ref={menuRef}
-        className="fixed bg-white rounded-lg shadow-xl border border-slate-200 p-4 w-64 flex flex-col gap-3"
+        className="fixed bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 p-4 w-64 flex flex-col gap-3"
         style={{ left: createX, top: createY, pointerEvents: "auto" }}
       >
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-slate-700">{editGroupData ? "Edit Group" : "New Group"}</span>
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            {editGroupData ? "Edit Group" : "New Group"}
+          </span>
           <button
             type="button"
             onClick={() => setView("context-menu")}
-            className="text-slate-400 hover:text-slate-600 p-0.5"
+            className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 p-0.5"
           >
             <svg
               width="16"
@@ -378,7 +394,7 @@ export function TabContext() {
 
         <input
           ref={inputRef}
-          className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400"
+          className="w-full border border-slate-300 dark:border-slate-600 rounded px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400 bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200"
           placeholder="Group name"
           value={groupName}
           onChange={(e) => setGroupName(e.target.value)}
@@ -396,7 +412,7 @@ export function TabContext() {
               type="button"
               key={c}
               onClick={() => setGroupColor(c)}
-              className={`w-5 h-5 rounded-full border-2 transition-all ${groupColor === c ? "border-slate-700 scale-110" : "border-transparent"}`}
+              className={`w-5 h-5 rounded-full border-2 transition-all ${groupColor === c ? "border-slate-700 dark:border-slate-300 scale-110" : "border-transparent"}`}
               style={{ backgroundColor: c }}
               aria-label={`Color ${c}`}
             />

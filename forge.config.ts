@@ -112,6 +112,11 @@ const config: ForgeConfig = {
           target: "preload",
         },
         {
+          entry: "src/features/spoof/browser-spoof-preload.ts",
+          config: "vite.browser-spoof-preload.config.ts",
+          target: "preload",
+        },
+        {
           entry: "src/features/userscript/userscript-preload.ts",
           config: "vite.preload.config.ts",
           target: "preload",

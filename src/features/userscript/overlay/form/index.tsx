@@ -112,7 +112,7 @@ export const UserScriptForm = () => {
         render={({ field }) => {
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <span className="text-white text-xs">@grant</span>
+              <span className="text-slate-800 dark:text-white text-xs">@grant</span>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
                 {GRANT_OPTIONS.map((grant) => (
                   <button
@@ -123,7 +123,7 @@ export const UserScriptForm = () => {
                       "px-2 py-0.5 rounded text-[10px] border cursor-pointer",
                       (field.value || []).includes(grant)
                         ? "bg-indigo-600 text-white border-indigo-400"
-                        : "bg-white/5 text-white/70 border-slate-600",
+                        : "bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white/70 border-slate-300 dark:border-slate-600",
                     )}
                   >
                     {grant}
@@ -150,7 +150,7 @@ export const UserScriptForm = () => {
               style={{
                 fontFamily: "monospace",
               }}
-              className="text-white min-h-40 text-xs bg-white/5 rounded-md border border-slate-400 px-2 py-1.5 outline-none ring-2 ring-transparent focus:ring-slate-500 transition-all"
+              className="text-slate-800 dark:text-white min-h-40 text-xs bg-white dark:bg-white/5 rounded-md border border-slate-300 dark:border-slate-400 px-2 py-1.5 outline-none ring-2 ring-transparent focus:ring-slate-500 transition-all"
             />
           );
         }}
@@ -168,7 +168,7 @@ const FormArray = ({ label }: { label: string }) => {
   return (
     <div className="flex flex-col gap-0.5">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span className="text-white text-sm">{label}</span>
+        <span className="text-slate-800 dark:text-white text-sm">{label}</span>
         <Button
           className="border border-slate-600 bg-[#0f172a] text-white hover:bg-slate-600 transition-colors"
           onClick={() => append("")}

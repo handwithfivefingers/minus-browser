@@ -1,0 +1,4 @@
+.appbar {
+  -webkit-app-region: drag;
+  cursor: grab;
+}
