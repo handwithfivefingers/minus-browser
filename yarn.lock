@@ -2411,7 +2411,7 @@ electron-winstaller@^5.3.0:
   optionalDependencies:
     "@electron/windows-sign" "^1.1.2"
 
-electron@^42.2.0:
+electron@42.2.0:
   version "42.2.0"
   resolved "https://registry.npmjs.org/electron/-/electron-42.2.0.tgz"
   integrity sha512-b2Tc7sIKiZEl0tBVwFM5GJ+FT5KYhmy9QJHjx8BGVZPVW2SctXWEvrE959ElB56qw7H05dBkhlikDA1DmpaAMw==
@@ -4130,7 +4130,7 @@ lru-cache@^7.7.1:
   resolved "https://registry.npmjs.org/lru-cache/-/lru-cache-7.18.3.tgz"
   integrity sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==
 
-macos-alias@^0.2.12, macos-alias@~0.2.5:
+macos-alias@~0.2.5:
   version "0.2.12"
   resolved "https://registry.npmjs.org/macos-alias/-/macos-alias-0.2.12.tgz"
   integrity sha512-yiLHa7cfJcGRFq4FrR4tMlpNHb4Vy4mWnpajlSSIFM5k4Lv8/7BbbDLzCAVogWNl0LlLhizRp1drXv0hK9h0Yw==
