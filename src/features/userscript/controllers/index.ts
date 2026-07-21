@@ -6,7 +6,6 @@ import { IUserScript } from "../types";
 import { UserScript } from "../models/userScript";
 import { isUrlMatchedByPatterns } from "~/shared/utils";
 import { cacheSystem } from "~/features/cacheSystem";
-import { UserScriptService } from "../services";
 import { eventStore } from "~/main/core/stores";
 import { WebContentsView } from "electron";
 
@@ -27,7 +26,7 @@ export class UserScriptController {
   private initializing?: Promise<void>;
   activeTab: WebContentsView | null = null;
 
-  constructor(private service: UserScriptService = new UserScriptService()) {
+  constructor() {
     eventStore.listen("viewChanges", (view: WebContentsView) => {
       this.activeTab = view;
     });
@@ -95,15 +94,33 @@ export class UserScriptController {
             connect, requires, resources, built_in, raw_metadata
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            s.id, s.name, s.source, s.enabled ? 1 : 0,
-            JSON.stringify(s.matches || []), JSON.stringify(s.excludes || []),
-            s.runAt, s.createdAt || Date.now(), s.updatedAt || Date.now(),
-            s.namespace || "", s.version || "", s.description || "", s.author || "",
-            JSON.stringify(s.grants || []), JSON.stringify(s.includes || []),
-            s.noframes ? 1 : 0, s.icon || "", s.downloadURL || "", s.updateURL || "",
-            s.supportURL || "", s.homepageURL || "", s.license || "",
-            JSON.stringify(s.connect || []), JSON.stringify(s.requires || []),
-            JSON.stringify(s.resources || []), s.builtIn ? 1 : 0, s.rawMetadata || "",
+            s.id,
+            s.name,
+            s.source,
+            s.enabled ? 1 : 0,
+            JSON.stringify(s.matches || []),
+            JSON.stringify(s.excludes || []),
+            s.runAt,
+            s.createdAt || Date.now(),
+            s.updatedAt || Date.now(),
+            s.namespace || "",
+            s.version || "",
+            s.description || "",
+            s.author || "",
+            JSON.stringify(s.grants || []),
+            JSON.stringify(s.includes || []),
+            s.noframes ? 1 : 0,
+            s.icon || "",
+            s.downloadURL || "",
+            s.updateURL || "",
+            s.supportURL || "",
+            s.homepageURL || "",
+            s.license || "",
+            JSON.stringify(s.connect || []),
+            JSON.stringify(s.requires || []),
+            JSON.stringify(s.resources || []),
+            s.builtIn ? 1 : 0,
+            s.rawMetadata || "",
           ],
         );
       }
@@ -177,27 +194,20 @@ export class UserScriptController {
     await this.initialize();
     return this.listScripts().filter((script) => {
       if (!script.enabled) return false;
-      const isMatched = isUrlMatchedByPatterns(url, script.matches);
-      if (!isMatched) return false;
-      const isExcluded = script.excludes?.length ? isUrlMatchedByPatterns(url, script.excludes) : false;
+
+      const matchPatterns = script.matches ?? [];
+      const includePatterns = script.includes ?? [];
+      if (!matchPatterns.length && !includePatterns.length) return false;
+
+      const matchesMatch = matchPatterns.length > 0 && isUrlMatchedByPatterns(url, matchPatterns);
+      const includesMatch = includePatterns.length > 0 && isUrlMatchedByPatterns(url, includePatterns);
+
+      if (!matchesMatch && !includesMatch) return false;
+
+      const excludes = script.excludes ?? [];
+      const isExcluded = excludes.length > 0 && isUrlMatchedByPatterns(url, excludes);
       return !isExcluded;
     });
-  }
-
-  async openManager() {
-    await this.initialize();
-    if (!this.activeTab) return;
-    const scripts = this.listScripts();
-    const results = await this.service.openManager(this.activeTab, scripts);
-    let newScripts = Array.isArray(results) ? results : [];
-    if (newScripts.length) {
-      newScripts = newScripts.filter((script) => script?.id);
-      this.scripts = new Map();
-      for (const s of newScripts) {
-        this.scripts.set(s.id, new UserScript(s));
-      }
-      this.persist();
-    }
   }
 }
 

@@ -61,7 +61,7 @@ export class UserScript implements IUserScript {
   updatedAt?: number = Date.now();
 
   constructor(props: Partial<IUserScript>) {
-    Object.assign(this, props);
+    Object.assign(this, Object.fromEntries(Object.entries(props).filter(([, v]) => v !== undefined)));
     this.enabled = Boolean(props.enabled);
   }
 

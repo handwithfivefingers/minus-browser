@@ -1,5 +1,15 @@
 import { contextBridge, ipcRenderer } from "electron";
 
+declare class TrustedScript {}
+declare const trustedTypes: {
+  createPolicy: (
+    name: string,
+    rules: { createScript: (s: string) => string },
+  ) => {
+    createScript: (s: string) => TrustedScript;
+  };
+};
+
 interface ScriptPayload {
   id: string;
   name: string;
@@ -8,7 +18,12 @@ interface ScriptPayload {
   runAt: string;
   noframes: boolean;
   requires: Array<{ url: string; content?: string }>;
-  resources: Array<{ name: string; url: string; content?: string; contentType?: string }>;
+  resources: Array<{
+    name: string;
+    url: string;
+    content?: string;
+    contentType?: string;
+  }>;
 }
 
 interface BridgeAPI {
@@ -232,8 +247,22 @@ function generateWrapper(script: ScriptPayload): string {
 
 function injectScript(code: string): void {
   const script = document.createElement("script");
-  script.textContent = code;
   script.setAttribute("type", "text/javascript");
+
+  if (typeof trustedTypes !== "undefined" && trustedTypes.createPolicy) {
+    try {
+      const policy = trustedTypes.createPolicy("userscript", {
+        createScript: (s: string) => s,
+      });
+      script.textContent = policy.createScript(code) as unknown as string;
+      document.documentElement?.appendChild(script);
+      return;
+    } catch {
+      // policy creation failed (page restricts policy names) — fall through
+    }
+  }
+
+  script.textContent = code;
   document.documentElement?.appendChild(script);
 }
 
@@ -241,10 +270,12 @@ async function main(): Promise<void> {
   if (window === window.top) {
     try {
       const url = window.location.href;
-      const result: { scripts: ScriptPayload[] } = await ipcRenderer.invoke("invoke", { channel: "USERSCRIPT_GET_MATCHING_SCRIPTS", data: { url } });
+      const result: { scripts: ScriptPayload[] } = await ipcRenderer.invoke("invoke", {
+        channel: "USERSCRIPT_GET_MATCHING_SCRIPTS",
+        data: { url },
+      });
 
       const scripts = result?.scripts || [];
-
       for (const script of scripts) {
         const wrapper = generateWrapper(script);
 
@@ -260,7 +291,9 @@ async function main(): Promise<void> {
             if (document.readyState === "complete") {
               injectScript(wrapper);
             } else {
-              window.addEventListener("load", () => injectScript(wrapper), { once: true });
+              window.addEventListener("load", () => injectScript(wrapper), {
+                once: true,
+              });
             }
             break;
           case "document-start":

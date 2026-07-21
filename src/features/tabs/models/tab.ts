@@ -19,44 +19,9 @@ interface IDestroy {
 }
 
 const preloadScript = () => {
-  // @ts-ignore
-  if (window.__minus_pip_pending) return false;
-  // @ts-ignore
-  window.__minus_pip_pending = true;
-
   const video = document.querySelector("video");
-  if (!video || !document.pictureInPictureEnabled || video.disablePictureInPicture) {
-    // @ts-ignore
-    window.__minus_pip_pending = false;
-    return false;
-  }
-
-  // @ts-ignore
-  return new Promise((resolve) => {
-    const onLeave = () => {
-      // @ts-ignore
-      window.__minus_pip_pending = false;
-      document.removeEventListener("leavepictureinpicture", onLeave);
-      // @ts-ignore
-      resolve();
-    };
-
-    document.addEventListener("leavepictureinpicture", onLeave, { once: true });
-
-    (async () => {
-      try {
-        if (document.pictureInPictureElement) {
-          await document.exitPictureInPicture();
-          document.addEventListener("leavepictureinpicture", onLeave, { once: true });
-        }
-        // @ts-ignore
-        await video.requestPictureInPicture();
-      } catch (err) {
-        console.error("PiP error:", err);
-        onLeave();
-      }
-    })();
-  });
+  if (!video || !document.pictureInPictureEnabled || video.disablePictureInPicture) return;
+  video.requestPictureInPicture().catch(() => {});
 };
 
 export class Tab extends TabPermission {
@@ -465,15 +430,9 @@ export class Tab extends TabPermission {
       this._webContents!.focus();
     }
     const script = `(${preloadScript.toString()})()`;
-    this._webContents!.executeJavaScript(script)
-      .then((res) => {
-        if (res === undefined) {
-          this.eventEmitter({ channel: "PIP_EXITED", data: { id: this.id } });
-        }
-      })
-      .catch((error) => {
-        console.error("requestPIP error", error);
-      });
+    this._webContents!.executeJavaScript(script).catch((error) => {
+      console.error("requestPIP error", error);
+    });
   }
   onReload() {
     if (!this.isAlive) return;

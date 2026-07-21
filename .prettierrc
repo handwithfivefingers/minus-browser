@@ -1,0 +1,14 @@
+{
+  "trailingComma": "es5",
+  "tabWidth": 2,
+  "semi": true,
+  "singleQuote": true,
+  "printWidth": 120,
+  "bracketSpacing": true,
+  "bracketSameLine": false,
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "tailwindAttributes": ["className"],
+  "tailwindFunctions": ["clsx"],
+  "tailwindPreserveWhitespace": true,
+  "tailwindPreserveDuplicates": true
+}

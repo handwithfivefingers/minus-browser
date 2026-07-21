@@ -184,16 +184,16 @@ export function metadataToPartialScript(meta: IUserScriptMetadata): Partial<{
 }> {
   return {
     name: meta.name,
-    matches: meta.matches.length > 0 ? meta.matches : undefined,
-    excludes: meta.excludes.length > 0 ? meta.excludes : undefined,
-    includes: meta.includes.length > 0 ? meta.includes : undefined,
+    matches: meta.matches,
+    excludes: meta.excludes,
+    includes: meta.includes,
     namespace: meta.namespace,
     version: meta.version,
     description: meta.description,
     author: meta.author,
-    requires: meta.requires.length > 0 ? meta.requires : undefined,
-    resources: meta.resources.length > 0 ? meta.resources : undefined,
-    grants: meta.grants.length > 0 ? meta.grants : undefined,
+    requires: meta.requires,
+    resources: meta.resources,
+    grants: meta.grants,
     runAt: meta.runAt,
     noframes: meta.noframes || undefined,
     icon: meta.icon,
@@ -202,6 +202,6 @@ export function metadataToPartialScript(meta: IUserScriptMetadata): Partial<{
     supportURL: meta.supportURL,
     homepageURL: meta.homepageURL,
     license: meta.license,
-    connect: meta.connect.length > 0 ? meta.connect : undefined,
+    connect: meta.connect,
   };
 }

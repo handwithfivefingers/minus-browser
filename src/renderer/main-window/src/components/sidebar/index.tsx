@@ -1,28 +1,26 @@
 import {
   IconComponents,
-  IconGripVertical,
   IconHistory,
   IconHome,
   IconPlus,
-  IconSettings,
-  IconX,
+  IconSettings
 } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
   IPC_TAB_GROUP_EMIT,
   IPC_TAB_GROUP_INVOKE,
   IPC_TAB_GROUP_RENDERER_EVENT,
 } from "~/shared/constants/ipc/tabGroup";
+import { NotificationBell } from "../../features/notification";
 import { Tab } from "../../interfaces/tab";
 import { useMinusThemeStore } from "../../stores/useMinusTheme";
 import { useTabGroupStore } from "../../stores/useTabGroupStore";
 import { useTabStore } from "../../stores/useTabStore";
 import { TabItem } from "../tab";
 import { TabGroupContainer } from "../tabGroup";
-import { NotificationBell } from "../../features/notification";
-import { ErrorBoundary, FallbackProps } from "react-error-boundary";
 /** @ts-ignore */
 import styles from "./styles.module.css";
 
@@ -379,7 +377,7 @@ const SubMenuItem = ({ tabs, onAddNewTab }: { tabs: Tab[]; onAddNewTab: (tab: Pa
       <Link
         to="/history"
         className={clsx(
-          " z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors overflow-hidden text-slate-400 dark:text-slate-400 hover:text-indigo-500 shrink-0 gap-1 flex-col py-1",
+          " z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors overflow-hidden text-slate-500 dark:text-slate-400 hover:text-indigo-500 shrink-0 gap-1 flex-col py-1",
           {
             [`bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 shadow-md`]: pathname === "/history",
             // [`text-slate-500 dark:text-slate-500`]: pathname !== "/history",
@@ -392,7 +390,7 @@ const SubMenuItem = ({ tabs, onAddNewTab }: { tabs: Tab[]; onAddNewTab: (tab: Pa
       <Link
         to="/setting"
         className={clsx(
-          " z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors overflow-hidden text-slate-400 dark:text-slate-400 hover:text-indigo-500 shrink-0 gap-1 flex-col py-1",
+          " z-1 w-full px-0.5 rounded-md flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition-colors overflow-hidden text-slate-500 dark:text-slate-400 hover:text-indigo-500 shrink-0 gap-1 flex-col py-1",
           {
             [`bg-white dark:bg-slate-700 text-slate-500 dark:text-slate-300 shadow-md`]: pathname === "/setting",
             // [`text-slate-500 dark:text-slate-500`]: pathname !== "/setting",
@@ -484,6 +482,8 @@ const ResizableSidebar = ({
       <div
         className="resize-handle hover:bg-slate-500 dark:hover:bg-slate-400"
         onMouseDown={startResize}
+        tabIndex={-1}
+        aria-hidden
         style={{
           position: "absolute",
           right: "0",

@@ -16,60 +16,13 @@ import { SUB_WINDOW_EMIT } from "~/shared/constants/ipc/sub-window";
 import { consumePayload } from "~/renderer/sub-window/payload-store";
 import { register } from "~/renderer/sub-window/registry";
 import { isValidDomainOrIP, navigateOrSearch } from "~/renderer/main-window/src/libs";
-interface IHistoryEntry {
-  id: string;
-  url: string;
-  title: string;
-  favicon: string;
-  timestamp: number;
-  visitCount: number;
-}
-
-interface SpotlightProps {
-  query: string;
-  activeTabId?: string;
-}
-
-type SpotlightAction =
-  | {
-      id: string;
-      kind: "tab";
-      label: string;
-      description: string;
-      onSelect: () => void;
-      score: number;
-    }
-  | {
-      id: string;
-      kind: "history";
-      label: string;
-      description: string;
-      onSelect: () => void;
-      score: number;
-    }
-  | {
-      id: string;
-      kind: "search";
-      label: string;
-      description: string;
-      onSelect: () => void;
-      score: number;
-    }
-  | {
-      id: string;
-      kind: "create";
-      label: string;
-      description: string;
-      onSelect: () => void;
-      score: number;
-    };
+import { IHistoryEntry, SpotlightAction, SpotlightProps } from "../../types/spotlight";
 
 register({
   path: "/spotlight",
   name: "Spotlight",
   shell: false,
   component: () => {
-    console.log("Spotlight")
     const [query, setQuery] = useState("");
     const [tabs, setTabs] = useState<Tab[]>([]);
     const [history, setHistory] = useState<IHistoryEntry[]>([]);
@@ -436,7 +389,9 @@ register({
                       key={action.id}
                       className={clsx(
                         "group relative mx-2 flex w-[calc(100%-16px)] items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150",
-                        active ? "bg-indigo-100 dark:bg-indigo-500/12 text-indigo-700 dark:text-white" : "text-slate-600 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/4 hover:text-slate-800 dark:hover:text-white/90",
+                        active
+                          ? "bg-indigo-100 dark:bg-indigo-500/12 text-indigo-700 dark:text-white"
+                          : "text-slate-600 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/4 hover:text-slate-800 dark:hover:text-white/90",
                       )}
                       onMouseEnter={() => {
                         if (!keyboardNavRef.current) setActiveIndex(index);
@@ -505,7 +460,9 @@ register({
                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-white/4 ring-1 ring-slate-300 dark:ring-white/6">
                     <IconSearch size={20} className="text-slate-400 dark:text-white/20" />
                   </div>
-                  <p className="text-sm text-slate-500 dark:text-white/30">{normalizedQuery ? "No matching tabs" : "No open tabs yet"}</p>
+                  <p className="text-sm text-slate-500 dark:text-white/30">
+                    {normalizedQuery ? "No matching tabs" : "No open tabs yet"}
+                  </p>
                   <p className="text-xs text-slate-400 dark:text-white/20">
                     {normalizedQuery
                       ? "Try a different search or create a new tab"
@@ -519,11 +476,15 @@ register({
               <div className="flex items-center justify-between border-t border-slate-200 dark:border-white/6 px-5 py-2.5">
                 <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-white/50">
                   <span className="flex items-center gap-1">
-                    <kbd className="rounded border border-slate-300 dark:border-white/8 bg-slate-100 dark:bg-white/4 px-1.5 py-0.5 font-medium">↑↓</kbd>
+                    <kbd className="rounded border border-slate-300 dark:border-white/8 bg-slate-100 dark:bg-white/4 px-1.5 py-0.5 font-medium">
+                      ↑↓
+                    </kbd>
                     Navigate
                   </span>
                   <span className="flex items-center gap-1">
-                    <kbd className="rounded border border-slate-300 dark:border-white/8 bg-slate-100 dark:bg-white/4 px-1.5 py-0.5 font-medium">Enter</kbd>
+                    <kbd className="rounded border border-slate-300 dark:border-white/8 bg-slate-100 dark:bg-white/4 px-1.5 py-0.5 font-medium">
+                      Enter
+                    </kbd>
                     Select
                   </span>
                 </div>

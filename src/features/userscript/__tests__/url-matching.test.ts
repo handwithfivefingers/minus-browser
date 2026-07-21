@@ -11,10 +11,10 @@ function patternToRegex(pattern: string) {
     return new RegExp(`^${escapeRegex(normalized)}$`, "i");
   }
   if (normalized.startsWith("*://")) {
-    const replaced = normalized.replace("*://", "https?://");
-    return new RegExp(`^${escapeRegex(replaced)}$`, "i");
+    const rest = normalized.slice(4);
+    return new RegExp(`^https?://${escapeRegex(rest)}$`, "i");
   }
-  return new RegExp(`^${escapeRegex(normalized)}$`, "i");
+  return new RegExp(`^${escapeRegex(normalized)}`, "i");
 }
 
 function isUrlMatchedByPatterns(url: string, patterns: string[]) {

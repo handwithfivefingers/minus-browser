@@ -57,11 +57,11 @@ const patternToRegex = (pattern: string) => {
   const normalized = pattern.trim();
   if (!normalized || normalized === "*") return /^https?:\/\/.+/i;
   if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
-    return new RegExp(`^${escapeRegex(normalized)}$`, "i");
+  return new RegExp(`^${escapeRegex(normalized)}`, "i");
   }
   if (normalized.startsWith("*://")) {
-    const replaced = normalized.replace("*://", "https?://");
-    return new RegExp(`^${escapeRegex(replaced)}$`, "i");
+    const rest = normalized.slice(4);
+    return new RegExp(`^https?://${escapeRegex(rest)}$`, "i");
   }
   return new RegExp(`^${escapeRegex(normalized)}$`, "i");
 };
