@@ -19,7 +19,9 @@ export default function PermissionOverlay() {
     if (raw) {
       try {
         setPayload(JSON.parse(raw))
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   }, [])
 

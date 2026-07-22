@@ -97,4 +97,5 @@ const TabGroupContainer = memo(
   }
 )
 
+TabGroupContainer.displayName = 'TabGroupContainer'
 export { TabGroupContainer }

@@ -91,5 +91,6 @@ const TabGroupHeader = memo(({ group, tabCount, onContextMenu }: TabGroupHeaderP
     </div>
   )
 })
+TabGroupHeader.displayName = 'TabGroupHeader'
 
 export { TabGroupHeader }

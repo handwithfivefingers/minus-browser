@@ -129,7 +129,9 @@ export class VaultServices {
         // Signal the renderer to fade out (it handles its own CSS transition).
         // Fire-and-forget — we do NOT await or chain off this promise.
         if (!vaultView.webContents.isDestroyed()) {
-          vaultView.webContents.executeJavaScript(`window.__vaultClose && window.__vaultClose();`).catch(() => {})
+          vaultView.webContents.executeJavaScript(`window.__vaultClose && window.__vaultClose();`).catch(() => {
+            // ignore
+          })
         }
         // Tear down after the renderer's 120ms fade-out transition completes.
         teardown(150)

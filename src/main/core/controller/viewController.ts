@@ -61,8 +61,6 @@ export class ViewController {
     return this.initPromise
   }
 
-  handleClickNotification(notification: Electron.ActivationArguments) {}
-
   private async initializeHandlers() {
     try {
       this.invokeHandlers = {
@@ -206,8 +204,8 @@ export class ViewController {
         [IPC_EMIT_CHANNEL.ON_RELOAD]: (data) => this.handleReloadTab(data),
         [IPC_EMIT_CHANNEL.CLOSE_APP]: () => this.onCloseApp(),
         [IPC_EMIT_CHANNEL.REQUEST_PIP]: (data) => this.requestPIP(data),
-        [IPC_EMIT_CHANNEL.TOGGLE_BOOKMARK]: (data) => this.handleToggleBookmark(data),
-        ...spotlightEmitHandlers,
+        // [IPC_EMIT_CHANNEL.TOGGLE_BOOKMARK]: (data) => this.handleToggleBookmark(data),
+        // ...spotlightEmitHandlers,
         [IPC_EMIT_CHANNEL.OPEN_TAB_BY_ID]: (data) => this.handleOpenTabById(data),
         [IPC_EMIT_CHANNEL.REORDER_TABS]: (data) => this.reorderTabs(data),
         ...tabGroupEmitHandlers,
@@ -309,7 +307,11 @@ export class ViewController {
       })
       subWindowService.init(this.window)
       subWindowService.onDidOpen = () => this.notificationService.ensureOnTop()
-      setImmediate(() => subWindowService.warmup().catch(() => {}))
+      setImmediate(() =>
+        subWindowService.warmup().catch(() => {
+          console.log('subWindowService warmup error')
+        })
+      )
     }
   }
 
@@ -492,7 +494,7 @@ export class ViewController {
     }
   }
 
-  handleToggleBookmark({ url, id }: { url: string; id: string }) {}
+  // handleToggleBookmark({ url, id }: { url: string; id: string }) {}
 
   async loadUserInterface() {
     const defaultData: IUserInterface = {

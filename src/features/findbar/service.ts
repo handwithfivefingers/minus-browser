@@ -161,7 +161,9 @@ export class FindbarService {
     this.stopFind()
     try {
       this.mainWindow.contentView.removeChildView(this.findbarView)
-    } catch {}
+    } catch {
+      // ignore
+    }
     this.findbarView.webContents.close()
     this.findbarView = null
   }

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webFrame } from 'electron'
 
 const tabId = process.argv.find((arg) => arg.startsWith('--notification-tab-id='))?.split('=')[1] || ''
 
@@ -8,8 +8,6 @@ contextBridge.exposeInMainWorld('__notificationAPI', {
     ipcRenderer.send('WEB_NOTIFICATION', { ...data, tabTitle: document.title, tabId })
   },
 })
-
-const { webFrame } = require('electron')
 
 webFrame.executeJavaScript(`
   (function() {

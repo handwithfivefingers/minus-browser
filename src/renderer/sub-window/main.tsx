@@ -8,9 +8,7 @@ import { setPayload } from './payload-store'
 import { buildRoutes } from './routes'
 
 // @ts-ignore
-import './assets/styles.css'
-
-initTheme()
+import '~/shared/assets/global.css'
 
 // Register all overlays (side-effect imports)
 import './pages/capture'
@@ -21,6 +19,8 @@ import '~/features/permission/siteInfo.register'
 import '~/features/translate/overlay.register'
 import '~/features/userscript/overlay.register'
 import '~/features/vault/overlay.register'
+
+initTheme()
 
 if (typeof window !== 'undefined') {
   window.api.LISTENER(SUB_WINDOW_EMIT.NAVIGATE, (payload: { route: string }) => {

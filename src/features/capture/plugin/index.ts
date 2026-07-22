@@ -13,8 +13,10 @@ export class CaptureTabPlugin implements ITabPlugin {
     if (!message.startsWith('__MINUS_CAPTURE_SELECTION__:')) return
     try {
       const rect = JSON.parse(message.slice('__MINUS_CAPTURE_SELECTION__:'.length))
-      console.log('rect', rect)
+      // console.log('rect', rect)
       this.emitToRenderer('CAPTURE_SELECTION_RESULT', { rect, tabId: ctx.tabId })
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 }

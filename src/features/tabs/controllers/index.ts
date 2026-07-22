@@ -230,7 +230,6 @@ export class TabController {
       this.activeTab = tabObject
       const tabJSON = tabObject.toJSON()
       return tabJSON
-    } catch (err) {
     } finally {
       this.syncCache()
     }

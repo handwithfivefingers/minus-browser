@@ -53,7 +53,7 @@ const ModelSelector = ({ selected, onSelect }: { selected: string; onSelect: (mo
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden />
           <div className="absolute top-full left-0 z-20 mt-1 max-h-60 min-w-45 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
             {loading && (
               <div className="flex items-center gap-2 px-3 py-2 text-xs text-slate-400">

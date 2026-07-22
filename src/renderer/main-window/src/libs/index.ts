@@ -59,7 +59,7 @@ const isValidIPv4 = (ip: string): boolean => {
 // IPv6 validation (simplified)
 const isValidIPv6 = (ip: string): boolean => {
   const ipv6Regex =
-    /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$|^(?:[0-9a-fA-F]{1,4}:)*::(?:[0-9a-fA-F]{1,4}:)*[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:)*::[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:)+::$/
+    /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$|^(?:[0-9a-fA-F]{1,4}:)*[0-9a-fA-F]{1,4}?::(?:[0-9a-fA-F]{1,4}:)*[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:)+::$/
   return ipv6Regex.test(ip)
 }
 
@@ -140,11 +140,16 @@ const allTestCases = [
 // Utility function to determine what type of address it is
 export const getAddressType = (url: string): 'domain' | 'ipv4' | 'ipv6' | 'localhost' | 'invalid' => {
   try {
-    let address = url.replace(/^https?:\/\//, '').split(':')[0]
+    let address = url.replace(/^https?:\/\//, '')
 
-    // Handle IPv6 brackets
-    if (address.startsWith('[') && address.endsWith(']')) {
-      address = address.slice(1, -1)
+    // Handle IPv6 brackets first (before splitting on ':')
+    if (address.startsWith('[')) {
+      const bracketEnd = address.indexOf(']')
+      if (bracketEnd !== -1) {
+        address = address.substring(1, bracketEnd)
+      }
+    } else {
+      address = address.split(':')[0]
     }
 
     if (address === 'localhost') return 'localhost'
@@ -183,7 +188,7 @@ export const navigateOrSearch = (input: string, searchEngineUrl = 'https://googl
 
   // 3. Check for valid Domain patterns (e.g., example.com, site.org/path)
   // Rule: Must have a dot, NO spaces, and end with a likely TLD (2+ chars)
-  const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}(\/.*)?$/i
+  const domainRegex = /^[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,}(\/.*)?$/i
   if (!/\s/.test(query) && domainRegex.test(query)) {
     return `https://${query}`
   }

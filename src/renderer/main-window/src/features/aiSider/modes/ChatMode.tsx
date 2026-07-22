@@ -14,7 +14,9 @@ const ChatMode = () => {
     try {
       const raw = localStorage.getItem('minus_ai_settings')
       if (raw) return JSON.parse(raw).defaultModel || 'llama-3.3-70b-versatile'
-    } catch {}
+    } catch {
+      console.log('getDefaultModel error')
+    }
     return 'llama-3.3-70b-versatile'
   })
   const listRef = useRef<HTMLDivElement>(null)

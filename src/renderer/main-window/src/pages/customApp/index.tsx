@@ -41,6 +41,17 @@ const WebViewInstance = ({ id }: { id: string }) => {
   const webviewRef = useRef<HTMLDivElement | null>(null)
   const { showViewByID } = useContentView()
   const { layout } = useMinusThemeStore()
+  const getContentView = async (tab: Partial<Tab>) => {
+    try {
+      if (!webviewRef.current) return
+      const { x, y, width, height } = webviewRef.current.getBoundingClientRect()
+      const screen = { x, y, width, height }
+      const data = { screen, tab: tab }
+      await showViewByID(data)
+    } catch (error) {
+      console.error('error', error)
+    }
+  }
 
   useEffect(() => {
     if (!webviewRef.current) return
@@ -62,17 +73,6 @@ const WebViewInstance = ({ id }: { id: string }) => {
     }
   }, [id])
 
-  const getContentView = async (tab: Partial<Tab>) => {
-    try {
-      if (!webviewRef.current) return
-      const { x, y, width, height } = webviewRef.current.getBoundingClientRect()
-      const screen = { x, y, width, height }
-      const data = { screen, tab: tab }
-      await showViewByID(data)
-    } catch (error) {
-      console.error('error', error)
-    }
-  }
   useEffect(() => {
     window.api.LISTENER('TOGGLE_DEV_TOOLS', () => {
       window.api.EMIT('TOGGLE_DEV_TOOLS', { id })

@@ -283,6 +283,7 @@ function GravityStarsBackground({
     if (!ctx) return
     updateStars()
     drawStars(ctx)
+    // eslint-disable-next-line react-hooks/immutability
     animRef.current = requestAnimationFrame(animate)
   }, [updateStars, drawStars])
 

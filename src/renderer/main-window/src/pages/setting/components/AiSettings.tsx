@@ -268,10 +268,8 @@ const AiSettings = () => {
         </div>
         <div className="flex w-60 flex-col gap-2 rounded border border-slate-200 bg-slate-100 p-2 dark:border-slate-700 dark:bg-slate-800/50">
           <div className="flex items-center gap-2">
-            <label className="flex-1 text-sm text-slate-600 dark:text-slate-400">
-              Show floating AI button on pages
-            </label>
-            <Switch title="Show floating AI button" value={showFloatingButton} onCheck={setShowFloatingButton} />
+            <span className="flex-1 text-sm text-slate-600 dark:text-slate-400">Show floating AI button on pages</span>
+            <Switch label="Show floating AI button" value={showFloatingButton} onCheck={setShowFloatingButton} />
           </div>
         </div>
       </div>

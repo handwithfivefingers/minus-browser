@@ -17,27 +17,6 @@ interface ScriptItem {
   enabled?: boolean
 }
 
-const Button = ({
-  onClick,
-  children,
-  style,
-}: {
-  onClick: () => void
-  children?: React.ReactNode
-  style?: React.CSSProperties
-}) => {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="mb-2 h-[30px] cursor-pointer rounded-lg border border-transparent bg-slate-900 px-2.5 text-white dark:bg-slate-700"
-      style={style}
-    >
-      {children}
-    </button>
-  )
-}
-
 const App = () => {
   const [items, setItems] = useState<ScriptItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)

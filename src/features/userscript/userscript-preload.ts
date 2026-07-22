@@ -308,4 +308,6 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(() => {})
+main().catch(() => {
+  console.log('[UserScript Preload] Error')
+})

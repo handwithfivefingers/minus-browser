@@ -42,7 +42,9 @@ export class UserScriptTabPlugin implements ITabPlugin {
                 })();
               }
             `
-          ctx.webContents.executeJavaScript(codeToInject, true).catch(() => {})
+          ctx.webContents.executeJavaScript(codeToInject, true).catch(() => {
+            console.error('runMatchedUserScripts error')
+          })
         } else {
           const codeToInject = `
               (function() {
@@ -53,7 +55,9 @@ export class UserScriptTabPlugin implements ITabPlugin {
                 }
               })();
             `
-          ctx.webContents.executeJavaScript(codeToInject, true).catch(() => {})
+          ctx.webContents.executeJavaScript(codeToInject, true).catch(() => {
+            console.error('runMatchedUserScripts error')
+          })
         }
       }
     } catch (error) {

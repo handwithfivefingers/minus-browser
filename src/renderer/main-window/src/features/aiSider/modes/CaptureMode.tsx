@@ -13,13 +13,17 @@ const CaptureMode = () => {
       if (result?.image) {
         setCapturedImage(result.image)
       }
-    } catch {}
+    } catch {
+      console.log('Capture failed')
+    }
   }
 
   const handleCaptureSelection = async () => {
     try {
       await window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION)
-    } catch {}
+    } catch {
+      console.log('Capture failed')
+    }
   }
 
   const handleClear = () => {
@@ -63,7 +67,9 @@ const CaptureMode = () => {
               onClick={async () => {
                 try {
                   await window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_COPY_CLIPBOARD)
-                } catch {}
+                } catch {
+                  console.log('Capture failed')
+                }
               }}
               className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-indigo-500"
             >
@@ -96,7 +102,7 @@ const CaptureMode = () => {
           <div className="text-center text-slate-400">
             <IconPhoto size={32} className="mx-auto mb-2 opacity-40" />
             <p className="text-xs">No screenshot captured yet</p>
-            <p className="mt-1 text-[10px]">Click "Capture Page" or "Select Region" above</p>
+            <p className="mt-1 text-[10px]">{`Click "Capture Page" or "Select Region" above`}</p>
           </div>
         </div>
       )}

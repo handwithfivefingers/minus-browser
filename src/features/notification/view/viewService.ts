@@ -113,7 +113,9 @@ export class NotificationViewService {
     if (!this.mainWindow || !this.view || !this.isViewAttached) return
     try {
       this.mainWindow.contentView.removeChildView(this.view)
-    } catch {}
+    } catch {
+      // ignore
+    }
     this.mainWindow.contentView.addChildView(this.view)
   }
 
@@ -197,14 +199,18 @@ export class NotificationViewService {
       // Ensure notification view is always on top (zIndex=3)
       this.mainWindow.contentView.removeChildView(this.view)
       this.mainWindow.contentView.addChildView(this.view)
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   private removeViewFromWindow() {
     if (!this.mainWindow || !this.view) return
     try {
       this.mainWindow.contentView.removeChildView(this.view)
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   async openList() {
@@ -249,7 +255,9 @@ export class NotificationViewService {
     if (this.view) {
       try {
         this.view.webContents.close()
-      } catch {}
+      } catch {
+        // ignore
+      }
       this.view = null
     }
     this.readyPromise = null

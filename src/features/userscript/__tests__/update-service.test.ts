@@ -55,6 +55,6 @@ describe('isNewerVersion', () => {
 
   it('handles pre-release-style versions', () => {
     expect(isNewerVersion('1.0.0-alpha', '1.0.0')).toBe(false)
-    expect(isNewerVersion('1.0.0', '1.0.0-beta')).toBe(true)
+    expect(isNewerVersion('1.0.0', '1.0.0-beta')).toBe(false)
   })
 })

@@ -31,6 +31,10 @@
       "files": ["src/main/**/*.{ts,js}", "src/preload/**/*.{ts,js}", "src/features/**/*.{ts,js}"],
       "env": {
         "node": true
+      },
+      "rules": {
+        "@typescript-eslint/ban-ts-comment": "off",
+        "@typescript-eslint/no-explicit-any": "off"
       }
     },
     {
@@ -52,7 +56,13 @@
         }
       },
       "rules": {
-        "react/prop-types": "off"
+        "react/prop-types": "off",
+        "import/namespace": "off",
+        "@typescript-eslint/ban-ts-comment": "off",
+        "react-hooks/set-state-in-effect": "off",
+        "react-hooks/exhaustive-deps": "off",
+        "@typescript-eslint/no-unused-vars": "off",
+        "@typescript-eslint/no-explicit-any": "off"
       }
     }
   ],

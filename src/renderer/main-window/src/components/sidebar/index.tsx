@@ -1,5 +1,4 @@
 import { IconComponents, IconHistory, IconHome, IconPlus, IconSettings } from '@tabler/icons-react'
-import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
 import { Link, useLocation, useNavigate } from 'react-router'
@@ -8,6 +7,7 @@ import { IPC_TAB_GROUP_EMIT, IPC_TAB_GROUP_INVOKE, IPC_TAB_GROUP_RENDERER_EVENT 
 
 import { NotificationBell } from '../../features/notification'
 import { Tab } from '../../interfaces/tab'
+import { cn } from '../../libs/cn'
 import { useMinusThemeStore } from '../../stores/useMinusTheme'
 import { useTabGroupStore } from '../../stores/useTabGroupStore'
 import { useTabStore } from '../../stores/useTabStore'
@@ -71,6 +71,13 @@ const SideMenu = () => {
   const dragState = useRef<(DragState & { groupId?: string }) | null>(null)
   const active = useRef(false)
 
+  const onAddNewTab = async (payload: Partial<Tab>) => {
+    const tab = await window.api.INVOKE<Tab>('CREATE_TAB', payload)
+    setTimeout(() => {
+      tab.id && navigate(tab.id)
+    }, 500)
+  }
+
   useEffect(() => {
     ;(async () => {
       const groups = await window.api.INVOKE<any>(IPC_TAB_GROUP_INVOKE.GET_TAB_GROUPS)
@@ -83,13 +90,6 @@ const SideMenu = () => {
       setGroups(data as any)
     })
   }, [])
-
-  const onAddNewTab = async (payload: Partial<Tab>) => {
-    const tab = await window.api.INVOKE<Tab>('CREATE_TAB', payload)
-    setTimeout(() => {
-      tab.id && navigate(tab.id)
-    }, 500)
-  }
 
   const onCloseTab = async ({ id }: { id: string }) => {
     const currentTabs = useTabStore.getState().tabs
@@ -241,12 +241,12 @@ const SideMenu = () => {
 
   return (
     <ErrorBoundary FallbackComponent={(fallbackProps) => <ComponentError {...fallbackProps} />}>
-      <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={clsx(styles.sidebar)}>
+      <ResizableSidebar initialWidth={56} minWidth={30} maxWidth={350} className={cn(styles.sidebar)}>
         <div className="flex h-full flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto" style={{}}>
           <Link
             to={'/'}
             viewTransition
-            className={clsx(
+            className={cn(
               `relative flex h-8 shrink-0 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md px-0.5  text-slate-800 transition-all hover:text-indigo-500 dark:text-slate-200`,
               {
                 [`bg-white text-slate-500 shadow-md dark:bg-slate-700 dark:text-slate-300`]: pathname === '/',
@@ -265,7 +265,7 @@ const SideMenu = () => {
                 <TabItem
                   {...tab}
                   key={tab.id}
-                  className={clsx('flex flex-col items-center', styles.tabItem, styles.pinnedTab)}
+                  className={cn('flex flex-col items-center', styles.tabItem, styles.pinnedTab)}
                   onClose={onCloseTab}
                 />
               ))}
@@ -312,7 +312,7 @@ const SideMenu = () => {
                     )}
                     <TabItem
                       {...tab}
-                      className={clsx('flex flex-col items-center', styles.tabItem, {
+                      className={cn('flex flex-col items-center', styles.tabItem, {
                         [styles.dragOverTop]: dropIndicator?.tabId === tab.id && dropIndicator?.position === 'before',
                         [styles.dragOverBottom]: dropIndicator?.tabId === tab.id && dropIndicator?.position === 'after',
                       })}
@@ -369,7 +369,7 @@ const SubMenuItem = ({ tabs, onAddNewTab }: { tabs: Tab[]; onAddNewTab: (tab: Pa
       <NotificationBell />
       <Link
         to="/history"
-        className={clsx(
+        className={cn(
           ' z-1 flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-md px-0.5 py-1 text-slate-500 transition-colors hover:bg-white hover:text-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800',
           {
             [`bg-white text-slate-500 shadow-md dark:bg-slate-700 dark:text-slate-300`]: pathname === '/history',
@@ -382,7 +382,7 @@ const SubMenuItem = ({ tabs, onAddNewTab }: { tabs: Tab[]; onAddNewTab: (tab: Pa
       </Link>
       <Link
         to="/setting"
-        className={clsx(
+        className={cn(
           ' z-1 flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-md px-0.5 py-1 text-slate-500 transition-colors hover:bg-white hover:text-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800',
           {
             [`bg-white text-slate-500 shadow-md dark:bg-slate-700 dark:text-slate-300`]: pathname === '/setting',
@@ -454,11 +454,7 @@ const ResizableSidebar = ({
   return (
     <div
       ref={sidebarRef}
-      className={clsx(
-        'sidebar-container ',
-        LAYOUT_SIDEBAR_CLASS[layout as keyof typeof LAYOUT_SIDEBAR_CLASS],
-        className
-      )}
+      className={cn('sidebar-container ', LAYOUT_SIDEBAR_CLASS[layout as keyof typeof LAYOUT_SIDEBAR_CLASS], className)}
       style={{
         width: `${width}px`,
         position: 'relative',

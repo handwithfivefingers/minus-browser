@@ -4,7 +4,8 @@ import { createHashRouter, RouterProvider } from 'react-router'
 import { APP_ROUTES } from './constants/routes'
 import { ThemeProvider } from './context/theme'
 // @ts-ignore
-import './assets/styles.css'
+// import './assets/styles.css'
+import '~/shared/assets/global.css'
 
 const root = createRoot(document.getElementById('root') as HTMLElement)
 

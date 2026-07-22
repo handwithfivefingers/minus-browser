@@ -81,6 +81,7 @@ const AiSidebar = () => {
     >
       {/* Resize handle (left edge) */}
       <div
+        aria-hidden
         className="transition-colors hover:bg-indigo-400"
         onMouseDown={startResize}
         style={{

@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import Prism from 'prismjs'
+import { highlight, languages } from 'prismjs'
 import { useFieldArray, useFormContext } from 'react-hook-form'
 import Editor from 'react-simple-code-editor'
 
@@ -9,6 +9,8 @@ import Input from '~/renderer/sub-window/components/input'
 import Select from '~/renderer/sub-window/components/select'
 
 import type { UserScriptSchema } from '../schema/userscript'
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import 'prismjs/themes/prism-tomorrow.min.css'
 
@@ -148,7 +150,7 @@ export const UserScriptForm = () => {
               onValueChange={field.onChange}
               highlight={(code) => {
                 if (!code) return ''
-                return Prism.highlight(code, Prism.languages.js, 'js')
+                return highlight(code, languages.js, 'js')
               }}
               padding={10}
               style={{

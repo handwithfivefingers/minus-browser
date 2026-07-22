@@ -67,7 +67,9 @@ async function findOldUserDataPaths(currentUserData: string): Promise<string[]> 
       try {
         await fs.access(p)
         found.push(p)
-      } catch {}
+      } catch {
+        console.log('[Migration] Failed to access', p)
+      }
     }
   }
 
@@ -192,7 +194,9 @@ async function migrateSinglePath(
         `[Migration] Skipping Partitions/ from ${oldPath} — Electron major version changed (${oldMajor ?? 'unknown'} → ${currentMajor})`
       )
     }
-  } catch {}
+  } catch {
+    console.error(`[Migration] Skipping Partitions/ from ${oldPath} — not found`)
+  }
 
   return { migrated, partitionsMigrated }
 }
@@ -255,6 +259,7 @@ export async function readLegacySessionCookies(currentUserData: string): Promise
   try {
     const raw = await fs.readFile(path.join(currentUserData, 'session.json'), 'utf-8')
     const parsed = JSON.parse(raw)
+    // @ts-ignore
     return Array.isArray(parsed) ? parsed : Object.values(parsed).flat()
   } catch {
     return null
@@ -265,5 +270,7 @@ export async function removeLegacySessionFile(currentUserData: string): Promise<
   try {
     await fs.unlink(path.join(currentUserData, 'session.json'))
     console.error('[Migration] Removed legacy session.json')
-  } catch {}
+  } catch {
+    console.log('[Migration] Failed to remove legacy session.json')
+  }
 }

@@ -1,3 +1,4 @@
+import { UserScriptSchema } from '../overlay/schema/userscript'
 import {
   IUserScriptMetadata,
   IUserScriptRequire,
@@ -7,7 +8,7 @@ import {
 } from '../types'
 
 const METADATA_BLOCK_RE = /\/\/\s*==UserScript==\s*\n([\s\S]*?)\n\s*\/\/\s*==\/UserScript==/im
-const DIRECTIVE_RE = /\/\/\s*@([a-zA-Z-]+)\s+(.*?)$/gm
+const DIRECTIVE_RE = /\/\/\s*@([a-zA-Z_-]+)(?:[ \t]+(.*?))?$/gm
 
 export function parseUserScriptMetadata(source: string): IUserScriptMetadata | null {
   const blockMatch = source.match(METADATA_BLOCK_RE)
@@ -33,11 +34,11 @@ export function parseUserScriptMetadata(source: string): IUserScriptMetadata | n
   match = DIRECTIVE_RE.exec(block)
   while (match !== null) {
     const key = match[1].toLowerCase()
-    const value = match[2].trim()
+    const value = (match[2] || '').trim()
 
     switch (key) {
       case 'name':
-        meta.name = value
+        if (!meta.name) meta.name = value
         break
       case 'namespace':
         meta.namespace = value
@@ -166,7 +167,7 @@ export function generateMetadataBlock(meta: Partial<IUserScriptMetadata>): strin
   return lines.join('\n')
 }
 
-export function metadataToPartialScript(meta: IUserScriptMetadata): Partial<{
+export function metadataToPartialScript(meta: UserScriptSchema): Partial<{
   name: string
   matches: string[]
   excludes: string[]

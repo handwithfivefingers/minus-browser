@@ -39,12 +39,12 @@ const MODE_OPTIONS: { value: 'light' | 'dark' | 'auto'; label: string; icon: typ
 export const Interface = () => {
   const {
     layout,
-    dataSync,
+    // dataSync,
     savedCookies,
     historyRetentionDays,
     autoDownload,
     notificationRetentionDays,
-    setDataSyncTime,
+    // setDataSyncTime,
     setCookieMode,
     setLayout,
     setHistoryRetentionDays,
@@ -96,7 +96,7 @@ export const Interface = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <label className="flex flex-col gap-1.5">
+          {/* <label className="flex flex-col gap-1.5">
             <span className="text-sm text-slate-600 dark:text-slate-400">Sync Data Interval</span>
             <select
               value={dataSync.intervalTime}
@@ -109,7 +109,7 @@ export const Interface = () => {
               <option value="60">60 sec</option>
               <option value="off">Off</option>
             </select>
-          </label>
+          </label> */}
 
           <label className="flex flex-col gap-1.5">
             <span className="text-sm text-slate-600 dark:text-slate-400">Cookie saved as</span>
@@ -123,7 +123,7 @@ export const Interface = () => {
             </select>
           </label>
 
-          <label className="flex flex-col gap-1.5 md:col-span-2">
+          <div className="flex flex-col gap-1.5 md:col-span-2">
             <span className="text-sm text-slate-600 dark:text-slate-400">Layout Template</span>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <button
@@ -153,7 +153,7 @@ export const Interface = () => {
                 FLOATING
               </button>
             </div>
-          </label>
+          </div>
         </div>
       </div>
 
@@ -219,7 +219,7 @@ export const Interface = () => {
                 Download and prepare updates in the background
               </span>
             </div>
-            <label className="relative inline-flex cursor-pointer items-center">
+            <div className="relative inline-flex cursor-pointer items-center">
               <input
                 type="checkbox"
                 className="peer sr-only"
@@ -227,7 +227,7 @@ export const Interface = () => {
                 onChange={(e) => setAutoDownload(e.target.checked)}
               />
               <div className="peer h-5 w-9 rounded-full bg-slate-300 peer-checked:bg-green-500 peer-focus:outline-none after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
-            </label>
+            </div>
           </div>
 
           <div className="flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-700">

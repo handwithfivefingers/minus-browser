@@ -48,7 +48,9 @@ export class SubWindowService {
         /**@ts-ignore */
         return SUB_WINDOW_VITE_DEV_SERVER_URL
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
     const filePath = path.join(__dirname, '../renderer/sub_window/index.html')
     return pathToFileURL(filePath).toString()
   }
@@ -85,7 +87,9 @@ export class SubWindowService {
     })
     // this.view.webContents.openDevTools();
     this.view.setBackgroundColor('#00000000')
-    await this.view.webContents.loadURL(this.getURL()).catch(() => {})
+    await this.view.webContents.loadURL(this.getURL()).catch(() => {
+      // ignore
+    })
     // this.view.webContents.reloadIgnoringCache();
   }
 
@@ -93,7 +97,9 @@ export class SubWindowService {
     if (!this.isOpen || !this.mainWindow || !this.view) return
     try {
       this.mainWindow.contentView.removeChildView(this.view)
-    } catch {}
+    } catch {
+      // ignore
+    }
     this.mainWindow.contentView.addChildView(this.view)
   }
 
@@ -169,7 +175,9 @@ export class SubWindowService {
 
     try {
       this.mainWindow.contentView.removeChildView(this.view)
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   send(channel: string, data?: any) {

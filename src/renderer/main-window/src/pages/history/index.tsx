@@ -167,6 +167,7 @@ const History = () => {
                           key={entry.id}
                           className="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-white dark:hover:bg-slate-800"
                           onClick={() => openUrl(entry.url)}
+                          aria-hidden
                         >
                           {entry.favicon ? (
                             <img src={entry.favicon} alt="" className="h-5 w-5 shrink-0 rounded" />

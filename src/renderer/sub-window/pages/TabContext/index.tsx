@@ -76,7 +76,9 @@ export function TabContext() {
             .then((fetched) => {
               setGroups(fetched || [])
             })
-            .catch(() => {})
+            .catch(() => {
+              console.log('Failed to fetch groups')
+            })
         }
         setView('context-menu')
       } catch {

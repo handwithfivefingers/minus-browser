@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, safeStorage } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -210,7 +210,6 @@ class AppDatabase {
 
   private migratePasswordVault(data: any) {
     if (!data?.vault) return
-    const { safeStorage } = require('electron')
     const payload = data.vault
     if (!payload?.cipherText) return
 

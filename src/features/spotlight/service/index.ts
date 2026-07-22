@@ -53,7 +53,9 @@ export class SpotlightService {
       },
     })
     this.view.setBackgroundColor('#00000000')
-    this.view.webContents.loadURL(this.getSpotlightURL()).catch(() => {})
+    this.view.webContents.loadURL(this.getSpotlightURL()).catch(() => {
+      // ignore
+    })
     if (this.view.webContents.isLoading()) {
       await new Promise<void>((resolve) => this.view!.webContents.once('did-finish-load', resolve))
     }
@@ -106,7 +108,9 @@ export class SpotlightService {
 
     try {
       this.mainWindow.contentView.removeChildView(this.view)
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   destroy() {

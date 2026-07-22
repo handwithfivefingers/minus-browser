@@ -45,7 +45,9 @@ export default function SiteInfoOverlay() {
         const data = JSON.parse(raw)
         setUrl(data.url || '')
         setAnchor(data.anchor || null)
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   }, [])
 
@@ -68,7 +70,9 @@ export default function SiteInfoOverlay() {
       const origin = new URL(url).origin
       await window.api.INVOKE('SET_SITE_PERMISSION', { origin, permission, decision })
       setPermissions((prev) => ({ ...prev, [permission]: decision }))
-    } catch {}
+    } catch {
+      // ignore
+    }
   }
 
   const handleResetAll = async () => {

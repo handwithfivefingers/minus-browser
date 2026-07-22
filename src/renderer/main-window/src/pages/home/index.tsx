@@ -46,15 +46,14 @@ const TodoHome = () => {
       if (interval) clearInterval(interval)
     }
   }, [])
-
-  useEffect(() => {
-    loadTodos()
-  }, [])
-
   const loadTodos = async () => {
     const data = await window.api.INVOKE<ITodoItem[]>('TODO_GET_ALL')
     setTodos(data || [])
   }
+
+  useEffect(() => {
+    loadTodos()
+  }, [])
 
   const addNewTodo = async () => {
     const newTodo = await window.api.INVOKE<ITodoItem>('TODO_CREATE', {
@@ -174,6 +173,7 @@ const TodoHome = () => {
                     'flex cursor-pointer gap-2 rounded-md p-2 transition-colors',
                     n.read ? 'bg-slate-700/50' : 'bg-indigo-500/20'
                   )}
+                  aria-hidden
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1">
@@ -217,6 +217,7 @@ const TodoItem = ({
       <span
         className="cursor-pointer text-indigo-500"
         onClick={() => setTodo((prev) => ({ ...prev, checked: !prev.checked }))}
+        aria-hidden
       >
         {!todo.checked ? <IconSquare /> : <IconSquareCheck />}
       </span>

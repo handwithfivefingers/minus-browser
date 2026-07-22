@@ -10,7 +10,7 @@ npm run build:win  # package for Windows (PLATFORM=WIN)
 npm run lint       # ESLint (.ts,.tsx)
 ```
 
-No `test` or `typecheck` scripts exist — only `lint` is wired. Tests (Vitest) live under `src/features/userscript/__tests__/` but have no npm script; run manually with `npx vitest run`.
+No `typecheck` script exists — only `lint` and `test` are wired. Tests (Vitest) live under `src/**/__tests__/`; run with `npm test` (or `npm run test:watch` for watch mode).
 
 ## Architecture
 
@@ -34,6 +34,17 @@ No `test` or `typecheck` scripts exist — only `lint` is wired. Tests (Vitest) 
 ### IPC pattern
 
 Renderer talks to main via `window.api.INVOKE` / `window.api.EMIT` / `window.api.LISTENER` (typed in `src/interface.d.ts`). Channels are centralized in `src/shared/constants/ipc.ts`.
+
+## Testing (Vitest)
+
+30 test files, 222 tests total. Run with `npm test` (single run) or `npm run test:watch`.
+
+- **Main process tests** use `// @vitest-environment node` pragma
+- **Renderer tests** default to jsdom (configured in `vitest.config.ts`)
+- **Global setup** (`src/test-setup.ts`) mocks `electron` and `electron-log` for all environments; `window.api` is set conditionally in jsdom only
+- **Component tests** re-render into same DOM; use `beforeEach(cleanup)` from `@testing-library/react` to isolate each test
+- **Path alias** `~` → `./src` is configured in vitest config (resolve.alias) — works in both `import` and Vite transforms
+- Two known source code limitations around IPv6 validation (`isValidIPv6` is simplified, doesn't match all compressed forms) and encryption (`secretKey` is only 6 bytes, but `aes-256-cbc` needs 32) — tests accommodate these
 
 ## Key quirks
 

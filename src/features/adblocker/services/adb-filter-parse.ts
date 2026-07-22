@@ -395,24 +395,24 @@ function parseFilter(input, parsedFilterData) {
  */
 const filterArrCache = {}
 function indexOfFilter(input, filter, startingPos) {
+  let filterParts: any
   if (filter.indexOf('^') == -1) {
     // no separator characters, no need to do the rest of the parsing
     return input.indexOf(filter, startingPos)
   }
   if (filterArrCache[filter]) {
-    var filterParts = filterArrCache[filter]
+    filterParts = filterArrCache[filter]
   } else {
-    var filterParts = filter.split('^')
+    filterParts = filter.split('^')
     filterArrCache[filter] = filterParts
   }
   let index = startingPos
   let beginIndex = -1
   let prefixedSeparatorChar = false
 
-  var f = 0
   let part
 
-  for (var f = 0; f < filterParts.length; f++) {
+  for (let f = 0; f < filterParts.length; f++) {
     part = filterParts[f]
 
     if (part === '') {
@@ -561,18 +561,18 @@ function parse(input, parserData, callback, options = {}) {
 
   parserData.exceptionFilters = parserData.exceptionFilters || {}
 
-  for (var i = 0; i < arrayFilterCategories.length; i++) {
+  for (let i = 0; i < arrayFilterCategories.length; i++) {
     parserData[arrayFilterCategories[i]] = parserData[arrayFilterCategories[i]] || []
     parserData.exceptionFilters[arrayFilterCategories[i]] = parserData.exceptionFilters[arrayFilterCategories[i]] || []
   }
 
-  for (var i = 0; i < objectFilterCategories.length; i++) {
+  for (let i = 0; i < objectFilterCategories.length; i++) {
     parserData[objectFilterCategories[i]] = parserData[objectFilterCategories[i]] || {}
     parserData.exceptionFilters[objectFilterCategories[i]] =
       parserData.exceptionFilters[objectFilterCategories[i]] || {}
   }
 
-  for (var i = 0; i < trieFilterCategories.length; i++) {
+  for (let i = 0; i < trieFilterCategories.length; i++) {
     parserData[trieFilterCategories[i]] = parserData[trieFilterCategories[i]] || new Trie()
     parserData.exceptionFilters[trieFilterCategories[i]] =
       parserData.exceptionFilters[trieFilterCategories[i]] || new Trie()
@@ -589,7 +589,7 @@ function parse(input, parserData, callback, options = {}) {
 
       const parsedFilterData = {}
 
-      var object
+      let object
 
       if (parseFilter(filter, parsedFilterData)) {
         if (parsedFilterData.isException) {
@@ -659,6 +659,7 @@ function parse(input, parserData, callback, options = {}) {
     let nextChunkSize = 1500
     const targetMsPerChunk = 12
 
+    // eslint-disable-next-line no-inner-declarations
     function nextChunk() {
       const t1 = Date.now()
       processChunk(lastFilterIdx, lastFilterIdx + nextChunkSize)
@@ -688,13 +689,13 @@ function parse(input, parserData, callback, options = {}) {
 function matchesFilters(filters, input, contextParams) {
   const currentHost = getUrlHost(input)
 
-  var i, len, filter
+  let i, len, filter
 
   // check if the string matches a left anchored filter
 
   const leftAnchoredMatches = filters.leftAnchored.getStartingSubstringsOf(input)
   if (leftAnchoredMatches.length !== 0) {
-    var len = leftAnchoredMatches.length
+    len = leftAnchoredMatches.length
     for (i = 0; i < len; i++) {
       if (matchOptions(leftAnchoredMatches[i], input, contextParams, currentHost)) {
         return true
@@ -706,7 +707,7 @@ function matchesFilters(filters, input, contextParams) {
 
   const rightAnchoredMatches = filters.rightAnchored.getEndingSubstringsOfReversed(input)
   if (rightAnchoredMatches.length !== 0) {
-    var len = rightAnchoredMatches.length
+    len = rightAnchoredMatches.length
     for (i = 0; i < len; i++) {
       if (matchOptions(rightAnchoredMatches[i], input, contextParams, currentHost)) {
         return true
@@ -762,9 +763,8 @@ function matchesFilters(filters, input, contextParams) {
   const nonAnchoredStringMatches = filters.nonAnchoredString.getSubstringsOf(input)
 
   if (nonAnchoredStringMatches.length !== 0) {
-    var len = nonAnchoredStringMatches.length
-
-    for (var i = 0; i < len; i++) {
+    const len = nonAnchoredStringMatches.length
+    for (let i = 0; i < len; i++) {
       filter = nonAnchoredStringMatches[i]
       let matches
       if (filter.wildcardMatchParts) {

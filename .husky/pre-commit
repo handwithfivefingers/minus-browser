@@ -1,0 +1,22 @@
+echo "--- Running format ---"
+npm run format
+echo ""
+
+echo ""
+echo "--- Running lint ---"
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Lint failed. Aborting commit."
+  exit 1
+fi
+
+echo ""
+echo "--- Running tests ---"
+npm test
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed. Aborting commit."
+  exit 1
+fi
+
+echo ""
+echo "✅ All checks passed."

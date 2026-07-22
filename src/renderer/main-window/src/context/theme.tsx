@@ -16,6 +16,7 @@ interface IThemeContext {
 const ThemeContext = createContext<IThemeContext>({
   mode: 'auto',
   resolved: 'light',
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   setMode: () => {},
 })
 

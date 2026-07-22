@@ -185,7 +185,9 @@ export class SearchService {
     `,
         true
       )
-      .catch(() => {})
+      .catch(() => {
+        // ignore
+      })
     view.webContents.stopFindInPage('clearSelection')
   }
 
@@ -210,6 +212,8 @@ export class SearchService {
     `,
         true
       )
-      .catch(() => {})
+      .catch(() => {
+        // ignore
+      })
   }
 }

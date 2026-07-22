@@ -73,7 +73,9 @@ export function App() {
             .then((fetched) => {
               setGroups(fetched || [])
             })
-            .catch(() => {})
+            .catch(() => {
+              setGroups([])
+            })
         }
         setView('context-menu')
       } catch {

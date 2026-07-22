@@ -3,7 +3,7 @@ import type { ComponentType } from 'react'
 export interface OverlayRegister {
   path: string
   name: string
-  component: ComponentType<{}>
+  component: ComponentType
   shell?: boolean
 }
 

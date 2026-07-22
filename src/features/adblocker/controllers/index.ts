@@ -7,8 +7,6 @@ import { FiltersEngine, Request } from '@ghostery/adblocker'
 import fetch from 'cross-fetch'
 import { parse } from 'tldts-experimental'
 
-import { AdblockService } from '../services'
-
 const baseDir = `https://raw.githubusercontent.com/brave/adblock-lists-mirror/lists/lists/metadata.json`
 const CACHE_TTL_MS = 86_400_000 // 24 hours
 const DEFAULT_AUTO_UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000 // 6 hours
@@ -49,7 +47,6 @@ function filterGroupFromUrl(url: string): string {
 
 export class AdBlocker {
   engine: FiltersEngine | undefined
-  AdblockService = new AdblockService()
   isInitialize = false
   isEnabled = false
   private initializing?: Promise<void>

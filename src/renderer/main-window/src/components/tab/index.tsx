@@ -1,22 +1,20 @@
 import {
+  IconBellOff,
   IconError404,
   IconPin,
   IconPinFilled,
+  IconScreenShare,
   IconVolume,
   IconVolumeOff,
-  IconVideo,
-  IconScreenShare,
-  IconBellOff,
   IconX,
-  IconGripVertical,
 } from '@tabler/icons-react'
-import clsx from 'clsx'
 import { memo, useCallback } from 'react'
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
 import { Link, useLocation } from 'react-router'
 
 import { ITab } from '~/shared/types'
 
+import { cn } from '../../libs/cn'
 import { useTabStore } from '../../stores/useTabStore'
 import { Avatar } from '../avatar'
 
@@ -41,7 +39,6 @@ const TabItem = memo(
     const location = useLocation()
     const setActiveTab = useTabStore((s) => s.setActiveTab)
     const tab = useTabStore((s) => s.tabs.find((item) => item.id === id))
-    console.log('tab', tab)
     const onTogglePin = useCallback(
       (e: React.MouseEvent) => {
         e.preventDefault()
@@ -72,7 +69,7 @@ const TabItem = memo(
     return (
       <ErrorBoundary FallbackComponent={ComponentError}>
         <div
-          className={clsx(styles.tabItem, 'group flex overflow-hidden rounded-md', { [styles.dragging]: isDragging })}
+          className={cn(styles.tabItem, 'group flex overflow-hidden rounded-md', { [styles.dragging]: isDragging })}
           // style={groupColor ? { borderLeft: `3px solid ${groupColor}` } : undefined}
           onContextMenu={handleContextMenu}
           {...dragHandleProps}
@@ -80,7 +77,7 @@ const TabItem = memo(
           <Link
             to={`/${id}`}
             viewTransition
-            className={clsx(
+            className={cn(
               `relative z-0 flex h-10  w-full cursor-pointer flex-row items-center justify-start gap-1 overflow-hidden p-1 transition-colors hover:bg-white hover:text-indigo-500 dark:hover:bg-slate-800`,
               {
                 [`bg-white text-indigo-500 shadow-md dark:bg-slate-700 dark:text-indigo-300`]:
@@ -155,7 +152,7 @@ const TabItem = memo(
           </Link>
 
           <div
-            className={clsx(
+            className={cn(
               styles.actionsOverlay,
               'right-0 hidden flex-col border-l border-slate-200 group-hover:flex dark:border-slate-700',
               {}
@@ -168,13 +165,14 @@ const TabItem = memo(
             >
               {tab?.isPinned ? <IconPinFilled size={14} /> : <IconPin size={14} />}
             </button>
-            <IconX className={clsx(styles.actionButton, styles.closeBtn)} onClick={() => onClose({ id })} size={14} />
+            <IconX className={cn(styles.actionButton, styles.closeBtn)} onClick={() => onClose({ id })} size={14} />
           </div>
         </div>
       </ErrorBoundary>
     )
   }
 )
+TabItem.displayName = 'TabItem'
 const ComponentError = ({ error }: FallbackProps) => {
   console.error('Stack', (error as Error)?.stack)
   console.error('Name', (error as Error)?.name)

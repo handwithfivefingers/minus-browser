@@ -13,8 +13,13 @@ export function Shell({ children, title, onClose }: ShellProps) {
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
+      aria-hidden
     >
-      <div className="fixed inset-0 bg-slate-950/30 backdrop-blur-sm dark:bg-slate-950/30" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-slate-950/30 backdrop-blur-sm dark:bg-slate-950/30"
+        onClick={onClose}
+        aria-hidden
+      />
       <div className="animate-slide-down relative flex h-full max-h-[80vh] flex-col overflow-hidden rounded-2xl border border-white/8 bg-white/95 shadow-[0_0_0_1px_rgba(0,0,0,0.08),0_40px_80px_rgba(0,0,0,0.12)] backdrop-blur-xl dark:border-white/8 dark:bg-slate-950/70 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_40px_80px_rgba(0,0,0,0.6)]">
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-3 dark:border-white/6">
           <span className="text-sm font-semibold text-slate-800 dark:text-white/90">{title}</span>

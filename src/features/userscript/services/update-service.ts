@@ -120,7 +120,9 @@ export function startUpdateChecker(): void {
     }
   }, CHECK_INTERVAL_MS)
 
-  checkForUpdates().catch(() => {})
+  checkForUpdates().catch(() => {
+    console.error('[UserScript Update] Failed to check for updates')
+  })
 }
 
 export function stopUpdateChecker(): void {

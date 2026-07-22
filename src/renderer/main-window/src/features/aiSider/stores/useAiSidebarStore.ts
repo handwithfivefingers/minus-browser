@@ -10,7 +10,9 @@ function getDefaultMode(): AiSidebarMode {
       const mode = settings.defaultMode
       if (['chat', 'summarize', 'generate', 'explain', 'capture'].includes(mode)) return mode
     }
-  } catch {}
+  } catch {
+    console.log('getDefaultMode error')
+  }
   return 'chat'
 }
 

@@ -30,10 +30,15 @@ const Modal = ({
 }) => {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/55 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/55 p-4"
+      onClick={onClose}
+      aria-hidden
+    >
       <div
         className="max-h-[88vh] w-full max-w-3xl overflow-auto rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
         onClick={(event) => event.stopPropagation()}
+        aria-hidden
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-700 dark:bg-slate-800">
           <div className="font-semibold text-slate-900 dark:text-slate-100">{title}</div>

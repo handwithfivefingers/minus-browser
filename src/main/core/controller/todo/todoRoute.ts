@@ -5,7 +5,7 @@ import { TodoController } from './todoController'
 const todoController = new TodoController()
 export { todoController }
 
-export const TodoRoute: Record<string, Function> = {
+export const TodoRoute: Record<string, (...args: any[]) => any> = {
   [IPC_INVOKE_CHANNEL.TODO_GET_ALL]: () => todoController.getAll(),
   [IPC_INVOKE_CHANNEL.TODO_CREATE]: (data: { label: string; description: string }) =>
     todoController.create(data.label, data.description),

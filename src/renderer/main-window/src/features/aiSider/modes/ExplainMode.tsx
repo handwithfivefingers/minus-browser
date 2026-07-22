@@ -15,13 +15,6 @@ const ExplainMode = () => {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    if (pendingText) {
-      clearPendingText()
-      handleExplainWithText(pendingText)
-    }
-  }, [])
-
   const handleExplainWithText = async (text: string) => {
     setError(null)
     setExplanation('')
@@ -70,6 +63,12 @@ const ExplainMode = () => {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  useEffect(() => {
+    if (pendingText) {
+      clearPendingText()
+      handleExplainWithText(pendingText)
+    }
+  }, [])
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-3 py-1.5">

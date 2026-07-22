@@ -25,7 +25,9 @@ interface IDestroy {
 const preloadScript = () => {
   const video = document.querySelector('video')
   if (!video || !document.pictureInPictureEnabled || video.disablePictureInPicture) return
-  video.requestPictureInPicture().catch(() => {})
+  video.requestPictureInPicture().catch(() => {
+    //
+  })
 }
 
 export class Tab extends TabPermission {
@@ -147,7 +149,9 @@ export class Tab extends TabPermission {
       .then((pos: { x: number; y: number }) => {
         this.scrollPosition = pos
       })
-      .catch(() => {})
+      .catch(() => {
+        // ignore
+      })
   }
 
   private saveReferrer() {
@@ -157,7 +161,9 @@ export class Tab extends TabPermission {
       .then((ref: string) => {
         if (ref) this.referrer = ref
       })
-      .catch(() => {})
+      .catch(() => {
+        // ignore
+      })
   }
 
   wake(url?: string) {
@@ -175,7 +181,9 @@ export class Tab extends TabPermission {
     const pos = this.scrollPosition
     if (!pos || !this._webContents) return
     this._webContents.once('did-finish-load', () => {
-      this._webContents!.executeJavaScript(`window.scrollTo(${pos.x}, ${pos.y})`).catch(() => {})
+      this._webContents!.executeJavaScript(`window.scrollTo(${pos.x}, ${pos.y})`).catch(() => {
+        // ignore
+      })
     })
     this.scrollPosition = undefined
   }

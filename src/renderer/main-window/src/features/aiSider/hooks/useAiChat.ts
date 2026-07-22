@@ -14,7 +14,9 @@ function getSystemPrompt(): string {
       const settings = JSON.parse(raw)
       language = settings.language || 'english'
     }
-  } catch {}
+  } catch {
+    console.log('getSystemPrompt error')
+  }
   const label = LANGUAGE_MAP[language] || 'English'
   return `You are a helpful AI assistant. Answer concisely and accurately.\n\nImportant: Respond in ${label}.`
 }
@@ -33,9 +35,6 @@ export function useAiChat() {
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const messagesRef = useRef<ChatMessage[]>(messages)
-
-  messagesRef.current = messages
-
   const sendMessage = useCallback(async (content: string) => {
     setError(null)
     setIsLoading(true)

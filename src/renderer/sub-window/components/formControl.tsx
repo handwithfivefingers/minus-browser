@@ -1,5 +1,4 @@
-import clsx from 'clsx'
-import React from 'react'
+import React, { cloneElement } from 'react'
 import {
   Controller,
   ControllerFieldState,
@@ -9,6 +8,8 @@ import {
   useFormContext,
   UseFormStateReturn,
 } from 'react-hook-form'
+
+import { cn } from '~/renderer/main-window/src/libs/cn'
 
 interface FormControl {
   name: string
@@ -40,7 +41,7 @@ const FormControl = (props: FormControl) => {
   const isError = !!(error as FieldError)?.message
   return (
     <div
-      className={clsx('flex flex-col gap-1', props?.className, {
+      className={cn('flex flex-col gap-1', props?.className, {
         ['border-2 border-red-400/80']: isError,
       })}
     >
@@ -51,8 +52,8 @@ const FormControl = (props: FormControl) => {
           props?.render
             ? props?.render
             : ({ field }) => {
-                return React.cloneElement(props.children as React.ReactElement, {
-                  ...(((props.children as React.ReactElement)?.props || {}) as {}),
+                return cloneElement(props.children as React.ReactElement, {
+                  ...(((props.children as React.ReactElement)?.props || {}) as object),
                   ...field,
                 })
               }

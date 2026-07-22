@@ -309,7 +309,9 @@ export class TranslateService {
         clearTimeout(readyTimer)
         try {
           win.contentView.removeChildView(translateView)
-        } catch {}
+        } catch {
+          // ignore
+        }
       }
 
       const settle = (value: { preference: ITranslatePreference } | null) => {
@@ -317,7 +319,9 @@ export class TranslateService {
         if (!translateView.webContents.isDestroyed()) {
           translateView.webContents
             .executeJavaScript(`window.__translateClose && window.__translateClose();`)
-            .catch(() => {})
+            .catch(() => {
+              // ignore
+            })
         }
         setTimeout(() => {
           teardown()
@@ -369,7 +373,9 @@ export class TranslateService {
               setTimeout(() => clearInterval(poll), 5000);
             })();`
           )
-          .catch(() => {})
+          .catch(() => {
+            // ignore
+          })
       })
       translateView.webContents.loadURL(resolveTranslateUrl()).catch((error) => {
         teardown()
