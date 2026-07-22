@@ -1,3 +1,3 @@
-export * from "./debounce";
-export * from "./isSameUrl";
-export * from "./parser";
+export * from './debounce'
+export * from './isSameUrl'
+export * from './parser'

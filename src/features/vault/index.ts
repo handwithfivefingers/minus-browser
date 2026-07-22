@@ -1,3 +1,3 @@
-export * from "./controllers";
-export * from "./plugin";
-export * from "./constants";
+export * from './controllers'
+export * from './plugin'
+export * from './constants'

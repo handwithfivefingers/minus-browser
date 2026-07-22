@@ -17,12 +17,12 @@
 
 ### Files to modify
 
-| File | Changes |
-|------|---------|
-| `src/features/tabs/models/tab.ts` | Make `view` and `webContents` lazy; add `isHibernated`, `hibernate()`, `wake()`, `isAlive` |
-| `src/features/tabs/controllers/index.ts` | Lazy init in `initialize()`; add `hibernateTab()`, `restoreTab()`, hibernate interval; rename `hibernateMapping` |
-| `src/main/core/controller/viewController.ts` | Call `hibernate`/`restore` on show/hide; use `isAlive` in attach/detach |
-| `src/shared/types/index.ts` (or `ITab`) | Add `isHibernated` field if needed |
+| File                                         | Changes                                                                                                          |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `src/features/tabs/models/tab.ts`            | Make `view` and `webContents` lazy; add `isHibernated`, `hibernate()`, `wake()`, `isAlive`                       |
+| `src/features/tabs/controllers/index.ts`     | Lazy init in `initialize()`; add `hibernateTab()`, `restoreTab()`, hibernate interval; rename `hibernateMapping` |
+| `src/main/core/controller/viewController.ts` | Call `hibernate`/`restore` on show/hide; use `isAlive` in attach/detach                                          |
+| `src/shared/types/index.ts` (or `ITab`)      | Add `isHibernated` field if needed                                                                               |
 
 ### Step 1: Make `Tab.view` + `webContents` lazy
 
@@ -55,11 +55,13 @@ private _createView() {
 Move plugin registration (`registerPlugin()`) out of constructor into a separate `initPlugins()` method called from `show()` instead of constructor.
 
 Add properties:
+
 ```ts
-isHibernated = false;
+isHibernated = false
 ```
 
 Add methods:
+
 ```ts
 hibernate() {
   if (this.isHibernated || !this._view) return;
@@ -110,12 +112,12 @@ constructor({ eventEmitter, ...props }) {
 Create the active tab's view eagerly:
 
 ```ts
-const tab = tabs[idx];
-const newTab = new Tab({ ...tab, eventEmitter: this.eventEmitter });
+const tab = tabs[idx]
+const newTab = new Tab({ ...tab, eventEmitter: this.eventEmitter })
 
 // Only create view for the active/last-focused tab
 if (idx === lastActiveIndex) {
-  newTab._createView(); // force eager creation of view + plugins
+  newTab._createView() // force eager creation of view + plugins
 }
 ```
 
@@ -129,7 +131,7 @@ const data = {
   tabs: this.getTabs(),
   index: this.index,
   activeTabId: this.activeTab?.id || null,
-};
+}
 ```
 
 **On restore**, after building tabs map, set `activeTabId` from persisted data and create view for that tab.
@@ -171,15 +173,19 @@ Call `startHibernateTimer()` in `initialize()`, `stopHibernateTimer()` in a `des
 ### Step 4: Wire into `ViewController`
 
 In `handleShowViewById()`:
+
 - Before calling `currentTab.show()`, check `currentTab.isHibernated` and call `wake()`.
 
 In `handleHideView()`:
+
 - Optionally hibernate immediately (for aggressive mode) or let the timer handle it.
 
 In `onCloseTab()`:
+
 - Before closing, if tab is hibernated, just remove from map (no view to clean).
 
 In `attachChildView()` / `detachChildView()`:
+
 - Guard against null view (when tab is hibernated, view is null).
 
 ### Step 5: Persist/Restore active tab info
@@ -214,14 +220,14 @@ if (activeTabId && this.tabs.has(activeTabId)) {
 
 ## Edge Cases & Risks
 
-| Edge Case | Handling |
-|-----------|----------|
-| Hibernate active tab | Never — skip via `id === this.activeTab?.id` |
-| Hibernate pinned tab | Never — skip via `tab.isPinned` |
-| Close hibernated tab | No view cleanup needed, just delete from map |
-| Close active tab → next tab is hibernated | Wake the next tab before attaching its view |
-| Crash during hibernate | Safe — view.webContents.close() can throw; wrap in try/catch |
-| Tab URL changed while hibernated | Can't happen — no webContents to change URL. URL is frozen from last hibernate |
+| Edge Case                                 | Handling                                                                                        |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Hibernate active tab                      | Never — skip via `id === this.activeTab?.id`                                                    |
+| Hibernate pinned tab                      | Never — skip via `tab.isPinned`                                                                 |
+| Close hibernated tab                      | No view cleanup needed, just delete from map                                                    |
+| Close active tab → next tab is hibernated | Wake the next tab before attaching its view                                                     |
+| Crash during hibernate                    | Safe — view.webContents.close() can throw; wrap in try/catch                                    |
+| Tab URL changed while hibernated          | Can't happen — no webContents to change URL. URL is frozen from last hibernate                  |
 | User switches back during hibernate write | Lock with a promise that awaits `_createView()` completion; queue switch if already hibernating |
 
 ---

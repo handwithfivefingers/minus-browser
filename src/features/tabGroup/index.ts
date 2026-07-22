@@ -1,1 +1,1 @@
-export { tabGroupController } from "./controllers";
+export { tabGroupController } from './controllers'

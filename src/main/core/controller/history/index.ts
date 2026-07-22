@@ -1,3 +1,3 @@
-export * from "./types";
-export { History } from "./historyController";
-export { HistoryRoute, historyController } from "./historyRoute";
+export * from './types'
+export { History } from './historyController'
+export { HistoryRoute, historyController } from './historyRoute'

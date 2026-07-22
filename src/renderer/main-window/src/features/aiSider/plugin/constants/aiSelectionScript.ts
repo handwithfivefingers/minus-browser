@@ -212,4 +212,4 @@ export const AI_SELECTION_SCRIPT = `(() => {
     const text = String(window.getSelection?.()?.toString?.() || "").trim();
     if (!text && !isHovering) hideContainer();
   }, true);
-})();`;
+})();`

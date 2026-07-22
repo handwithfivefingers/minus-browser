@@ -20,4 +20,4 @@ export const CAPTURE_CREDENTIAL_SCRIPT = `(() => {
             password: password,
             url: window.location.href
           };
-        })();`;
+        })();`

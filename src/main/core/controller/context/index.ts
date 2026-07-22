@@ -1,1 +1,1 @@
-export * from "./contextMenuController";
+export * from './contextMenuController'

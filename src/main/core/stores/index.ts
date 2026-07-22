@@ -1,2 +1,2 @@
-export { appDb } from "./database";
-export * from "./minusEventEmitter";
+export { appDb } from './database'
+export * from './minusEventEmitter'

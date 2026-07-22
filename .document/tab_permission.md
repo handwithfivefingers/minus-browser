@@ -4,17 +4,17 @@
 
 The codebase has minimal permission handling compared to Chrome:
 
-| Feature | Status |
-|---|---|
-| **Audio indicator** (tab shows speaker icon) | ✅ Exists (`IconVolume` on favicon when `audible=true`) |
-| **Mute tab** (click to mute audio) | ❌ Not implemented |
-| **Mic/Camera indicator** (red dot when recording) | ❌ Not implemented |
-| **Screen share indicator** | ❌ Not implemented |
-| **Notification indicator** (bell icon in URL bar) | ❌ Not implemented |
-| **Permission prompts** (dialogs for geolocation, notifications, etc.) | ❌ All permissions auto-granted with no user prompt |
-| **Per-site permission storage** (remember decisions) | ❌ Not implemented |
-| **Site info popup** (click lock in URL bar) | ❌ Not implemented |
-| **Site settings** (manage permissions for sites) | ❌ Not implemented |
+| Feature                                                               | Status                                                  |
+| --------------------------------------------------------------------- | ------------------------------------------------------- |
+| **Audio indicator** (tab shows speaker icon)                          | ✅ Exists (`IconVolume` on favicon when `audible=true`) |
+| **Mute tab** (click to mute audio)                                    | ❌ Not implemented                                      |
+| **Mic/Camera indicator** (red dot when recording)                     | ❌ Not implemented                                      |
+| **Screen share indicator**                                            | ❌ Not implemented                                      |
+| **Notification indicator** (bell icon in URL bar)                     | ❌ Not implemented                                      |
+| **Permission prompts** (dialogs for geolocation, notifications, etc.) | ❌ All permissions auto-granted with no user prompt     |
+| **Per-site permission storage** (remember decisions)                  | ❌ Not implemented                                      |
+| **Site info popup** (click lock in URL bar)                           | ❌ Not implemented                                      |
+| **Site settings** (manage permissions for sites)                      | ❌ Not implemented                                      |
 
 ### Current permission handler
 
@@ -40,28 +40,43 @@ The codebase has minimal permission handling compared to Chrome:
 
 ```typescript
 export type PermissionType =
-  | "geolocation" | "notifications" | "microphone" | "camera"
-  | "media" | "clipboard-read" | "clipboard-write"
-  | "midi" | "midiSysex" | "pointerLock" | "fullscreen"
-  | "openExternal" | "serial" | "usb" | "hid"
-  | "storage-access" | "mediaKeySystem" | "fileSystem" | "unknown";
+  | 'geolocation'
+  | 'notifications'
+  | 'microphone'
+  | 'camera'
+  | 'media'
+  | 'clipboard-read'
+  | 'clipboard-write'
+  | 'midi'
+  | 'midiSysex'
+  | 'pointerLock'
+  | 'fullscreen'
+  | 'openExternal'
+  | 'serial'
+  | 'usb'
+  | 'hid'
+  | 'storage-access'
+  | 'mediaKeySystem'
+  | 'fileSystem'
+  | 'unknown'
 
-export type PermissionDecision = "grant" | "deny" | "prompt";
+export type PermissionDecision = 'grant' | 'deny' | 'prompt'
 
 export interface SitePermissions {
-  [permission: string]: PermissionDecision;
+  [permission: string]: PermissionDecision
 }
 
 export interface PermissionRequest {
-  requestId: string;
-  permission: PermissionType;
-  origin: string;
+  requestId: string
+  permission: PermissionType
+  origin: string
 }
 ```
 
 **File:** `src/shared/constants/ipc.ts`
 
 Add IPC channels:
+
 - `EMIT_CHANNEL` add: `TOGGLE_MUTE_TAB`
 - Invoke channels add: `GET_SITE_PERMISSIONS`, `SET_SITE_PERMISSION`, `RESET_SITE_PERMISSION`, `RESET_ALL_PERMISSIONS`
 
@@ -70,6 +85,7 @@ Permission prompts use the existing `SUB_WINDOW_INVOKE.RESOLVE` channel — no n
 **File:** `src/shared/types/tab.d.ts`
 
 Add to `ITab`:
+
 ```typescript
 isMuted?: boolean;
 isUsingCamera?: boolean;
@@ -121,13 +137,16 @@ Permission request handler in `TabPermission.requestPermissions()`:
 ```
 
 Permission types that should show prompt by default:
+
 - `geolocation`, `notifications`, `microphone`, `camera`, `media`
 - `clipboard-read` (clipboard-write can be auto-granted for user-initiated actions)
 
 Permission types that can be auto-granted:
+
 - `clipboard-write`, `pointerLock`, `fullscreen`, `midi`, `midiSysex`
 
 Permission types that should be auto-denied:
+
 - `unknown`, `fileSystem`, `storage-access`, `top-level-storage-access`, `mediaKeySystem`
 
 #### 3b. Media Usage Tracking
@@ -139,26 +158,26 @@ Add event listeners in `createView()`:
 this._view.webContents.on('media-started-playing', (mediaType) => {
   // Electron passes mediaType: "video", "audio", "video_input", "audio_input"
   if (mediaType === 'video_input') {
-    this.isUsingCamera = true;
+    this.isUsingCamera = true
   }
   if (mediaType === 'audio_input') {
-    this.isUsingMicrophone = true;
+    this.isUsingMicrophone = true
   }
-  this.persistInformationToRenderer({ isUsingCamera: this.isUsingCamera, isUsingMicrophone: this.isUsingMicrophone });
-});
+  this.persistInformationToRenderer({ isUsingCamera: this.isUsingCamera, isUsingMicrophone: this.isUsingMicrophone })
+})
 
 this._view.webContents.on('media-paused', (mediaType) => {
   if (mediaType === 'video_input') {
-    this.isUsingCamera = false;
+    this.isUsingCamera = false
   }
   if (mediaType === 'audio_input') {
-    this.isUsingMicrophone = false;
+    this.isUsingMicrophone = false
   }
-  this.persistInformationToRenderer({ isUsingCamera: this.isUsingCamera, isUsingMicrophone: this.isUsingMicrophone });
-});
+  this.persistInformationToRenderer({ isUsingCamera: this.isUsingCamera, isUsingMicrophone: this.isUsingMicrophone })
+})
 ```
 
-*Note: The actual `mediaType` parameter behavior depends on Electron version. Fallback: use a combination of `audio-state-changed`, `media-started-playing`/`media-paused`, and permission request tracking to infer camera/mic state.*
+_Note: The actual `mediaType` parameter behavior depends on Electron version. Fallback: use a combination of `audio-state-changed`, `media-started-playing`/`media-paused`, and permission request tracking to infer camera/mic state._
 
 #### 3c. Mute Toggle
 
@@ -192,23 +211,23 @@ In the `setDisplayMediaRequestHandler`, set `isUsingScreenShare = true` when act
 Replace the simple `IconVolume` with comprehensive indicators:
 
 ```tsx
-<div className="flex relative">
+<div className="relative flex">
   <Avatar src={tab?.favicon} />
-  
+
   {/* Audio indicator */}
   {tab?.audible && !tab?.isMuted && (
     <div className="indicator-audio" onClick={handleMuteToggle}>
       <IconVolume size={12} />
     </div>
   )}
-  
+
   {/* Muted indicator */}
   {tab?.isMuted && (
     <div className="indicator-muted" onClick={handleMuteToggle}>
       <IconVolumeOff size={12} />
     </div>
   )}
-  
+
   {/* Camera indicator */}
   {tab?.isUsingCamera && (
     <div className="indicator-camera" title="Camera in use">
@@ -216,7 +235,7 @@ Replace the simple `IconVolume` with comprehensive indicators:
       <IconVideo size={10} />
     </div>
   )}
-  
+
   {/* Microphone indicator */}
   {tab?.isUsingMicrophone && (
     <div className="indicator-mic" title="Microphone in use">
@@ -224,21 +243,19 @@ Replace the simple `IconVolume` with comprehensive indicators:
       <IconMicrophone size={10} />
     </div>
   )}
-  
+
   {/* Screen share indicator */}
   {tab?.isUsingScreenShare && (
     <div className="indicator-screenshare" title="Screen sharing">
       <IconScreenShare size={10} />
     </div>
   )}
-  
+
   {/* Notification blocked indicator */}
   {tab?.blockedNotifications > 0 && (
     <div className="indicator-notifications" title={`${tab.blockedNotifications} notifications blocked`}>
       <IconBellOff size={10} />
-      {tab.blockedNotifications > 1 && (
-        <span className="badge-count">{tab.blockedNotifications}</span>
-      )}
+      {tab.blockedNotifications > 1 && <span className="badge-count">{tab.blockedNotifications}</span>}
     </div>
   )}
 </div>
@@ -247,6 +264,7 @@ Replace the simple `IconVolume` with comprehensive indicators:
 **File:** `src/renderer/main-window/src/components/tab/styles.module.css`
 
 Add styles for indicators:
+
 - `.indicator-audio`, `.indicator-muted`, `.indicator-camera`, `.indicator-mic`, `.indicator-screenshare`, `.indicator-notifications` — positioned absolute over favicon corners
 - `.red-dot` — 4px red circle for live recording indication
 - `.badge-count` — small count badge for notification blocks
@@ -276,6 +294,7 @@ Uses the **sub-window** system (same as Vault, Spotlight, Translate, UserScript)
 **New file:** `src/features/permission/overlay/App.tsx`
 
 Overlay component rendered inside a `<Shell>` backdrop:
+
 - Reads payload from `sessionStorage` (set by main process via `openWithResult`)
 - Shows site origin, permission type label
 - "Allow" / "Block" buttons
@@ -288,6 +307,7 @@ Overlay component rendered inside a `<Shell>` backdrop:
 Registers the overlay at route `/permission` in the sub-window registry.
 
 **Integration:**
+
 - Imported in `src/renderer/sub-window/main.tsx` (side-effect import)
 - `@source` path added in `src/renderer/sub-window/assets/styles.css`
 - Triggered from `TabPermission.requestPermissions()` via `subWindowService.openWithResult("/permission", { permission, origin })`
@@ -328,11 +348,11 @@ Registers the overlay at route `/permission` in the sub-window registry.
 
 - Extend mic request to also request camera at startup:
   ```typescript
-  if (process.platform === "darwin") {
-    for (const media of ["microphone", "camera"] as const) {
-      const status = systemPreferences.getMediaAccessStatus(media);
-      if (status === "not-determined") {
-        await systemPreferences.askForMediaAccess(media);
+  if (process.platform === 'darwin') {
+    for (const media of ['microphone', 'camera'] as const) {
+      const status = systemPreferences.getMediaAccessStatus(media)
+      if (status === 'not-determined') {
+        await systemPreferences.askForMediaAccess(media)
       }
     }
   }
@@ -431,25 +451,25 @@ flowchart LR
 
 ## Files Summary
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/shared/types/permission.d.ts` | **Create** | Permission type enums and interfaces |
-| `src/shared/constants/ipc.ts` | **Edit** | Add permission/mute IPC channels |
-| `src/shared/types/tab.d.ts` | **Edit** | Add indicator fields to ITab |
-| `src/main/core/stores/permission.store.ts` | **Create** | Per-site permission persistence |
-| `src/features/tabs/models/permission.ts` | **Create** | TabPermission base class — handler, media tracking, mute |
-| `src/features/tabs/models/tab.ts` | **Edit** | Extends TabPermission; removed inline permission logic |
-| `src/main/core/controller/viewController.ts` | **Edit** | Wire mute IPC, permission CRUD handlers, init permission store |
-| `src/renderer/main-window/src/components/tab/index.tsx` | **Edit** | Comprehensive indicator UI with mute toggle |
-| `src/renderer/main-window/src/pages/customApp/index.tsx` | **Edit** | Pass indicator state to TabItem |
-| `src/features/permission/overlay/App.tsx` | **Create** | Sub-window permission prompt overlay |
-| `src/features/permission/overlay.register.ts` | **Create** | Register /permission route in sub-window registry |
-| `src/renderer/sub-window/main.tsx` | **Edit** | Import permission overlay register |
-| `src/renderer/sub-window/assets/styles.css` | **Edit** | Add @source for permission |
-| `src/renderer/main-window/src/components/header.tsx` | **Edit** | Site info popup with permission toggles |
-| `src/renderer/main-window/src/pages/setting/index.tsx` | **Edit** | Add "Site Settings" tab |
-| `src/renderer/main-window/src/pages/setting/components/SiteSettings.tsx` | **Create** | Site settings management UI |
-| `src/main/index.ts` | **Edit** | macOS camera + mic OS-level permission request |
+| File                                                                     | Action     | Purpose                                                        |
+| ------------------------------------------------------------------------ | ---------- | -------------------------------------------------------------- |
+| `src/shared/types/permission.d.ts`                                       | **Create** | Permission type enums and interfaces                           |
+| `src/shared/constants/ipc.ts`                                            | **Edit**   | Add permission/mute IPC channels                               |
+| `src/shared/types/tab.d.ts`                                              | **Edit**   | Add indicator fields to ITab                                   |
+| `src/main/core/stores/permission.store.ts`                               | **Create** | Per-site permission persistence                                |
+| `src/features/tabs/models/permission.ts`                                 | **Create** | TabPermission base class — handler, media tracking, mute       |
+| `src/features/tabs/models/tab.ts`                                        | **Edit**   | Extends TabPermission; removed inline permission logic         |
+| `src/main/core/controller/viewController.ts`                             | **Edit**   | Wire mute IPC, permission CRUD handlers, init permission store |
+| `src/renderer/main-window/src/components/tab/index.tsx`                  | **Edit**   | Comprehensive indicator UI with mute toggle                    |
+| `src/renderer/main-window/src/pages/customApp/index.tsx`                 | **Edit**   | Pass indicator state to TabItem                                |
+| `src/features/permission/overlay/App.tsx`                                | **Create** | Sub-window permission prompt overlay                           |
+| `src/features/permission/overlay.register.ts`                            | **Create** | Register /permission route in sub-window registry              |
+| `src/renderer/sub-window/main.tsx`                                       | **Edit**   | Import permission overlay register                             |
+| `src/renderer/sub-window/assets/styles.css`                              | **Edit**   | Add @source for permission                                     |
+| `src/renderer/main-window/src/components/header.tsx`                     | **Edit**   | Site info popup with permission toggles                        |
+| `src/renderer/main-window/src/pages/setting/index.tsx`                   | **Edit**   | Add "Site Settings" tab                                        |
+| `src/renderer/main-window/src/pages/setting/components/SiteSettings.tsx` | **Create** | Site settings management UI                                    |
+| `src/main/index.ts`                                                      | **Edit**   | macOS camera + mic OS-level permission request                 |
 
 ---
 

@@ -1,1 +1,1 @@
-export * from "./bookmarkController";
+export * from './bookmarkController'

@@ -1,71 +1,71 @@
-import type { ForgeConfig } from "@electron-forge/shared-types";
-import { MakerSquirrel } from "@electron-forge/maker-squirrel";
-import { MakerZIP } from "@electron-forge/maker-zip";
+import type { ForgeConfig } from '@electron-forge/shared-types'
+import { MakerSquirrel } from '@electron-forge/maker-squirrel'
+import { MakerZIP } from '@electron-forge/maker-zip'
 // import { MakerDeb } from "@electron-forge/maker-deb";
 // import { MakerRpm } from "@electron-forge/maker-rpm";
-import { MakerDMG } from "@electron-forge/maker-dmg";
-import { VitePlugin } from "@electron-forge/plugin-vite";
-import { FusesPlugin } from "@electron-forge/plugin-fuses";
-import { FuseV1Options, FuseVersion } from "@electron/fuses";
-import { appBundleId } from "./package.json";
+import { MakerDMG } from '@electron-forge/maker-dmg'
+import { VitePlugin } from '@electron-forge/plugin-vite'
+import { FusesPlugin } from '@electron-forge/plugin-fuses'
+import { FuseV1Options, FuseVersion } from '@electron/fuses'
+import { appBundleId } from './package.json'
 
-const { PLATFORM } = (import.meta as any).env;
-const platform = PLATFORM === "WIN" ? "win32" : PLATFORM === "MAC" ? "darwin" : process.platform;
+const { PLATFORM } = (import.meta as any).env
+const platform = PLATFORM === 'WIN' ? 'win32' : PLATFORM === 'MAC' ? 'darwin' : process.platform
 
-const makers = [];
-if (platform === "win32") {
+const makers = []
+if (platform === 'win32') {
   makers.push(
     new MakerSquirrel({
-      name: "MinusBrowser",
+      name: 'MinusBrowser',
     }),
-    new MakerZIP({}, ["win32"]),
-  );
+    new MakerZIP({}, ['win32'])
+  )
 }
-if (platform === "darwin") {
+if (platform === 'darwin') {
   makers.push(
     new MakerDMG({
-      name: "MinusBrowser",
-      format: "ULFO",
+      name: 'MinusBrowser',
+      format: 'ULFO',
       overwrite: true,
     }),
-    new MakerZIP({}, ["darwin"]),
-  );
+    new MakerZIP({}, ['darwin'])
+  )
 }
 
 const config: ForgeConfig = {
   makers: makers,
   publishers: [
     {
-      name: "@electron-forge/publisher-github",
+      name: '@electron-forge/publisher-github',
       config: {
         repository: {
-          type: "git",
-          owner: "me",
-          name: "Minus Browser",
-          url: "https://github.com/handwithfivefingers/minus-browser",
+          type: 'git',
+          owner: 'me',
+          name: 'Minus Browser',
+          url: 'https://github.com/handwithfivefingers/minus-browser',
         },
         prerelease: true,
       },
     },
   ],
   packagerConfig: {
-    name: "MinusBrowser",
+    name: 'MinusBrowser',
     appBundleId: appBundleId,
     osxSign: {
-      identity: "LocalMinusBrowser",
+      identity: 'LocalMinusBrowser',
       optionsForFile: (filePath) => {
         return {
           hardenedRuntime: true,
-          entitlements: "./entitlements.mac.plist", // Xem bước 3 bên dưới
-        };
+          entitlements: './entitlements.mac.plist', // Xem bước 3 bên dưới
+        }
       },
     },
-    icon: "./images/icon",
+    icon: './images/icon',
     asar: true,
     protocols: [
       {
-        name: "HTTP URL",
-        schemes: ["http", "https"],
+        name: 'HTTP URL',
+        schemes: ['http', 'https'],
       },
     ],
   },
@@ -77,59 +77,59 @@ const config: ForgeConfig = {
       build: [
         {
           // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
-          entry: "src/main/index.ts",
-          config: "vite.main.config.ts",
-          target: "main",
+          entry: 'src/main/index.ts',
+          config: 'vite.main.config.ts',
+          target: 'main',
         },
         {
-          entry: "src/preload/preload.ts",
-          config: "vite.preload.config.ts",
-          target: "preload",
+          entry: 'src/preload/preload.ts',
+          config: 'vite.preload.config.ts',
+          target: 'preload',
         },
         {
-          entry: "src/features/adblocker/adblocker-preload.ts",
-          config: "vite.adb-preload.config.ts",
-          target: "preload",
+          entry: 'src/features/adblocker/adblocker-preload.ts',
+          config: 'vite.adb-preload.config.ts',
+          target: 'preload',
         },
         {
-          entry: "src/features/findbar/findbar-preload.ts",
-          config: "vite.findbar-preload.config.ts",
-          target: "preload",
+          entry: 'src/features/findbar/findbar-preload.ts',
+          config: 'vite.findbar-preload.config.ts',
+          target: 'preload',
         },
         {
-          entry: "src/features/notification/notification-view-preload.ts",
-          config: "vite.notification-view-preload.config.ts",
-          target: "preload",
+          entry: 'src/features/notification/notification-view-preload.ts',
+          config: 'vite.notification-view-preload.config.ts',
+          target: 'preload',
         },
         {
-          entry: "src/features/notification/notification-preload.ts",
-          config: "vite.notification-preload.config.ts",
-          target: "preload",
+          entry: 'src/features/notification/notification-preload.ts',
+          config: 'vite.notification-preload.config.ts',
+          target: 'preload',
         },
         {
-          entry: "src/features/media/media-preload.ts",
-          config: "vite.media-preload.config.ts",
-          target: "preload",
+          entry: 'src/features/media/media-preload.ts',
+          config: 'vite.media-preload.config.ts',
+          target: 'preload',
         },
         {
-          entry: "src/features/spoof/browser-spoof-preload.ts",
-          config: "vite.browser-spoof-preload.config.ts",
-          target: "preload",
+          entry: 'src/features/spoof/browser-spoof-preload.ts',
+          config: 'vite.browser-spoof-preload.config.ts',
+          target: 'preload',
         },
         {
-          entry: "src/features/userscript/userscript-preload.ts",
-          config: "vite.preload.config.ts",
-          target: "preload",
+          entry: 'src/features/userscript/userscript-preload.ts',
+          config: 'vite.preload.config.ts',
+          target: 'preload',
         },
       ],
       renderer: [
         {
-          name: "main_window",
-          config: "vite.renderer.config.ts",
+          name: 'main_window',
+          config: 'vite.renderer.config.ts',
         },
         {
-          name: "sub_window",
-          config: "vite.sub-window.renderer.config.ts",
+          name: 'sub_window',
+          config: 'vite.sub-window.renderer.config.ts',
         },
       ],
     }),
@@ -147,9 +147,9 @@ const config: ForgeConfig = {
       [FuseV1Options.OnlyLoadAppFromAsar]: true,
     }),
   ],
-};
+}
 
-export default config;
+export default config
 
 /**
  * CUSTOM APP SIGN

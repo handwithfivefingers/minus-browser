@@ -1,18 +1,18 @@
-import { useRef } from "react";
+import { useRef } from 'react'
 
 interface IAvatar {
-  src?: string;
-  size?: number;
-  alt?: string;
+  src?: string
+  size?: number
+  alt?: string
 }
 export const Avatar = (props: IAvatar) => {
-  const blockRef = useRef<HTMLDivElement>(null);
+  const blockRef = useRef<HTMLDivElement>(null)
   return (
     <div
-      className="relative  rounded shrink-0"
+      className="relative  shrink-0 rounded"
       style={{
         width: props.size || 20,
-        background: "var(--color-slate-300)",
+        background: 'var(--color-slate-300)',
       }}
       ref={blockRef}
     >
@@ -20,19 +20,19 @@ export const Avatar = (props: IAvatar) => {
       {props.src && (
         <img
           src={props?.src}
-          alt={props.alt || "Avatar"}
-          className="absolute top-0 left-0 w-full h-full"
+          alt={props.alt || 'Avatar'}
+          className="absolute top-0 left-0 h-full w-full"
           onLoad={() => {
-            if (!blockRef.current) return;
-            blockRef.current.style.background = "transparent";
+            if (!blockRef.current) return
+            blockRef.current.style.background = 'transparent'
           }}
           onError={() => {
-            if (!blockRef.current) return;
-            blockRef.current.style.background = "var(--color-slate-300)";
+            if (!blockRef.current) return
+            blockRef.current.style.background = 'var(--color-slate-300)'
           }}
-          style={{ objectFit: "cover" }}
+          style={{ objectFit: 'cover' }}
         />
       )}
     </div>
-  );
-};
+  )
+}

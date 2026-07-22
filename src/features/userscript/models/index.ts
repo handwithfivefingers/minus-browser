@@ -1,1 +1,1 @@
-export * from "./userScript";
+export * from './userScript'

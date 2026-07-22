@@ -1,5 +1,5 @@
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 // const defaultPreference: Preference = {
 //   sourceLanguage: "auto",
 //   targetLanguage: "en",
@@ -15,7 +15,7 @@ const preference = z.object({
   alwaysTranslateDomains: z.string().optional(),
   neverTranslateDomains: z.string().optional(),
   neverTranslateLanguages: z.string().optional(),
-});
+})
 
-export const preferenceSchema = zodResolver(preference);
-export type PreferenceSchemaType = z.infer<typeof preference>;
+export const preferenceSchema = zodResolver(preference)
+export type PreferenceSchemaType = z.infer<typeof preference>

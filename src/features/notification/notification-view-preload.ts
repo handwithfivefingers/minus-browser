@@ -1,40 +1,40 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer } from 'electron'
 
-contextBridge.exposeInMainWorld("notificationViewAPI", {
+contextBridge.exposeInMainWorld('notificationViewAPI', {
   onToast: (callback: (data: unknown) => void) => {
-    ipcRenderer.on("NOTIFICATION_VIEW_TOAST", (_event, data) => callback(data));
+    ipcRenderer.on('NOTIFICATION_VIEW_TOAST', (_event, data) => callback(data))
   },
   onHistory: (callback: (data: unknown) => void) => {
-    ipcRenderer.on("NOTIFICATION_VIEW_HISTORY", (_event, data) => callback(data));
+    ipcRenderer.on('NOTIFICATION_VIEW_HISTORY', (_event, data) => callback(data))
   },
   onShowToast: (callback: () => void) => {
-    ipcRenderer.on("NOTIFICATION_VIEW_SHOW_TOAST", () => callback());
+    ipcRenderer.on('NOTIFICATION_VIEW_SHOW_TOAST', () => callback())
   },
   onHideToast: (callback: () => void) => {
-    ipcRenderer.on("NOTIFICATION_VIEW_HIDE_TOAST", () => callback());
+    ipcRenderer.on('NOTIFICATION_VIEW_HIDE_TOAST', () => callback())
   },
   onShowList: (callback: () => void) => {
-    ipcRenderer.on("NOTIFICATION_VIEW_SHOW_LIST", () => callback());
+    ipcRenderer.on('NOTIFICATION_VIEW_SHOW_LIST', () => callback())
   },
   onHideList: (callback: () => void) => {
-    ipcRenderer.on("NOTIFICATION_VIEW_HIDE_LIST", () => callback());
+    ipcRenderer.on('NOTIFICATION_VIEW_HIDE_LIST', () => callback())
   },
   onClickNotification: (tabId: string) => {
-    ipcRenderer.send("NOTIFICATION_VIEW_CLICK", { tabId });
+    ipcRenderer.send('NOTIFICATION_VIEW_CLICK', { tabId })
   },
   onMarkRead: (id: string) => {
-    ipcRenderer.send("NOTIFICATION_VIEW_MARK_READ", { id });
+    ipcRenderer.send('NOTIFICATION_VIEW_MARK_READ', { id })
   },
   onMarkAllRead: () => {
-    ipcRenderer.send("NOTIFICATION_VIEW_MARK_ALL_READ");
+    ipcRenderer.send('NOTIFICATION_VIEW_MARK_ALL_READ')
   },
   onClose: () => {
-    ipcRenderer.send("NOTIFICATION_VIEW_CLOSE");
+    ipcRenderer.send('NOTIFICATION_VIEW_CLOSE')
   },
   onGetHistory: () => {
-    ipcRenderer.send("NOTIFICATION_VIEW_GET_HISTORY");
+    ipcRenderer.send('NOTIFICATION_VIEW_GET_HISTORY')
   },
   onClearAll: () => {
-    ipcRenderer.send("NOTIFICATION_VIEW_CLEAR_ALL");
+    ipcRenderer.send('NOTIFICATION_VIEW_CLEAR_ALL')
   },
-});
+})

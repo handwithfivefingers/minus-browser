@@ -243,11 +243,11 @@ export const FINDBAR_HTML = `
       let inputTimer = null;
       api.onMatches(function (active, total) {
         if (total === 0 && input.value) {
-          countEl.textContent = "0\/0";
+          countEl.textContent = "0/0";
           countEl.classList.add("no-match");
           input.classList.add("no-match");
         } else if (total > 0) {
-          countEl.textContent = active + "\/" + total;
+          countEl.textContent = active + "/" + total;
           countEl.classList.remove("no-match");
           input.classList.remove("no-match");
         } else {

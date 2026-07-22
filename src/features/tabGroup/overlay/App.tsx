@@ -1,199 +1,202 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { SUB_WINDOW_RENDERER_EVENT } from "~/shared/constants/ipc/sub-window";
-import { IPC_TAB_GROUP_INVOKE } from "~/shared/constants/ipc/tabGroup";
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-const GROUP_COLORS = ["#6366f1", "#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#06b6d4"];
+import { SUB_WINDOW_RENDERER_EVENT } from '~/shared/constants/ipc/sub-window'
+import { IPC_TAB_GROUP_INVOKE } from '~/shared/constants/ipc/tabGroup'
+
+const GROUP_COLORS = ['#6366f1', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4']
 
 interface IGroup {
-  id: string;
-  name: string;
-  color: string;
-  tabIds: string[];
+  id: string
+  name: string
+  color: string
+  tabIds: string[]
 }
 
-type View = "context-menu" | "create-group" | null;
+type View = 'context-menu' | 'create-group' | null
 
 interface ContextPayload {
-  tabId?: string;
-  groupId?: string;
-  currentGroupId?: string | null;
-  groups?: IGroup[];
-  x: number;
-  y: number;
-  editGroup?: { id: string; name: string; color: string };
+  tabId?: string
+  groupId?: string
+  currentGroupId?: string | null
+  groups?: IGroup[]
+  x: number
+  y: number
+  editGroup?: { id: string; name: string; color: string }
 }
 
 export function App() {
-  const [view, setView] = useState<View>(null);
-  const [tabId, setTabId] = useState<string | null>(null);
-  const [currentGroupId, setCurrentGroupId] = useState<string | null>(null);
-  const [contextGroupId, setContextGroupId] = useState<string | null>(null);
-  const [editGroupData, setEditGroupData] = useState<{ id: string; name: string; color: string } | null>(null);
-  const [groups, setGroups] = useState<IGroup[]>([]);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [groupName, setGroupName] = useState("");
-  const [groupColor, setGroupColor] = useState(GROUP_COLORS[0]);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [view, setView] = useState<View>(null)
+  const [tabId, setTabId] = useState<string | null>(null)
+  const [currentGroupId, setCurrentGroupId] = useState<string | null>(null)
+  const [contextGroupId, setContextGroupId] = useState<string | null>(null)
+  const [editGroupData, setEditGroupData] = useState<{ id: string; name: string; color: string } | null>(null)
+  const [groups, setGroups] = useState<IGroup[]>([])
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [groupName, setGroupName] = useState('')
+  const [groupColor, setGroupColor] = useState(GROUP_COLORS[0])
+  const menuRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const hide = useCallback(() => {
-    setView(null);
-    setTabId(null);
-    setCurrentGroupId(null);
-    setContextGroupId(null);
-    setEditGroupData(null);
-    setGroupName("");
-    setGroupColor(GROUP_COLORS[0]);
-    window.api.EMIT(SUB_WINDOW_RENDERER_EVENT.CLOSE);
-  }, []);
+    setView(null)
+    setTabId(null)
+    setCurrentGroupId(null)
+    setContextGroupId(null)
+    setEditGroupData(null)
+    setGroupName('')
+    setGroupColor(GROUP_COLORS[0])
+    window.api.EMIT(SUB_WINDOW_RENDERER_EVENT.CLOSE)
+  }, [])
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("subWindowPayload");
+    const stored = sessionStorage.getItem('subWindowPayload')
     if (stored) {
       try {
-        const payload: ContextPayload = JSON.parse(stored);
-        sessionStorage.removeItem("subWindowPayload");
+        const payload: ContextPayload = JSON.parse(stored)
+        sessionStorage.removeItem('subWindowPayload')
         if (payload.editGroup) {
-          setEditGroupData(payload.editGroup);
-          setGroupName(payload.editGroup.name);
-          setGroupColor(payload.editGroup.color);
-          setPosition({ x: payload.x, y: payload.y });
-          setView("create-group");
-          return;
+          setEditGroupData(payload.editGroup)
+          setGroupName(payload.editGroup.name)
+          setGroupColor(payload.editGroup.color)
+          setPosition({ x: payload.x, y: payload.y })
+          setView('create-group')
+          return
         }
-        setTabId(payload.tabId || null);
-        setCurrentGroupId(payload.currentGroupId || null);
-        setContextGroupId(payload.groupId || null);
-        setPosition({ x: payload.x, y: payload.y });
+        setTabId(payload.tabId || null)
+        setCurrentGroupId(payload.currentGroupId || null)
+        setContextGroupId(payload.groupId || null)
+        setPosition({ x: payload.x, y: payload.y })
         if (payload.groups && payload.groups.length > 0) {
-          setGroups(payload.groups);
+          setGroups(payload.groups)
         } else {
           Promise.resolve(window.api.INVOKE<IGroup[]>(IPC_TAB_GROUP_INVOKE.GET_TAB_GROUPS))
             .then((fetched) => {
-              setGroups(fetched || []);
+              setGroups(fetched || [])
             })
-            .catch(() => {});
+            .catch(() => {
+              setGroups([])
+            })
         }
-        setView("context-menu");
+        setView('context-menu')
       } catch {
         // ignore parse errors
       }
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    if (view === "create-group") {
-      setTimeout(() => inputRef.current?.focus(), 50);
+    if (view === 'create-group') {
+      setTimeout(() => inputRef.current?.focus(), 50)
     }
-  }, [view]);
+  }, [view])
 
   useEffect(() => {
-    if (!view) return;
+    if (!view) return
     const handleOutsideClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        hide();
+        hide()
       }
-    };
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") hide();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("mousedown", handleOutsideClick);
+      if (e.key === 'Escape') hide()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleOutsideClick)
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [view, hide]);
+      document.removeEventListener('mousedown', handleOutsideClick)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [view, hide])
 
   const addToGroup = useCallback(
     (groupId: string) => {
-      window.api.INVOKE(IPC_TAB_GROUP_INVOKE.ADD_TAB_TO_GROUP, { groupId, tabId });
-      hide();
+      window.api.INVOKE(IPC_TAB_GROUP_INVOKE.ADD_TAB_TO_GROUP, { groupId, tabId })
+      hide()
     },
-    [tabId, hide],
-  );
+    [tabId, hide]
+  )
 
   const removeFromGroup = useCallback(() => {
     if (currentGroupId) {
-      window.api.INVOKE(IPC_TAB_GROUP_INVOKE.REMOVE_TAB_FROM_GROUP, { groupId: currentGroupId, tabId });
+      window.api.INVOKE(IPC_TAB_GROUP_INVOKE.REMOVE_TAB_FROM_GROUP, { groupId: currentGroupId, tabId })
     }
-    hide();
-  }, [currentGroupId, tabId, hide]);
+    hide()
+  }, [currentGroupId, tabId, hide])
 
   const createGroup = useCallback(() => {
-    if (!groupName.trim()) return;
+    if (!groupName.trim()) return
     window.api.INVOKE(IPC_TAB_GROUP_INVOKE.CREATE_TAB_GROUP, {
       name: groupName.trim(),
       color: groupColor,
       tabIds: tabId ? [tabId] : [],
-    });
-    hide();
-  }, [groupName, groupColor, tabId, hide]);
+    })
+    hide()
+  }, [groupName, groupColor, tabId, hide])
 
   const saveEditGroup = useCallback(() => {
-    if (!groupName.trim() || !editGroupData) return;
-    window.api.INVOKE(IPC_TAB_GROUP_INVOKE.RENAME_TAB_GROUP, { id: editGroupData.id, name: groupName.trim() });
+    if (!groupName.trim() || !editGroupData) return
+    window.api.INVOKE(IPC_TAB_GROUP_INVOKE.RENAME_TAB_GROUP, { id: editGroupData.id, name: groupName.trim() })
     if (groupColor !== editGroupData.color) {
-      window.api.INVOKE(IPC_TAB_GROUP_INVOKE.SET_TAB_GROUP_COLOR, { id: editGroupData.id, color: groupColor });
+      window.api.INVOKE(IPC_TAB_GROUP_INVOKE.SET_TAB_GROUP_COLOR, { id: editGroupData.id, color: groupColor })
     }
-    hide();
-  }, [groupName, groupColor, editGroupData, hide]);
+    hide()
+  }, [groupName, groupColor, editGroupData, hide])
 
   const deleteGroup = useCallback(() => {
     if (contextGroupId) {
-      window.api.INVOKE(IPC_TAB_GROUP_INVOKE.DELETE_TAB_GROUP, contextGroupId);
+      window.api.INVOKE(IPC_TAB_GROUP_INVOKE.DELETE_TAB_GROUP, contextGroupId)
     }
-    hide();
-  }, [contextGroupId, hide]);
+    hide()
+  }, [contextGroupId, hide])
 
   const closeGroup = useCallback(() => {
-    if (!contextGroupId) return;
-    const group = groups.find((g) => g.id === contextGroupId);
+    if (!contextGroupId) return
+    const group = groups.find((g) => g.id === contextGroupId)
     if (group) {
       for (const tid of group.tabIds) {
-        window.api.EMIT("ON_CLOSE_TAB", { id: tid });
+        window.api.EMIT('ON_CLOSE_TAB', { id: tid })
       }
     }
-    hide();
-  }, [contextGroupId, groups, hide]);
+    hide()
+  }, [contextGroupId, groups, hide])
 
   const openGroupTabs = useCallback(
     (groupId: string) => {
       // if (!contextGroupId) return;
-      const group = groups.find((g) => g.id === groupId);
+      const group = groups.find((g) => g.id === groupId)
       if (group) {
-        window.api.INVOKE(IPC_TAB_GROUP_INVOKE.OPEN_GROUP_TAB, groupId);
+        window.api.INVOKE(IPC_TAB_GROUP_INVOKE.OPEN_GROUP_TAB, groupId)
         // for (const tid of group.tabIds) {
         // }
       }
-      hide();
+      hide()
     },
-    [groups, hide],
-  );
+    [groups, hide]
+  )
   const onSwitchGroup = (targetGroupId: string) => {
-    removeFromGroup();
-    addToGroup(targetGroupId);
-  };
+    removeFromGroup()
+    addToGroup(targetGroupId)
+  }
 
-  if (!view) return null;
-  const isGroupContext = !!contextGroupId && tabId;
+  if (!view) return null
+  const isGroupContext = !!contextGroupId && tabId
 
-  const menuX = Math.min(position.x, window.innerWidth - 200);
-  const menuY = Math.min(position.y, window.innerHeight - 360);
-  const createX = Math.max(8, Math.min(position.x, window.innerWidth - 272));
-  const createY = Math.max(8, Math.min(position.y, window.innerHeight - 260));
+  const menuX = Math.min(position.x, window.innerWidth - 200)
+  const menuY = Math.min(position.y, window.innerHeight - 360)
+  const createX = Math.max(8, Math.min(position.x, window.innerWidth - 272))
+  const createY = Math.max(8, Math.min(position.y, window.innerHeight - 260))
   // alert([`currentGroupId`, currentGroupId, `tabId`, tabId].join(", "));
-  if (view === "context-menu") {
+  if (view === 'context-menu') {
     return (
       <div className="fixed inset-0">
         <div
           ref={menuRef}
-          className="fixed bg-white rounded-lg shadow-xl border border-slate-200 pt-1 min-w-44"
-          style={{ left: menuX, top: menuY, pointerEvents: "auto" }}
+          className="fixed min-w-44 rounded-lg border border-slate-200 bg-white pt-1 shadow-xl"
+          style={{ left: menuX, top: menuY, pointerEvents: 'auto' }}
         >
           {tabId && !currentGroupId ? (
             <>
-              <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              <div className="px-3 py-1.5 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
                 Add to group
               </div>
 
@@ -204,22 +207,22 @@ export function App() {
                   type="button"
                   key={group.id}
                   onClick={() => addToGroup(group.id)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
                 >
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: group.color }} />
                   <span className="truncate">{group.name}</span>
                 </button>
               ))}
 
-              <div className="border-t border-slate-100 my-1" />
+              <div className="my-1 border-t border-slate-100" />
 
               <button
                 type="button"
                 onClick={() => {
-                  setView("create-group");
-                  setGroupColor(GROUP_COLORS[0]);
+                  setView('create-group')
+                  setGroupColor(GROUP_COLORS[0])
                 }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
               >
                 <svg
                   width="14"
@@ -244,7 +247,7 @@ export function App() {
               <button
                 type="button"
                 onClick={removeFromGroup}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left cursor-pointer"
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
               >
                 <svg
                   width="14"
@@ -265,7 +268,7 @@ export function App() {
               </button>
 
               <div className="flex flex-col">
-                <span className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-400  text-left">
+                <span className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs  text-slate-400">
                   <svg
                     width="12"
                     height="12"
@@ -284,7 +287,7 @@ export function App() {
                   </svg>
                   Switch to Group
                 </span>
-                <div className="border-t border-slate-200 mt-1" />
+                <div className="mt-1 border-t border-slate-200" />
                 <div className="rounded-b-md py-2">
                   {groups
                     ?.filter((item) => item.id !== currentGroupId)
@@ -293,9 +296,9 @@ export function App() {
                         type="button"
                         key={group.id}
                         onClick={() => onSwitchGroup(group.id)}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left cursor-pointer"
+                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
                       >
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: group.color }} />
                         <span className="truncate">{group.name}</span>
                       </button>
                     ))}
@@ -304,7 +307,7 @@ export function App() {
             </>
           ) : (
             <>
-              <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              <div className="px-3 py-1.5 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
                 Open Group
               </div>
 
@@ -315,9 +318,9 @@ export function App() {
                   type="button"
                   key={group.id}
                   onClick={() => openGroupTabs(group.id)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 text-left"
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
                 >
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: group.color }} />
                   <span className="truncate">{group.name}</span>
                 </button>
               ))}
@@ -325,22 +328,22 @@ export function App() {
           )}
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div className="fixed inset-0">
       <div
         ref={menuRef}
-        className="fixed bg-white rounded-lg shadow-xl border border-slate-200 p-4 w-64 flex flex-col gap-3"
-        style={{ left: createX, top: createY, pointerEvents: "auto" }}
+        className="fixed flex w-64 flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
+        style={{ left: createX, top: createY, pointerEvents: 'auto' }}
       >
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-slate-700">{editGroupData ? "Edit Group" : "New Group"}</span>
+          <span className="text-sm font-semibold text-slate-700">{editGroupData ? 'Edit Group' : 'New Group'}</span>
           <button
             type="button"
-            onClick={() => setView("context-menu")}
-            className="text-slate-400 hover:text-slate-600 p-0.5"
+            onClick={() => setView('context-menu')}
+            className="p-0.5 text-slate-400 hover:text-slate-600"
           >
             <svg
               width="16"
@@ -359,25 +362,25 @@ export function App() {
 
         <input
           ref={inputRef}
-          className="w-full border border-slate-300 rounded px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400"
+          className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm outline-none focus:border-indigo-400"
           placeholder="Group name"
           value={groupName}
           onChange={(e) => setGroupName(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              if (editGroupData) saveEditGroup();
-              else createGroup();
+            if (e.key === 'Enter') {
+              if (editGroupData) saveEditGroup()
+              else createGroup()
             }
           }}
         />
 
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex flex-wrap gap-1.5">
           {GROUP_COLORS.map((c) => (
             <button
               type="button"
               key={c}
               onClick={() => setGroupColor(c)}
-              className={`w-5 h-5 rounded-full border-2 transition-all ${groupColor === c ? "border-slate-700 scale-110" : "border-transparent"}`}
+              className={`h-5 w-5 rounded-full border-2 transition-all ${groupColor === c ? 'scale-110 border-slate-700' : 'border-transparent'}`}
               style={{ backgroundColor: c }}
               aria-label={`Color ${c}`}
             />
@@ -388,11 +391,11 @@ export function App() {
           type="button"
           onClick={editGroupData ? saveEditGroup : createGroup}
           disabled={!groupName.trim()}
-          className="w-full flex items-center justify-center gap-1 py-1.5 text-sm bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex w-full items-center justify-center gap-1 rounded bg-indigo-500 py-1.5 text-sm text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {editGroupData ? "Save" : "Create"}
+          {editGroupData ? 'Save' : 'Create'}
         </button>
       </div>
     </div>
-  );
+  )
 }

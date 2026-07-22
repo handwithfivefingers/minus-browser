@@ -1,17 +1,18 @@
-import { create } from "zustand";
-import { WebNotification } from "~/shared/types/notification";
+import { create } from 'zustand'
+
+import { WebNotification } from '~/shared/types/notification'
 
 interface NotificationStore {
-  notifications: WebNotification[];
-  unreadCount: number;
-  addNotification: (n: WebNotification) => void;
-  markAsRead: (id: string) => void;
-  markAllAsRead: () => void;
-  clear: () => void;
-  prune: (maxDays: number) => void;
+  notifications: WebNotification[]
+  unreadCount: number
+  addNotification: (n: WebNotification) => void
+  markAsRead: (id: string) => void
+  markAllAsRead: () => void
+  clear: () => void
+  prune: (maxDays: number) => void
 }
 
-let _id = 0;
+let _id = 0
 
 const useWebNotificationStore = create<NotificationStore>((set) => ({
   notifications: [],
@@ -23,8 +24,8 @@ const useWebNotificationStore = create<NotificationStore>((set) => ({
     })),
   markAsRead: (id) =>
     set((s) => {
-      const notifications = s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
-      return { notifications, unreadCount: notifications.filter((n) => !n.read).length };
+      const notifications = s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
+      return { notifications, unreadCount: notifications.filter((n) => !n.read).length }
     }),
   markAllAsRead: () =>
     set((s) => ({
@@ -34,11 +35,11 @@ const useWebNotificationStore = create<NotificationStore>((set) => ({
   clear: () => set({ notifications: [], unreadCount: 0 }),
   prune: (maxDays) =>
     set((s) => {
-      if (maxDays <= 0) return s;
-      const cutoff = Date.now() - maxDays * 86400000;
-      const notifications = s.notifications.filter((n) => n.timestamp >= cutoff);
-      return { notifications, unreadCount: notifications.filter((n) => !n.read).length };
+      if (maxDays <= 0) return s
+      const cutoff = Date.now() - maxDays * 86400000
+      const notifications = s.notifications.filter((n) => n.timestamp >= cutoff)
+      return { notifications, unreadCount: notifications.filter((n) => !n.read).length }
     }),
-}));
+}))
 
-export { useWebNotificationStore };
+export { useWebNotificationStore }

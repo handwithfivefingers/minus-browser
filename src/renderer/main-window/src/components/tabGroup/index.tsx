@@ -1,39 +1,43 @@
-import { memo, useCallback } from "react";
-import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
-import { ITabGroup } from "~/shared/types/tab-group";
-import { Tab } from "~/renderer/main-window/src/interfaces/tab";
-import { TabItem } from "../tab";
-import { TabGroupHeader } from "./TabGroupHeader";
-import { IPC_TAB_GROUP_INVOKE } from "~/shared/constants/ipc/tabGroup";
-// @ts-ignore
-import styles from "./styles.module.css";
+import { IconChevronDown, IconChevronUp } from '@tabler/icons-react'
+import { memo, useCallback } from 'react'
 
-const MAX_TABS_VISIBLE = 5;
-const TAB_HEIGHT = 34;
-const TAB_GAP = 2;
-const TAB_LIST_PADDING = 4;
-const MAX_TAB_LIST_HEIGHT = MAX_TABS_VISIBLE * TAB_HEIGHT + (MAX_TABS_VISIBLE - 1) * TAB_GAP + TAB_LIST_PADDING;
+import { Tab } from '~/renderer/main-window/src/interfaces/tab'
+import { IPC_TAB_GROUP_INVOKE } from '~/shared/constants/ipc/tabGroup'
+import { ITabGroup } from '~/shared/types/tab-group'
+
+import { TabItem } from '../tab'
+
+import { TabGroupHeader } from './TabGroupHeader'
+
+// @ts-ignore
+import styles from './styles.module.css'
+
+const MAX_TABS_VISIBLE = 5
+const TAB_HEIGHT = 34
+const TAB_GAP = 2
+const TAB_LIST_PADDING = 4
+const MAX_TAB_LIST_HEIGHT = MAX_TABS_VISIBLE * TAB_HEIGHT + (MAX_TABS_VISIBLE - 1) * TAB_GAP + TAB_LIST_PADDING
 
 interface TabGroupContainerProps {
-  group: ITabGroup;
-  tabs: Tab[];
-  onCloseTab: ({ id }: { id: string }) => void;
-  onContextMenu: (e: React.MouseEvent, tabId: string) => void;
-  onGroupContextMenu?: (e: React.MouseEvent, groupId: string) => void;
+  group: ITabGroup
+  tabs: Tab[]
+  onCloseTab: ({ id }: { id: string }) => void
+  onContextMenu: (e: React.MouseEvent, tabId: string) => void
+  onGroupContextMenu?: (e: React.MouseEvent, groupId: string) => void
   getDragHandleProps: (
     tabId: string,
-    index: number,
+    index: number
   ) => {
-    onMouseDown: (e: React.MouseEvent) => void;
-    onTouchStart: (e: React.TouchEvent) => void;
-  };
+    onMouseDown: (e: React.MouseEvent) => void
+    onTouchStart: (e: React.TouchEvent) => void
+  }
 }
 
 const TabGroupContainer = memo(
   ({ group, tabs, onCloseTab, onContextMenu, onGroupContextMenu, getDragHandleProps }: TabGroupContainerProps) => {
     const toggleCollapse = useCallback(() => {
-      window.api.INVOKE(IPC_TAB_GROUP_INVOKE.TOGGLE_TAB_GROUP_COLLAPSE, group.id);
-    }, [group.id]);
+      window.api.INVOKE(IPC_TAB_GROUP_INVOKE.TOGGLE_TAB_GROUP_COLLAPSE, group.id)
+    }, [group.id])
 
     return (
       <div
@@ -72,8 +76,8 @@ const TabGroupContainer = memo(
         <button
           type="button"
           onClick={(e) => {
-            e.stopPropagation();
-            toggleCollapse();
+            e.stopPropagation()
+            toggleCollapse()
           }}
           className={styles.collapseButton}
         >
@@ -82,15 +86,16 @@ const TabGroupContainer = memo(
 
         {!group.collapsed && tabs.length > MAX_TABS_VISIBLE && (
           <span
-            className="mask-[linear-gradient(0deg,black,transparent)] left-0 right-0 bottom-0 h-8 absolute rounded-b-md"
+            className="absolute right-0 bottom-0 left-0 h-8 rounded-b-md mask-[linear-gradient(0deg,black,transparent)]"
             style={{
               backgroundColor: `color-mix(in srgb, ${group.color}, transparent 50%)`,
             }}
           />
         )}
       </div>
-    );
-  },
-);
+    )
+  }
+)
 
-export { TabGroupContainer };
+TabGroupContainer.displayName = 'TabGroupContainer'
+export { TabGroupContainer }

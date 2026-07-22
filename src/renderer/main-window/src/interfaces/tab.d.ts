@@ -15,38 +15,38 @@
 //   onBlur(): void;
 // }
 
-import { v7 as uuid_v7 } from "uuid";
+import { v7 as uuid_v7 } from 'uuid'
 
 export class Tab {
-  id: string = uuid_v7();
-  title: string = "New Tab";
-  url: string = "https://google.com";
-  isPinned: boolean = false;
-  isFocused: boolean = false;
-  index: number;
-  favicon: string = "";
-  timestamp: number = Date.now();
-  isBookmarked: boolean = false;
-  audible: boolean = false;
-  isMuted: boolean = false;
-  isUsingCamera: boolean = false;
-  isUsingMicrophone: boolean = false;
-  isUsingScreenShare: boolean = false;
-  blockedNotifications: number = 0;
-  isLoading: boolean = false;
-  preventHibernate: boolean = false;
-  groupId?: string;
-  error?: { code: string; description: string; url: string; httpResponseCode?: number; isCertError?: boolean } | null;
+  id: string = uuid_v7()
+  title = 'New Tab'
+  url = 'https://google.com'
+  isPinned = false
+  isFocused = false
+  index: number
+  favicon = ''
+  timestamp: number = Date.now()
+  isBookmarked = false
+  audible = false
+  isMuted = false
+  isUsingCamera = false
+  isUsingMicrophone = false
+  isUsingScreenShare = false
+  blockedNotifications = 0
+  isLoading = false
+  preventHibernate = false
+  groupId?: string
+  error?: { code: string; description: string; url: string; httpResponseCode?: number; isCertError?: boolean } | null
   constructor(props: Partial<ITab>) {
-    Object.assign(this, props);
+    Object.assign(this, props)
   }
 }
 export interface TabStore {
-  tabs: Tab[];
-  activeTab: Tab | undefined | null;
-  index: number;
-  setTabs: (tabs: Tab[]) => void;
-  updateTab: (id: string, tab: Partial<Tab>) => void;
-  setActiveTab: (id: string) => void;
-  sync: () => void;
+  tabs: Tab[]
+  activeTab: Tab | undefined | null
+  index: number
+  setTabs: (tabs: Tab[]) => void
+  updateTab: (id: string, tab: Partial<Tab>) => void
+  setActiveTab: (id: string) => void
+  sync: () => void
 }

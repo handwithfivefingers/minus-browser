@@ -1,18 +1,18 @@
-import { IExecutionContext, ITabLifecycleHooks, ITabPlugin } from "~/shared/types";
-import { IPC_RENDERER_EVENT } from "~/shared/constants/ipc";
+import { IPC_RENDERER_EVENT } from '~/shared/constants/ipc'
+import { IExecutionContext, ITabLifecycleHooks, ITabPlugin } from '~/shared/types'
 
 export class TranslateTabPlugin implements ITabPlugin {
-  readonly name = "translate";
+  readonly name = 'translate'
   constructor(private emitToRenderer: (channel: string, data: any) => void) {
-    this.emitToRenderer = emitToRenderer;
+    this.emitToRenderer = emitToRenderer
   }
 
   register(hooks: ITabLifecycleHooks, ctx: IExecutionContext) {
     hooks.onDidStopLoad = async () => {
-      await this.detectPageLanguage(ctx);
-      await this.installSelectionCapture(ctx);
-    };
-    hooks.onConsoleMessage = (_ctx, msg) => this.handleConsoleMessage(ctx, msg);
+      await this.detectPageLanguage(ctx)
+      await this.installSelectionCapture(ctx)
+    }
+    hooks.onConsoleMessage = (_ctx, msg) => this.handleConsoleMessage(ctx, msg)
   }
 
   private async detectPageLanguage(ctx: IExecutionContext) {
@@ -28,16 +28,16 @@ export class TranslateTabPlugin implements ITabPlugin {
             url: window.location.href
           };
         })();`,
-        true,
-      );
-      const rawLanguage = String(payload?.htmlLang || "").split("-")[0];
-      if (!rawLanguage || rawLanguage === "en") return;
+        true
+      )
+      const rawLanguage = String(payload?.htmlLang || '').split('-')[0]
+      if (!rawLanguage || rawLanguage === 'en') return
       this.emitToRenderer(IPC_RENDERER_EVENT.TRANSLATE_LANGUAGE_DETECTED, {
         tabId: ctx.tabId,
         language: rawLanguage,
         url: payload?.url || ctx.url,
-        textSample: payload?.textSample || "",
-      });
+        textSample: payload?.textSample || '',
+      })
     } catch {
       // best effort
     }
@@ -75,24 +75,24 @@ export class TranslateTabPlugin implements ITabPlugin {
             window.__minusSelectionCaptureTimer = setTimeout(notify, 120);
           });
         })();`,
-        true,
-      );
+        true
+      )
     } catch {
       // best effort
     }
   }
 
   private handleConsoleMessage(ctx: IExecutionContext, message: string) {
-    if (!message.startsWith("__MINUS_SELECTION_CAPTURE__:")) return;
+    if (!message.startsWith('__MINUS_SELECTION_CAPTURE__:')) return
     try {
-      const payload = JSON.parse(message.slice("__MINUS_SELECTION_CAPTURE__:".length));
-      const text = String(payload?.text || "").trim();
-      if (!text) return;
+      const payload = JSON.parse(message.slice('__MINUS_SELECTION_CAPTURE__:'.length))
+      const text = String(payload?.text || '').trim()
+      if (!text) return
       this.emitToRenderer(IPC_RENDERER_EVENT.TRANSLATE_SELECTION_AVAILABLE, {
         tabId: ctx.tabId,
         text,
         url: payload?.url || ctx.url,
-      });
+      })
     } catch {
       // ignore malformed console payloads
     }

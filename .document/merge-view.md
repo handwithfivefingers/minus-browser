@@ -72,19 +72,19 @@ Each overlay's `App.tsx` component reads its payload from `sessionStorage` on mo
 
 ```tsx
 function App() {
-  const [payload, setPayload] = useState(null);
+  const [payload, setPayload] = useState(null)
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("subWindowPayload");
+    const stored = sessionStorage.getItem('subWindowPayload')
     if (stored) {
-      setPayload(JSON.parse(stored));
-      sessionStorage.removeItem("subWindowPayload");
+      setPayload(JSON.parse(stored))
+      sessionStorage.removeItem('subWindowPayload')
     }
-  }, []);
+  }, [])
 
   const handleResolve = useCallback((result: any) => {
-    window.api.EMIT(SUB_WINDOW_RENDERER_EVENT.RESOLVE, result);
-  }, []);
+    window.api.EMIT(SUB_WINDOW_RENDERER_EVENT.RESOLVE, result)
+  }, [])
 
   // ...render UI using payload, call handleResolve when done
 }
@@ -166,6 +166,7 @@ Issues discovered after merging 5 views into 1 shared `WebContentsView`:
 ### 1. Cmd+K double-fire race
 
 The `CommandOrControl+K` shortcut was handled by **two** competing listeners:
+
 - **Electron ApplicationMenu accelerator** (`commandController.ts:31`) — toggles `subWindowService.isOpen`
 - **Sub-window renderer keydown** (`spotlight/overlay/App.tsx:128`) — emits `SPOTLIGHT_CLOSE` IPC
 
@@ -176,6 +177,7 @@ When both fired near-simultaneously, the close IPC could set `isOpen = false` be
 ### 2. Stale `this.view` on subsequent opens
 
 After `close()`:
+
 - `this.view` still pointed to the old `WebContentsView` (only removed from contentView, never nullified)
 - `this.readyPromise` stayed resolved forever
 - On the next `open()`, `warmup()` returned the cached promise → `initView()` was **never called again**
@@ -195,12 +197,13 @@ After `close()`:
 With `root: "src/features/sub-window"` in the Vite config, Tailwind CSS v4's automatic content scanner only scanned files **inside** that directory. Overlay components at `src/features/spotlight/`, `src/features/vault/`, etc. were outside the root, so their Tailwind classes (e.g., `animate-fade-in` in Spotlight) were omitted from the built CSS. Built CSS was 13.6 kB vs the expected ~67 kB.
 
 **Fix:** Added `@source` directives in `src/renderer/sub-window/assets/styles.css` pointing to all 5 overlay directories, telling Tailwind to scan them explicitly:
+
 ```css
-@source "../../spotlight/";
-@source "../../vault/";
-@source "../../translate/";
-@source "../../userscript/";
-@source "../../tabGroup/";
+@source '../../spotlight/';
+@source '../../vault/';
+@source '../../translate/';
+@source '../../userscript/';
+@source '../../tabGroup/';
 ```
 
 ### 5. Build script referencing deleted renderers
@@ -212,6 +215,7 @@ With `root: "src/features/sub-window"` in the Vite config, Tailwind CSS v4's aut
 ## Files Changed
 
 ### New files
+
 - `src/features/sub-window/ipc/vault-handlers.ts`
 - `src/features/sub-window/ipc/translate-handlers.ts`
 - `src/features/sub-window/ipc/userscript-handlers.ts`
@@ -225,6 +229,7 @@ With `root: "src/features/sub-window"` in the Vite config, Tailwind CSS v4's aut
 - `src/features/tabGroup/overlay.register.ts`
 
 ### Modified files
+
 - `src/main/core/controller/viewController.ts` — imports from `sub-window/ipc` instead of individual route-init files; removed `spotlightController` field
 - `src/renderer/sub-window/main.tsx` — uses `SUB_WINDOW_EMIT` constants; re-registers `NAVIGATE`/`PAYLOAD` listeners
 - `src/renderer/sub-window/pages/overlay-page.tsx` — uses `SUB_WINDOW_RENDERER_EVENT.CLOSE` constant
@@ -240,6 +245,7 @@ With `root: "src/features/sub-window"` in the Vite config, Tailwind CSS v4's aut
 - `src/features/tabGroup/service/index.ts` — cleared (overlay barrel)
 
 ### Deleted files
+
 - `src/features/vault/route-init.ts`
 - `src/features/translate/route-init.ts`
 - `src/features/userscript/route-init.ts`
@@ -248,6 +254,7 @@ With `root: "src/features/sub-window"` in the Vite config, Tailwind CSS v4's aut
 - `src/features/tabGroup/service/TabGroupOverlayService.ts`
 
 ### Phase 5 changes
+
 - `src/features/spotlight/overlay/App.tsx` — removed Cmd+K keydown handler (eliminates double-fire race with ApplicationMenu accelerator)
 - `src/features/sub-window/service/index.ts` — `close()` now destroys webContents, nullifies `this.view`/`this.readyPromise`; removed `openDevTools()` call
 - `src/renderer/sub-window/assets/styles.css` — added `@source` directives for all 5 overlay directories

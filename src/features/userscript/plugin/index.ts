@@ -1,20 +1,21 @@
-import { IExecutionContext, ITabLifecycleHooks, ITabPlugin } from "~/shared/types";
-import { userScriptController } from "../controllers";
-import { parseUserScriptMetadata } from "../parser";
+import { IExecutionContext, ITabLifecycleHooks, ITabPlugin } from '~/shared/types'
+
+import { userScriptController } from '../controllers'
+import { parseUserScriptMetadata } from '../parser'
 
 // import { ipcMain } from "electron";
 // import { IPC } from "~/features/system";
 
 export class UserScriptTabPlugin implements ITabPlugin {
-  readonly name = "userScript";
+  readonly name = 'userScript'
   constructor(private emitToRenderer: (channel: string, data: any) => void) {
-    this.emitToRenderer = emitToRenderer;
+    this.emitToRenderer = emitToRenderer
   }
 
   register(hooks: ITabLifecycleHooks, ctx: IExecutionContext) {
     hooks.onDidStopLoad = async () => {
-      this.runMatchedUserScripts(ctx.url, ctx);
-    };
+      this.runMatchedUserScripts(ctx.url, ctx)
+    }
   }
 
   /**
@@ -25,10 +26,10 @@ export class UserScriptTabPlugin implements ITabPlugin {
    */
   private async runMatchedUserScripts(url: string, ctx: IExecutionContext) {
     try {
-      if (!url) return;
-      const scripts = await userScriptController.getScriptsForURL(url);
+      if (!url) return
+      const scripts = await userScriptController.getScriptsForURL(url)
       for (const script of scripts) {
-        const meta = parseUserScriptMetadata(script.source);
+        const meta = parseUserScriptMetadata(script.source)
         if (meta?.noframes) {
           const codeToInject = `
               if (window === window.top) {
@@ -40,8 +41,10 @@ export class UserScriptTabPlugin implements ITabPlugin {
                   }
                 })();
               }
-            `;
-          ctx.webContents.executeJavaScript(codeToInject, true).catch(() => {});
+            `
+          ctx.webContents.executeJavaScript(codeToInject, true).catch(() => {
+            console.error('runMatchedUserScripts error')
+          })
         } else {
           const codeToInject = `
               (function() {
@@ -51,12 +54,14 @@ export class UserScriptTabPlugin implements ITabPlugin {
                   try { ${script.source} } catch (e) { console.error("UserScript error [${script.name}]:", e); }
                 }
               })();
-            `;
-          ctx.webContents.executeJavaScript(codeToInject, true).catch(() => {});
+            `
+          ctx.webContents.executeJavaScript(codeToInject, true).catch(() => {
+            console.error('runMatchedUserScripts error')
+          })
         }
       }
     } catch (error) {
-      console.error("runMatchedUserScripts error", error);
+      console.error('runMatchedUserScripts error', error)
     }
   }
 }

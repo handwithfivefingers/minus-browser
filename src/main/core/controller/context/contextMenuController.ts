@@ -1,75 +1,75 @@
-import { BrowserWindow, clipboard, Menu, MenuItem } from "electron";
+import { BrowserWindow, clipboard, Menu, MenuItem } from 'electron'
 
 export class ContextMenuController {
-  template: any[] | undefined;
+  template: any[] | undefined
   initialize(event: Electron.Event, params: Electron.ContextMenuParams) {
     const template: Partial<MenuItem>[] = [
-      { label: "Cut", role: "cut" },
-      { label: "Copy", role: "copy" },
-    ];
+      { label: 'Cut', role: 'cut' },
+      { label: 'Copy', role: 'copy' },
+    ]
     if (params.isEditable) {
-      template.push({ label: "Paste", role: "paste" });
+      template.push({ label: 'Paste', role: 'paste' })
     }
     if (params.selectionText?.trim()) {
       template.push({
-        label: "Translate Selection",
+        label: 'Translate Selection',
         click: () => {
-          const window = BrowserWindow.getFocusedWindow();
-          window?.webContents?.send("TRANSLATE_SELECTION_AVAILABLE", {
+          const window = BrowserWindow.getFocusedWindow()
+          window?.webContents?.send('TRANSLATE_SELECTION_AVAILABLE', {
             text: params.selectionText.trim(),
-          });
+          })
         },
-      });
+      })
     }
 
-    template.push({ type: "separator" });
+    template.push({ type: 'separator' })
 
     template.push(
       {
-        label: "Capture Page",
+        label: 'Capture Page',
         click: () => {
-          const window = BrowserWindow.getFocusedWindow();
-          window?.webContents?.send("CAPTURE_PAGE", {});
+          const window = BrowserWindow.getFocusedWindow()
+          window?.webContents?.send('CAPTURE_PAGE', {})
         },
       },
       {
-        label: "Capture Selection",
+        label: 'Capture Selection',
         click: () => {
-          const window = BrowserWindow.getFocusedWindow();
-          window?.webContents?.send("CAPTURE_SELECTION", {});
+          const window = BrowserWindow.getFocusedWindow()
+          window?.webContents?.send('CAPTURE_SELECTION', {})
         },
-      },
-    );
+      }
+    )
 
-    template.push({ type: "separator" });
+    template.push({ type: 'separator' })
 
-    if (params.mediaType === "image") {
+    if (params.mediaType === 'image') {
       template.unshift({
-        label: "Save Image As...",
+        label: 'Save Image As...',
         click: () => {
-          return clipboard.writeText(params.srcURL);
+          return clipboard.writeText(params.srcURL)
         },
-      });
+      })
     }
     if (params.linkURL) {
       template.unshift(
         {
-          label: "Open Link in New Window",
+          label: 'Open Link in New Window',
           click: () => {
-            const window = BrowserWindow.getFocusedWindow();
-            window?.webContents?.send("CREATE_TAB", { url: params.linkURL });
+            const window = BrowserWindow.getFocusedWindow()
+            window?.webContents?.send('CREATE_TAB', { url: params.linkURL })
           },
         },
         {
-          label: "Copy Link Address",
+          label: 'Copy Link Address',
           click: () => {
-            return clipboard.writeText(params.linkURL);
+            return clipboard.writeText(params.linkURL)
           },
-        },
-      );
+        }
+      )
     }
 
-    const menu = Menu.buildFromTemplate(template as any);
-    menu.popup({ window: BrowserWindow.getFocusedWindow() as BrowserWindow });
+    const menu = Menu.buildFromTemplate(template as any)
+    menu.popup({ window: BrowserWindow.getFocusedWindow() as BrowserWindow })
   }
 }

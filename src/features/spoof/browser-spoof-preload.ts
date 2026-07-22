@@ -1,4 +1,4 @@
-const { webFrame } = require("electron");
+import { webFrame } from 'electron'
 
 webFrame.executeJavaScript(`
 (function() {
@@ -70,4 +70,4 @@ webFrame.executeJavaScript(`
     }
   } catch(_) {}
 })();
-`);
+`)

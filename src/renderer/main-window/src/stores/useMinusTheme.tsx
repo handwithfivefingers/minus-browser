@@ -1,13 +1,14 @@
-import { create } from "zustand";
-import { IMinusThemeStore } from "~/renderer/main-window/src/interfaces";
-import { IPC_INVOKE_CHANNEL } from "~/shared/constants/ipc";
+import { create } from 'zustand'
+
+import { IMinusThemeStore } from '~/renderer/main-window/src/interfaces'
+import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
 
 const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
-  layout: "FLOATING",
-  mode: "auto",
+  layout: 'FLOATING',
+  mode: 'auto',
   dataSync: {
-    intervalTime: "15",
-    hardwareAcceleration: "on",
+    intervalTime: '15',
+    hardwareAcceleration: 'on',
   },
   extension: {
     adblock: true,
@@ -20,46 +21,46 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
     adblockAutoUpdate: true,
     adblockAutoUpdateInterval: 360,
   },
-  historyRetentionDays: "30",
-  hibernateMode: "normal",
+  historyRetentionDays: '30',
+  hibernateMode: 'normal',
   hibernateCustomMinutes: 60,
   autoDownload: true,
-  notificationRetentionDays: "30",
-  setLayout: (layout: "BASIC" | "FLOATING") => {
-    set({ layout });
+  notificationRetentionDays: '30',
+  setLayout: (layout: 'BASIC' | 'FLOATING') => {
+    set({ layout })
   },
-  setMode: (mode: "light" | "dark" | "auto") => {
-    set({ mode });
+  setMode: (mode: 'light' | 'dark' | 'auto') => {
+    set({ mode })
   },
-  setCookieMode: (mode: "0" | "1") => {
-    set({ savedCookies: mode });
+  setCookieMode: (mode: '0' | '1') => {
+    set({ savedCookies: mode })
   },
   setDataSyncTime: (intervalTime: string) => {
-    set((state) => ({ ...state, dataSync: { ...state.dataSync, intervalTime } }));
+    set((state) => ({ ...state, dataSync: { ...state.dataSync, intervalTime } }))
   },
-  setExtension: (extension: Partial<IMinusThemeStore["extension"]>) => {
-    set((state) => ({ ...state, extension: { ...state.extension, ...extension } }));
+  setExtension: (extension: Partial<IMinusThemeStore['extension']>) => {
+    set((state) => ({ ...state, extension: { ...state.extension, ...extension } }))
   },
   setHistoryRetentionDays: (days: string) => {
-    set({ historyRetentionDays: days });
+    set({ historyRetentionDays: days })
   },
-  setHibernateMode: (mode: "fast" | "normal" | "slow" | "custom") => {
-    set({ hibernateMode: mode });
+  setHibernateMode: (mode: 'fast' | 'normal' | 'slow' | 'custom') => {
+    set({ hibernateMode: mode })
   },
   setHibernateCustomMinutes: (minutes: number) => {
-    set({ hibernateCustomMinutes: minutes });
+    set({ hibernateCustomMinutes: minutes })
   },
   setAutoDownload: (enabled: boolean) => {
-    set({ autoDownload: enabled });
+    set({ autoDownload: enabled })
   },
   setNotificationRetentionDays: (days: string) => {
-    set({ notificationRetentionDays: days });
+    set({ notificationRetentionDays: days })
   },
   initialize: (data: Partial<IMinusThemeStore>) => {
-    return set(data);
+    return set(data)
   },
   saved: () => {
-    const data = get();
+    const data = get()
     const params = {
       layout: data.layout,
       mode: data.mode,
@@ -71,9 +72,9 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
       hibernateCustomMinutes: data.hibernateCustomMinutes,
       autoDownload: data.autoDownload,
       notificationRetentionDays: data.notificationRetentionDays,
-    };
-    window?.api?.INVOKE(IPC_INVOKE_CHANNEL.INTERFACE_SAVE, params);
+    }
+    window?.api?.INVOKE(IPC_INVOKE_CHANNEL.INTERFACE_SAVE, params)
   },
-}));
+}))
 
-export { useMinusThemeStore };
+export { useMinusThemeStore }

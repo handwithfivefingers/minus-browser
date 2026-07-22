@@ -1,129 +1,131 @@
-import { IconBell, IconBellFilled, IconPlus, IconSquare, IconSquareCheck, IconTrash } from "@tabler/icons-react";
-import clsx from "clsx";
-import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
-import { useWebNotificationStore } from "~/shared/store/useNotificationStore";
-import { GravityStarsBackground } from "../../components/gravityStarsBackground";
+import { IconBell, IconBellFilled, IconPlus, IconSquare, IconSquareCheck, IconTrash } from '@tabler/icons-react'
+import clsx from 'clsx'
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
+
+import { useWebNotificationStore } from '~/shared/store/useNotificationStore'
+
+import { GravityStarsBackground } from '../../components/gravityStarsBackground'
+
 // @ts-ignore
-import styles from "./styles.module.css";
+import styles from './styles.module.css'
 
 interface ITodoItem {
-  label: string;
-  description: string;
-  checked: boolean;
-  id: string;
+  label: string
+  description: string
+  checked: boolean
+  id: string
 }
 
 const Home = () => {
   return (
-    <div className="relative px-2 bg-slate-100 dark:bg-slate-950 h-full w-full">
+    <div className="relative h-full w-full bg-slate-100 px-2 dark:bg-slate-950">
       <TodoHome />
     </div>
-  );
-};
+  )
+}
 
-const DATE_OUTPUT = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DATE_OUTPUT = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 const TodoHome = () => {
-  const hourRef = useRef<HTMLSpanElement | null>(null);
-  const minRef = useRef<HTMLSpanElement | null>(null);
-  const [todos, setTodos] = useState<ITodoItem[]>([]);
-  const [isPending, startTransition] = useTransition();
+  const hourRef = useRef<HTMLSpanElement | null>(null)
+  const minRef = useRef<HTMLSpanElement | null>(null)
+  const [todos, setTodos] = useState<ITodoItem[]>([])
+  const [isPending, startTransition] = useTransition()
 
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useWebNotificationStore();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useWebNotificationStore()
   useLayoutEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: NodeJS.Timeout | null = null
     interval = setInterval(() => {
-      const [hours, minutes] = new Date().toLocaleTimeString().split(":");
-      if (!hourRef.current || !minRef.current) return;
-      hourRef.current.innerHTML = hours;
-      minRef.current.innerHTML = minutes;
-    });
+      const [hours, minutes] = new Date().toLocaleTimeString().split(':')
+      if (!hourRef.current || !minRef.current) return
+      hourRef.current.innerHTML = hours
+      minRef.current.innerHTML = minutes
+    })
 
     return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, []);
+      if (interval) clearInterval(interval)
+    }
+  }, [])
+  const loadTodos = async () => {
+    const data = await window.api.INVOKE<ITodoItem[]>('TODO_GET_ALL')
+    setTodos(data || [])
+  }
 
   useEffect(() => {
-    loadTodos();
-  }, []);
-
-  const loadTodos = async () => {
-    const data = await window.api.INVOKE<ITodoItem[]>("TODO_GET_ALL");
-    setTodos(data || []);
-  };
+    loadTodos()
+  }, [])
 
   const addNewTodo = async () => {
-    const newTodo = await window.api.INVOKE<ITodoItem>("TODO_CREATE", {
-      label: "new todo",
-      description: "new description",
-    });
+    const newTodo = await window.api.INVOKE<ITodoItem>('TODO_CREATE', {
+      label: 'new todo',
+      description: 'new description',
+    })
     if (newTodo) {
       startTransition(() => {
-        setTodos((prev) => [...prev, newTodo]);
-      });
+        setTodos((prev) => [...prev, newTodo])
+      })
     }
-  };
+  }
 
   const onSave = async (todoItem: ITodoItem) => {
-    const updated = await window.api.INVOKE<ITodoItem | null>("TODO_UPDATE", {
+    const updated = await window.api.INVOKE<ITodoItem | null>('TODO_UPDATE', {
       id: todoItem.id,
       label: todoItem.label,
       description: todoItem.description,
       checked: todoItem.checked,
-    });
+    })
     if (updated) {
       startTransition(() => {
-        setTodos((prev) => prev.map((item) => (item.id === todoItem.id ? updated : item)));
-      });
+        setTodos((prev) => prev.map((item) => (item.id === todoItem.id ? updated : item)))
+      })
     }
-  };
+  }
 
   const onDelete = async (todoItem: ITodoItem) => {
-    await window.api.INVOKE("TODO_DELETE", todoItem.id);
+    await window.api.INVOKE('TODO_DELETE', todoItem.id)
     startTransition(() => {
-      setTodos((prev) => prev.filter((item) => item.id !== todoItem.id));
-    });
-  };
+      setTodos((prev) => prev.filter((item) => item.id !== todoItem.id))
+    })
+  }
 
-  const recentNotifications = notifications.slice(0, 5);
+  const recentNotifications = notifications.slice(0, 5)
   return (
-    <div className="flex justify-center h-full items-start-safe py-20 flex-col gap-8 w-full">
-      <GravityStarsBackground className="absolute top-0 left-0 w-full h-full text-indigo-500" />
-      <div className={clsx("flex justify-center w-full gap-8", styles.fadeSection)} style={{ animationDelay: "0.05s" }}>
+    <div className="items-start-safe flex h-full w-full flex-col justify-center gap-8 py-20">
+      <GravityStarsBackground className="absolute top-0 left-0 h-full w-full text-indigo-500" />
+      <div className={clsx('flex w-full justify-center gap-8', styles.fadeSection)} style={{ animationDelay: '0.05s' }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="flex-1 shrink-0 gap-2 flex">
-            <span className="font-medium text-3xl text-slate-900 dark:text-white">
+          <div className="flex flex-1 shrink-0 gap-2">
+            <span className="text-3xl font-medium text-slate-900 dark:text-white">
               {DATE_OUTPUT[new Date().getDay()]}
             </span>
-            <span className="font-medium text-3xl text-slate-900 dark:text-white">
+            <span className="text-3xl font-medium text-slate-900 dark:text-white">
               {new Date().getDate()}/{new Date().getMonth()}/{new Date().getFullYear()}
             </span>
           </div>
-          <div className={clsx("flex-1 shrink-0", styles.clockFloat)}>
-            <span ref={hourRef} className="font-medium text-8xl text-slate-900 dark:text-white" />
-            <span className="font-medium text-8xl text-slate-900 dark:text-white">:</span>
-            <span ref={minRef} className="font-medium text-8xl text-slate-900 dark:text-white" />
+          <div className={clsx('flex-1 shrink-0', styles.clockFloat)}>
+            <span ref={hourRef} className="text-8xl font-medium text-slate-900 dark:text-white" />
+            <span className="text-8xl font-medium text-slate-900 dark:text-white">:</span>
+            <span ref={minRef} className="text-8xl font-medium text-slate-900 dark:text-white" />
           </div>
         </div>
       </div>
 
       <div
-        className={clsx("flex gap-4 w-full max-w-3xl mx-auto flex-1 overflow-hidden", styles.fadeSection)}
-        style={{ animationDelay: "0.15s" }}
+        className={clsx('mx-auto flex w-full max-w-3xl flex-1 gap-4 overflow-hidden', styles.fadeSection)}
+        style={{ animationDelay: '0.15s' }}
       >
-        <div className="flex-1 h-full flex gap-2 flex-col">
+        <div className="flex h-full flex-1 flex-col gap-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white w-full">Todos</h2>
+            <h2 className="w-full text-lg font-semibold text-slate-900 dark:text-white">Todos</h2>
           </div>
-          <div className="flex gap-2 flex-col overflow-x-hidden overflow-y-auto scrollbar">
+          <div className="scrollbar flex flex-col gap-2 overflow-x-hidden overflow-y-auto">
             {todos?.map((item) => {
-              return <TodoItem {...item} key={item.id} onSave={onSave} onDelete={() => onDelete(item)} />;
+              return <TodoItem {...item} key={item.id} onSave={onSave} onDelete={() => onDelete(item)} />
             })}
           </div>
           <button
             type="button"
-            className="text-white cursor-pointer sticky bottom-0 flex gap-1 items-center mx-auto bg-indigo-500 rounded p-2 text-sm"
+            className="sticky bottom-0 mx-auto flex cursor-pointer items-center gap-1 rounded bg-indigo-500 p-2 text-sm text-white"
             onClick={addNewTodo}
             disabled={isPending}
           >
@@ -133,15 +135,15 @@ const TodoHome = () => {
         </div>
 
         <div
-          className={clsx("w-80 h-full flex gap-2 flex-col", styles.fadeSection)}
-          style={{ animationDelay: "0.25s" }}
+          className={clsx('flex h-full w-80 flex-col gap-2', styles.fadeSection)}
+          style={{ animationDelay: '0.25s' }}
         >
-          <div className="flex items-center gap-2 text-slate-900 dark:text-white cursor-pointer">
+          <div className="flex cursor-pointer items-center gap-2 text-slate-900 dark:text-white">
             {unreadCount > 0 ? <IconBellFilled size={20} /> : <IconBell size={20} />}
             <h2 className="text-lg font-semibold ">Notifications</h2>
             {unreadCount > 0 && (
-              <span className="bg-red-500 text-white text-xs font-bold rounded-full min-w-4.5 flex items-center justify-center px-1">
-                {unreadCount > 99 ? "99+" : unreadCount}
+              <span className="flex min-w-4.5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </div>
@@ -150,13 +152,13 @@ const TodoHome = () => {
             <button
               type="button"
               onClick={markAllAsRead}
-              className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer self-start"
+              className="cursor-pointer self-start text-xs text-indigo-400 hover:text-indigo-300"
             >
               Mark all as read
             </button>
           )}
 
-          <div className="flex gap-2 flex-col max-h-68.75 overflow-x-hidden overflow-y-auto scrollbar">
+          <div className="scrollbar flex max-h-68.75 flex-col gap-2 overflow-x-hidden overflow-y-auto">
             {recentNotifications.length === 0 ? (
               <p className="text-sm text-slate-400">No notifications</p>
             ) : (
@@ -164,23 +166,24 @@ const TodoHome = () => {
                 <div
                   key={n.id}
                   onClick={() => {
-                    markAsRead(n.id);
-                    window.api.EMIT("OPEN_TAB_BY_ID", { id: n.tabId });
+                    markAsRead(n.id)
+                    window.api.EMIT('OPEN_TAB_BY_ID', { id: n.tabId })
                   }}
                   className={clsx(
-                    "flex gap-2 p-2 rounded-md cursor-pointer transition-colors",
-                    n.read ? "bg-slate-700/50" : "bg-indigo-500/20",
+                    'flex cursor-pointer gap-2 rounded-md p-2 transition-colors',
+                    n.read ? 'bg-slate-700/50' : 'bg-indigo-500/20'
                   )}
+                  aria-hidden
                 >
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1">
-                      {!n.read && <span className="w-2 h-2 rounded-full bg-indigo-400 shrink-0" />}
-                      <span className={clsx("text-sm truncate", n.read ? "text-slate-300" : "text-white font-medium")}>
+                      {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-indigo-400" />}
+                      <span className={clsx('truncate text-sm', n.read ? 'text-slate-300' : 'font-medium text-white')}>
                         {n.tabTitle}
                       </span>
                     </div>
-                    {n.body && <p className="text-xs text-slate-400 truncate mt-0.5">{n.body}</p>}
-                    <p className="text-[10px] text-slate-500 mt-0.5">{new Date(n.timestamp).toLocaleTimeString()}</p>
+                    {n.body && <p className="mt-0.5 truncate text-xs text-slate-400">{n.body}</p>}
+                    <p className="mt-0.5 text-[10px] text-slate-500">{new Date(n.timestamp).toLocaleTimeString()}</p>
                   </div>
                 </div>
               ))
@@ -189,42 +192,43 @@ const TodoHome = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 const TodoItem = ({
   onSave,
   onDelete,
   ...props
 }: ITodoItem & { onSave: (todo: ITodoItem) => void; onDelete: () => void }) => {
-  const [todo, setTodo] = useState(props);
+  const [todo, setTodo] = useState(props)
 
   useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | undefined = undefined;
-    if (timeout) clearTimeout(timeout);
+    let timeout: ReturnType<typeof setTimeout> | undefined = undefined
+    if (timeout) clearTimeout(timeout)
     timeout = setTimeout(() => {
-      onSave(todo);
-    }, 750);
+      onSave(todo)
+    }, 750)
     return () => {
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [todo]);
+      if (timeout) clearTimeout(timeout)
+    }
+  }, [todo])
   return (
-    <div className="flex bg-linear-to-br from-slate-950 to-slate-500 dark:from-white/10 dark:via-slate-700/10 dark:to-white/5 backdrop-blur-md p-2 px-4 gap-4 rounded-md group relative border border-slate-500/20">
+    <div className="group relative flex gap-4 rounded-md border border-slate-500/20 bg-linear-to-br from-slate-950 to-slate-500 p-2 px-4 backdrop-blur-md dark:from-white/10 dark:via-slate-700/10 dark:to-white/5">
       <span
         className="cursor-pointer text-indigo-500"
         onClick={() => setTodo((prev) => ({ ...prev, checked: !prev.checked }))}
+        aria-hidden
       >
         {!todo.checked ? <IconSquare /> : <IconSquareCheck />}
       </span>
-      <div className="flex gap-1 flex-col w-full">
+      <div className="flex w-full flex-col gap-1">
         <input
-          className="font-normal rounded-sm text-base capitalize px-2 ring-1 ring-transparent focus:ring-slate-500 outline-0 text-white/80"
+          className="rounded-sm px-2 text-base font-normal text-white/80 capitalize ring-1 ring-transparent outline-0 focus:ring-slate-500"
           value={todo.label}
           onChange={(e) => setTodo((prev) => ({ ...prev, label: e.target.value }))}
         />
         <textarea
-          className="text-sm px-2 rounded-sm ring-1 ring-transparent focus:ring-slate-500 outline-0 text-white/80 scrollbar"
+          className="scrollbar rounded-sm px-2 text-sm text-white/80 ring-1 ring-transparent outline-0 focus:ring-slate-500"
           value={todo.description}
           onChange={(e) => setTodo((prev) => ({ ...prev, description: e.target.value }))}
         />
@@ -233,12 +237,12 @@ const TodoItem = ({
       <button
         type="button"
         onClick={onDelete}
-        className="text-red-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute z-1 right-0.5 top-1/2 rounded -translate-y-1/2 cursor-pointer p-1 bg-white border border-slate-300"
+        className="invisible absolute top-1/2 right-0.5 z-1 -translate-y-1/2 cursor-pointer rounded border border-slate-300 bg-white p-1 text-red-700 opacity-0 group-hover:visible group-hover:opacity-100"
       >
         <IconTrash />
       </button>
     </div>
-  );
-};
+  )
+}
 
-export default Home;
+export default Home

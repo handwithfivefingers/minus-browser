@@ -30,14 +30,14 @@ Instead of using `@ghostery/adblocker-electron`, we implement the same architect
 
 ## Files Changed
 
-| File | Change |
-|------|--------|
-| `src/features/adblocker/adblocker-preload.ts` | **New** — Preload script with DOMMonitor, injects cosmetic filters via IPC |
-| `vite.adb-preload.config.ts` | **New** — Vite config for building the preload script |
-| `forge.config.ts` | Added build entry for `adblocker-preload.ts` with `target: "preload"` |
-| `vite.main.config.ts` | Reverted `build.rollupOptions.external` (no longer needed) |
+| File                                          | Change                                                                                                                                                                                                                    |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/features/adblocker/adblocker-preload.ts` | **New** — Preload script with DOMMonitor, injects cosmetic filters via IPC                                                                                                                                                |
+| `vite.adb-preload.config.ts`                  | **New** — Vite config for building the preload script                                                                                                                                                                     |
+| `forge.config.ts`                             | Added build entry for `adblocker-preload.ts` with `target: "preload"`                                                                                                                                                     |
+| `vite.main.config.ts`                         | Reverted `build.rollupOptions.external` (no longer needed)                                                                                                                                                                |
 | `src/features/adblocker/controllers/index.ts` | **Rewritten** — Registers preload via `session.registerPreloadScript()`, handles IPC for cosmetic injection, keeps `FiltersEngine` for network blocking. Removed manual `injectCosmeticFilters()` in favor of preload+IPC |
-| `src/features/adblocker/plugin/index.ts` | Simplified — removed `did-start-loading`/`did-finish-load` listeners (cosmetic injection now handled by preload). Kept YouTube `did-navigate` hook |
+| `src/features/adblocker/plugin/index.ts`      | Simplified — removed `did-start-loading`/`did-finish-load` listeners (cosmetic injection now handled by preload). Kept YouTube `did-navigate` hook                                                                        |
 
 ## Architecture
 
@@ -79,7 +79,7 @@ Call `blocker.onShowADBlockRequest()` in the plugin to log `request-blocked`, `r
 
 ```ts
 // In plugin's register():
-blocker.onShowADBlockRequest();
+blocker.onShowADBlockRequest()
 ```
 
 ## YouTube Midroll Ads

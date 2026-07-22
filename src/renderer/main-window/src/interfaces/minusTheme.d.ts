@@ -1,16 +1,16 @@
-import { IUserInterface } from "~/shared/types";
+import { IUserInterface } from '~/shared/types'
 
 export interface MinusThemeAction {
-  setLayout: (layout: "BASIC" | "FLOATING") => void;
-  setMode: (mode: "light" | "dark" | "auto") => void;
-  initialize: (data: Partial<IUserInterface>) => void;
-  setExtension: (extension: Partial<IUserInterface["extension"]>) => void;
-  setCookieMode: (mode: "0" | "1") => void;
-  setHistoryRetentionDays: (days: string) => void;
-  setHibernateMode: (mode: "fast" | "normal" | "slow" | "custom") => void;
-  setHibernateCustomMinutes: (minutes: number) => void;
-  setAutoDownload: (enabled: boolean) => void;
-  setNotificationRetentionDays: (days: string) => void;
-  saved: () => void;
+  setLayout: (layout: 'BASIC' | 'FLOATING') => void
+  setMode: (mode: 'light' | 'dark' | 'auto') => void
+  initialize: (data: Partial<IUserInterface>) => void
+  setExtension: (extension: Partial<IUserInterface['extension']>) => void
+  setCookieMode: (mode: '0' | '1') => void
+  setHistoryRetentionDays: (days: string) => void
+  setHibernateMode: (mode: 'fast' | 'normal' | 'slow' | 'custom') => void
+  setHibernateCustomMinutes: (minutes: number) => void
+  setAutoDownload: (enabled: boolean) => void
+  setNotificationRetentionDays: (days: string) => void
+  saved: () => void
 }
 export interface IMinusThemeStore extends IUserInterface, MinusThemeAction {}
