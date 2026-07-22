@@ -1,4 +1,4 @@
-import { DatabaseSync } from "node:sqlite";
+import { DatabaseSync } from 'node:sqlite'
 
 const migrations: { version: number; up: (db: DatabaseSync) => void }[] = [
   {
@@ -108,24 +108,24 @@ const migrations: { version: number; up: (db: DatabaseSync) => void }[] = [
           created_at INTEGER NOT NULL DEFAULT 0,
           updated_at INTEGER NOT NULL DEFAULT 0
         );
-      `);
+      `)
     },
   },
   {
     version: 2,
     up: (db) => {
-      const columns = db.prepare("PRAGMA table_info(tab_groups)").all() as { name: string }[];
-      if (!columns.some((c) => c.name === "tab_ids")) {
-        db.exec(`ALTER TABLE tab_groups ADD COLUMN tab_ids TEXT NOT NULL DEFAULT '[]'`);
+      const columns = db.prepare('PRAGMA table_info(tab_groups)').all() as { name: string }[]
+      if (!columns.some((c) => c.name === 'tab_ids')) {
+        db.exec(`ALTER TABLE tab_groups ADD COLUMN tab_ids TEXT NOT NULL DEFAULT '[]'`)
       }
     },
   },
   {
     version: 3,
     up: (db) => {
-      const columns = db.prepare("PRAGMA table_info(tab_groups)").all() as { name: string }[];
-      if (!columns.some((c) => c.name === "tab_ids")) {
-        db.exec(`ALTER TABLE tab_groups ADD COLUMN tab_ids TEXT NOT NULL DEFAULT '[]'`);
+      const columns = db.prepare('PRAGMA table_info(tab_groups)').all() as { name: string }[]
+      if (!columns.some((c) => c.name === 'tab_ids')) {
+        db.exec(`ALTER TABLE tab_groups ADD COLUMN tab_ids TEXT NOT NULL DEFAULT '[]'`)
       }
     },
   },
@@ -141,45 +141,46 @@ const migrations: { version: number; up: (db: DatabaseSync) => void }[] = [
           created_at INTEGER NOT NULL DEFAULT 0,
           updated_at INTEGER NOT NULL DEFAULT 0
         );
-      `);
+      `)
     },
   },
   {
     version: 5,
     up: (db) => {
-      const columns = db.prepare("PRAGMA table_info(user_scripts)").all() as { name: string }[];
-      const has = (name: string) => columns.some((c) => c.name === name);
-      if (!has("namespace")) db.exec(`ALTER TABLE user_scripts ADD COLUMN namespace TEXT NOT NULL DEFAULT ''`);
-      if (!has("version")) db.exec(`ALTER TABLE user_scripts ADD COLUMN version TEXT NOT NULL DEFAULT ''`);
-      if (!has("description")) db.exec(`ALTER TABLE user_scripts ADD COLUMN description TEXT NOT NULL DEFAULT ''`);
-      if (!has("author")) db.exec(`ALTER TABLE user_scripts ADD COLUMN author TEXT NOT NULL DEFAULT ''`);
-      if (!has("grants")) db.exec(`ALTER TABLE user_scripts ADD COLUMN grants TEXT NOT NULL DEFAULT '[]'`);
-      if (!has("includes")) db.exec(`ALTER TABLE user_scripts ADD COLUMN includes TEXT NOT NULL DEFAULT '[]'`);
-      if (!has("noframes")) db.exec(`ALTER TABLE user_scripts ADD COLUMN noframes INTEGER NOT NULL DEFAULT 0`);
-      if (!has("icon")) db.exec(`ALTER TABLE user_scripts ADD COLUMN icon TEXT NOT NULL DEFAULT ''`);
-      if (!has("download_url")) db.exec(`ALTER TABLE user_scripts ADD COLUMN download_url TEXT NOT NULL DEFAULT ''`);
-      if (!has("update_url")) db.exec(`ALTER TABLE user_scripts ADD COLUMN update_url TEXT NOT NULL DEFAULT ''`);
-      if (!has("support_url")) db.exec(`ALTER TABLE user_scripts ADD COLUMN support_url TEXT NOT NULL DEFAULT ''`);
-      if (!has("homepage_url")) db.exec(`ALTER TABLE user_scripts ADD COLUMN homepage_url TEXT NOT NULL DEFAULT ''`);
-      if (!has("license")) db.exec(`ALTER TABLE user_scripts ADD COLUMN license TEXT NOT NULL DEFAULT ''`);
-      if (!has("connect")) db.exec(`ALTER TABLE user_scripts ADD COLUMN connect TEXT NOT NULL DEFAULT '[]'`);
-      if (!has("requires")) db.exec(`ALTER TABLE user_scripts ADD COLUMN requires TEXT NOT NULL DEFAULT '[]'`);
-      if (!has("resources")) db.exec(`ALTER TABLE user_scripts ADD COLUMN resources TEXT NOT NULL DEFAULT '[]'`);
-      if (!has("built_in")) db.exec(`ALTER TABLE user_scripts ADD COLUMN built_in INTEGER NOT NULL DEFAULT 0`);
-      if (!has("raw_metadata")) db.exec(`ALTER TABLE user_scripts ADD COLUMN raw_metadata TEXT NOT NULL DEFAULT ''`);
+      const columns = db.prepare('PRAGMA table_info(user_scripts)').all() as { name: string }[]
+      const has = (name: string) => columns.some((c) => c.name === name)
+      if (!has('namespace')) db.exec(`ALTER TABLE user_scripts ADD COLUMN namespace TEXT NOT NULL DEFAULT ''`)
+      if (!has('version')) db.exec(`ALTER TABLE user_scripts ADD COLUMN version TEXT NOT NULL DEFAULT ''`)
+      if (!has('description')) db.exec(`ALTER TABLE user_scripts ADD COLUMN description TEXT NOT NULL DEFAULT ''`)
+      if (!has('author')) db.exec(`ALTER TABLE user_scripts ADD COLUMN author TEXT NOT NULL DEFAULT ''`)
+      if (!has('grants')) db.exec(`ALTER TABLE user_scripts ADD COLUMN grants TEXT NOT NULL DEFAULT '[]'`)
+      if (!has('includes')) db.exec(`ALTER TABLE user_scripts ADD COLUMN includes TEXT NOT NULL DEFAULT '[]'`)
+      if (!has('noframes')) db.exec(`ALTER TABLE user_scripts ADD COLUMN noframes INTEGER NOT NULL DEFAULT 0`)
+      if (!has('icon')) db.exec(`ALTER TABLE user_scripts ADD COLUMN icon TEXT NOT NULL DEFAULT ''`)
+      if (!has('download_url')) db.exec(`ALTER TABLE user_scripts ADD COLUMN download_url TEXT NOT NULL DEFAULT ''`)
+      if (!has('update_url')) db.exec(`ALTER TABLE user_scripts ADD COLUMN update_url TEXT NOT NULL DEFAULT ''`)
+      if (!has('support_url')) db.exec(`ALTER TABLE user_scripts ADD COLUMN support_url TEXT NOT NULL DEFAULT ''`)
+      if (!has('homepage_url')) db.exec(`ALTER TABLE user_scripts ADD COLUMN homepage_url TEXT NOT NULL DEFAULT ''`)
+      if (!has('license')) db.exec(`ALTER TABLE user_scripts ADD COLUMN license TEXT NOT NULL DEFAULT ''`)
+      if (!has('connect')) db.exec(`ALTER TABLE user_scripts ADD COLUMN connect TEXT NOT NULL DEFAULT '[]'`)
+      if (!has('requires')) db.exec(`ALTER TABLE user_scripts ADD COLUMN requires TEXT NOT NULL DEFAULT '[]'`)
+      if (!has('resources')) db.exec(`ALTER TABLE user_scripts ADD COLUMN resources TEXT NOT NULL DEFAULT '[]'`)
+      if (!has('built_in')) db.exec(`ALTER TABLE user_scripts ADD COLUMN built_in INTEGER NOT NULL DEFAULT 0`)
+      if (!has('raw_metadata')) db.exec(`ALTER TABLE user_scripts ADD COLUMN raw_metadata TEXT NOT NULL DEFAULT ''`)
     },
   },
-];
+]
 
 export function runMigrations(db: DatabaseSync) {
   const currentVersion = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='_migrations'").get()
-    ? (db.prepare("SELECT COALESCE(MAX(version), 0) as version FROM _migrations").get() as { version: number })?.version || 0
-    : 0;
+    ? (db.prepare('SELECT COALESCE(MAX(version), 0) as version FROM _migrations').get() as { version: number })
+        ?.version || 0
+    : 0
 
   for (const m of migrations) {
     if (m.version > currentVersion) {
-      m.up(db);
-      db.prepare("INSERT INTO _migrations (version) VALUES (?)").run(m.version);
+      m.up(db)
+      db.prepare('INSERT INTO _migrations (version) VALUES (?)').run(m.version)
     }
   }
 }

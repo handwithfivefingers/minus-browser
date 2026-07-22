@@ -1,104 +1,107 @@
-import { eventStore } from "~/main/core/stores";
-import { VaultServices } from "../services";
-import { IPasswordItem } from "../../../shared/types/password";
-import { PasswordController } from "./passwordController";
-import { Notification, WebContentsView } from "electron";
-import { Vault } from "~/shared/types";
+import { Notification, WebContentsView } from 'electron'
+
+import { eventStore } from '~/main/core/stores'
+import { Vault } from '~/shared/types'
+
+import { IPasswordItem } from '../../../shared/types/password'
+import { VaultServices } from '../services'
+
+import { PasswordController } from './passwordController'
 
 export class VaultController {
-  private passwordController: PasswordController = new PasswordController();
-  private vaultService = new VaultServices();
+  private passwordController: PasswordController = new PasswordController()
+  private vaultService = new VaultServices()
 
-  activeView: WebContentsView | null = null;
+  activeView: WebContentsView | null = null
   constructor() {
-    eventStore.listen("viewChanges", (view: WebContentsView) => {
-      this.activeView = view;
-    });
+    eventStore.listen('viewChanges', (view: WebContentsView) => {
+      this.activeView = view
+    })
   }
 
   async getVaults() {
     try {
-      return await this.passwordController.list();
+      return await this.passwordController.list()
     } catch (error) {
-      console.error("error", error);
-      return [];
+      console.error('error', error)
+      return []
     }
   }
 
   getVaultById(id: string) {
-    return this.passwordController.getById(id);
+    return this.passwordController.getById(id)
   }
 
   async addVault(data: Vault) {
     if (!data?.site?.trim()) {
-      throw new Error("Site is required");
+      throw new Error('Site is required')
     }
     if (!data?.username?.trim()) {
-      throw new Error("Username is required");
+      throw new Error('Username is required')
     }
     if (!data?.password?.trim()) {
-      throw new Error("Password is required");
+      throw new Error('Password is required')
     }
 
     return this.passwordController.add({
       site: data.site.trim(),
       username: data.username.trim(),
       password: data.password,
-      notes: data.notes || "",
-    });
+      notes: data.notes || '',
+    })
   }
 
-  async updateVault(id: string, patch: Partial<Pick<IPasswordItem, "site" | "username" | "password" | "notes">>) {
-    return this.passwordController.update(id, patch);
+  async updateVault(id: string, patch: Partial<Pick<IPasswordItem, 'site' | 'username' | 'password' | 'notes'>>) {
+    return this.passwordController.update(id, patch)
   }
 
   async removeVault(id: string) {
-    return this.passwordController.remove(id);
+    return this.passwordController.remove(id)
   }
 
   async openManager(tabId: string) {
     try {
       if (this.activeView) {
-        const vaultList = await this.getVaults();
-        const newVaults: IPasswordItem[] | null = await this.vaultService.openManager(this.activeView, vaultList);
+        const vaultList = await this.getVaults()
+        const newVaults: IPasswordItem[] | null = await this.vaultService.openManager(this.activeView, vaultList)
 
         if (Array.isArray(newVaults)) {
-          const originalIds = new Set(vaultList.map((v) => v.id));
-          const returnedIds = new Set(newVaults.map((v) => v.id));
-          for (let vault of newVaults) {
-            if (!vault.id || vault.id.startsWith("new-")) {
+          const originalIds = new Set(vaultList.map((v) => v.id))
+          const returnedIds = new Set(newVaults.map((v) => v.id))
+          for (const vault of newVaults) {
+            if (!vault.id || vault.id.startsWith('new-')) {
               await this.passwordController.add({
                 site: vault.site,
                 username: vault.username,
                 password: vault.password,
-                notes: vault.notes || "",
-              });
+                notes: vault.notes || '',
+              })
             } else {
-              await this.passwordController.update(vault.id, vault);
+              await this.passwordController.update(vault.id, vault)
             }
           }
           for (const item of vaultList) {
             if (!returnedIds.has(item.id)) {
-              await this.passwordController.remove(item.id);
+              await this.passwordController.remove(item.id)
             }
           }
         }
         return new Notification({
-          title: "Vault Manager",
-          body: "Vault Manager updated",
-        }).show();
+          title: 'Vault Manager',
+          body: 'Vault Manager updated',
+        }).show()
       }
-      return false;
+      return false
     } catch (error) {
-      console.error("Open Manager error", error);
+      console.error('Open Manager error', error)
     }
   }
 
   async fill(data: { credentialId: string }) {
-    if (!this.activeView || !data?.credentialId) return;
-    const credential = this.getVaultById(data.credentialId);
-    if (!credential) return;
-    return this.activeView.webContents.executeJavaScript(this.getDialogScriptInjection(credential), true);
+    if (!this.activeView || !data?.credentialId) return
+    const credential = this.getVaultById(data.credentialId)
+    if (!credential) return
+    return this.activeView.webContents.executeJavaScript(this.getDialogScriptInjection(credential), true)
   }
 
   getDialogScriptInjection(credential: { username: string; password: string }) {
@@ -108,8 +111,8 @@ export class VaultController {
         element.dispatchEvent(new Event("change", { bubbles: true }));
       };
       const creds = ${JSON.stringify({
-        username: "",
-        password: "",
+        username: '',
+        password: '',
       })};
       creds.username = ${JSON.stringify(credential.username)};
       creds.password = ${JSON.stringify(credential.password)};
@@ -146,28 +149,28 @@ export class VaultController {
         filledUsername: Boolean(userInput),
         filledPassword: passwordInputs.length > 0
       };
-    })();`;
+    })();`
   }
 
   vaultConfirmSave(data: { username: string; site: string; tabId?: string; isUpdate?: boolean }) {
-    const view = this.resolveView(data.tabId);
+    const view = this.resolveView(data.tabId)
     if (view) {
       return this.vaultService.confirmSave(view.webContents, {
         username: data.username,
         site: data.site,
         isUpdate: data.isUpdate,
-      });
+      })
     }
   }
 
   async vaultSelectCredential(data: { candidates: IPasswordItem[]; tabId?: string }) {
-    const view = this.resolveView(data.tabId);
-    if (!view) return null;
-    return this.vaultService.selectCredential(view.webContents, data.candidates || []);
+    const view = this.resolveView(data.tabId)
+    if (!view) return null
+    return this.vaultService.selectCredential(view.webContents, data.candidates || [])
   }
 
   private resolveView(tabId?: string): WebContentsView | null {
-    if (this.activeView) return this.activeView;
-    return null;
+    if (this.activeView) return this.activeView
+    return null
   }
 }

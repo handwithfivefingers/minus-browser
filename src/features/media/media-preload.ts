@@ -1,16 +1,12 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer } from 'electron'
 
-contextBridge.exposeInMainWorld("__mediaAPI", {
-  mediaStateChanged: (data: {
-    isUsingCamera: boolean;
-    isUsingMicrophone: boolean;
-    isUsingScreenShare: boolean;
-  }) => {
-    ipcRenderer.send("MEDIA_STATE_CHANGED", data);
+contextBridge.exposeInMainWorld('__mediaAPI', {
+  mediaStateChanged: (data: { isUsingCamera: boolean; isUsingMicrophone: boolean; isUsingScreenShare: boolean }) => {
+    ipcRenderer.send('MEDIA_STATE_CHANGED', data)
   },
-});
+})
 
-const { webFrame } = require("electron");
+const { webFrame } = require('electron')
 
 webFrame.executeJavaScript(`
   (function() {
@@ -85,4 +81,4 @@ webFrame.executeJavaScript(`
       return stream;
     };
   })();
-`);
+`)

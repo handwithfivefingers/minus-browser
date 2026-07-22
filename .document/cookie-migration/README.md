@@ -48,17 +48,17 @@ load()                      ← reads migrated session.json
 
 ### What Gets Migrated
 
-| File/Directory | Source | Destination | Purpose |
-|----------------|--------|-------------|---------|
-| `session.json` | Old userData | New userData | Cookie backup with preserved attributes |
-| `userData.json` | Old userData | New userData | Tab state, active tab |
-| `interface.json` | Old userData | New userData | UI preferences |
-| `bookmark.json` | Old userData | New userData | Bookmarks |
-| `history.json` | Old userData | New userData | Browsing history |
-| `userscripts.json` | Old userData | New userData | User scripts |
-| `passwordVault.json` | Old userData | New userData | Saved passwords |
-| `translate.json` | Old userData | New userData | Translation settings |
-| `Partitions/` | Old userData | New userData | Electron's native cookie SQLite DB |
+| File/Directory       | Source       | Destination  | Purpose                                 |
+| -------------------- | ------------ | ------------ | --------------------------------------- |
+| `session.json`       | Old userData | New userData | Cookie backup with preserved attributes |
+| `userData.json`      | Old userData | New userData | Tab state, active tab                   |
+| `interface.json`     | Old userData | New userData | UI preferences                          |
+| `bookmark.json`      | Old userData | New userData | Bookmarks                               |
+| `history.json`       | Old userData | New userData | Browsing history                        |
+| `userscripts.json`   | Old userData | New userData | User scripts                            |
+| `passwordVault.json` | Old userData | New userData | Saved passwords                         |
+| `translate.json`     | Old userData | New userData | Translation settings                    |
+| `Partitions/`        | Old userData | New userData | Electron's native cookie SQLite DB      |
 
 ### Sentinel File
 
@@ -89,26 +89,26 @@ The migration is async (`await migrateUserData()`), so the module-level `app.whe
 ```ts
 // session/index.ts
 const sessionInitPromise = app.whenReady().then(async () => {
-  await migrateUserData();
-  minusSessionManager = new SimpleSessionManager(MINUS_BROWSER_PARTITION);
-});
-export { minusSessionManager, sessionInitPromise };
+  await migrateUserData()
+  minusSessionManager = new SimpleSessionManager(MINUS_BROWSER_PARTITION)
+})
+export { minusSessionManager, sessionInitPromise }
 
 // main.ts — in app.whenReady handler:
-await sessionInitPromise;   // wait for migration + manager creation
-await this.createWindow();  // now minusSessionManager is defined
+await sessionInitPromise // wait for migration + manager creation
+await this.createWindow() // now minusSessionManager is defined
 ```
 
 This chains the two handlers: `main.ts` explicitly waits for `session/index.ts`'s initialization to complete via the shared promise reference.
 
 ## Files Changed
 
-| File | Change |
-|------|--------|
-| `src/main/core/services/session/migrator.ts` | **New** — migration logic |
-| `src/main/core/services/session/index.ts` | Import `migrateUserData` + `sessionInitPromise` export; call migration before `SimpleSessionManager` construction |
-| `src/main/index.ts` | Import `sessionInitPromise`; `await sessionInitPromise` before `createWindow()` |
-| `.document/cookie-migration/README.md` | This file |
+| File                                         | Change                                                                                                            |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `src/main/core/services/session/migrator.ts` | **New** — migration logic                                                                                         |
+| `src/main/core/services/session/index.ts`    | Import `migrateUserData` + `sessionInitPromise` export; call migration before `SimpleSessionManager` construction |
+| `src/main/index.ts`                          | Import `sessionInitPromise`; `await sessionInitPromise` before `createWindow()`                                   |
+| `.document/cookie-migration/README.md`       | This file                                                                                                         |
 
 ## Related Fixes
 

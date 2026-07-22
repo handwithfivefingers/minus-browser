@@ -1,130 +1,131 @@
-import { Notification } from "electron";
-import { parseUserScriptMetadata } from "../parser";
-import { userScriptController } from "../controllers";
+import { Notification } from 'electron'
+
+import { userScriptController } from '../controllers'
+import { parseUserScriptMetadata } from '../parser'
 
 interface UpdateCheckResult {
-  scriptId: string;
-  scriptName: string;
-  currentVersion: string;
-  remoteVersion: string;
-  downloadURL: string;
+  scriptId: string
+  scriptName: string
+  currentVersion: string
+  remoteVersion: string
+  downloadURL: string
 }
 
-const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
 
-let checkTimer: ReturnType<typeof setInterval> | null = null;
+let checkTimer: ReturnType<typeof setInterval> | null = null
 
 function parseVersion(version: string | undefined | null): number[] {
-  if (!version) return [0];
-  return version.split(".").map((s) => {
-    const n = parseInt(s, 10);
-    return isNaN(n) ? 0 : n;
-  });
+  if (!version) return [0]
+  return version.split('.').map((s) => {
+    const n = parseInt(s, 10)
+    return isNaN(n) ? 0 : n
+  })
 }
 
 function isNewerVersion(current: string, remote: string): boolean {
-  const curParts = parseVersion(current);
-  const remParts = parseVersion(remote);
-  const maxLen = Math.max(curParts.length, remParts.length);
+  const curParts = parseVersion(current)
+  const remParts = parseVersion(remote)
+  const maxLen = Math.max(curParts.length, remParts.length)
   for (let i = 0; i < maxLen; i++) {
-    const c = curParts[i] || 0;
-    const r = remParts[i] || 0;
-    if (r > c) return true;
-    if (r < c) return false;
+    const c = curParts[i] || 0
+    const r = remParts[i] || 0
+    if (r > c) return true
+    if (r < c) return false
   }
-  return false;
+  return false
 }
 
 export async function checkForUpdates(): Promise<UpdateCheckResult[]> {
-  const scripts = userScriptController.listScripts();
-  const results: UpdateCheckResult[] = [];
+  const scripts = userScriptController.listScripts()
+  const results: UpdateCheckResult[] = []
 
   for (const script of scripts) {
-    if (script.builtIn || !script.enabled) continue;
-    const meta = parseUserScriptMetadata(script.source);
-    if (!meta?.updateURL) continue;
+    if (script.builtIn || !script.enabled) continue
+    const meta = parseUserScriptMetadata(script.source)
+    if (!meta?.updateURL) continue
 
     try {
-      const response = await fetch(meta.updateURL);
-      const remoteSource = await response.text();
-      const remoteMeta = parseUserScriptMetadata(remoteSource);
+      const response = await fetch(meta.updateURL)
+      const remoteSource = await response.text()
+      const remoteMeta = parseUserScriptMetadata(remoteSource)
 
-      if (!remoteMeta?.version) continue;
+      if (!remoteMeta?.version) continue
 
-      const currentVer = meta.version || "0.0.0";
-      const remoteVer = remoteMeta.version;
+      const currentVer = meta.version || '0.0.0'
+      const remoteVer = remoteMeta.version
 
       if (isNewerVersion(currentVer, remoteVer)) {
-        const downloadURL = meta.downloadURL || meta.updateURL;
+        const downloadURL = meta.downloadURL || meta.updateURL
         results.push({
           scriptId: script.id,
           scriptName: script.name,
           currentVersion: currentVer,
           remoteVersion: remoteVer,
           downloadURL,
-        });
+        })
       }
     } catch (error) {
-      console.error(`[UserScript Update] Failed to check ${script.name}:`, error);
+      console.error(`[UserScript Update] Failed to check ${script.name}:`, error)
     }
   }
 
-  return results;
+  return results
 }
 
 export async function applyUpdate(downloadURL: string): Promise<string | null> {
   try {
-    const response = await fetch(downloadURL);
-    const source = await response.text();
-    const meta = parseUserScriptMetadata(source);
-    if (!meta) return null;
+    const response = await fetch(downloadURL)
+    const source = await response.text()
+    const meta = parseUserScriptMetadata(source)
+    if (!meta) return null
 
     await userScriptController.saveScript({
-      id: "",
+      id: '',
       name: meta.name,
       source,
       matches: meta.matches,
       excludes: meta.excludes,
       runAt: meta.runAt,
       enabled: true,
-    } as any);
+    } as any)
 
-    return meta.name;
+    return meta.name
   } catch (error) {
-    console.error("[UserScript Update] Download failed:", error);
-    return null;
+    console.error('[UserScript Update] Download failed:', error)
+    return null
   }
 }
 
 export function startUpdateChecker(): void {
-  if (checkTimer) return;
+  if (checkTimer) return
 
   checkTimer = setInterval(async () => {
-    const updates = await checkForUpdates();
+    const updates = await checkForUpdates()
     for (const update of updates) {
       const notif = new Notification({
-        title: "UserScript Update Available",
+        title: 'UserScript Update Available',
         body: `${update.scriptName}: ${update.currentVersion} → ${update.remoteVersion}`,
-      });
-      notif.on("click", async () => {
-        const name = await applyUpdate(update.downloadURL);
+      })
+      notif.on('click', async () => {
+        const name = await applyUpdate(update.downloadURL)
         if (name) {
           new Notification({
-            title: "UserScript Updated",
+            title: 'UserScript Updated',
             body: `${name} has been updated to ${update.remoteVersion}`,
-          }).show();
+          }).show()
         }
-      });
-      notif.show();
+      })
+      notif.show()
     }
-  }, CHECK_INTERVAL_MS);
+  }, CHECK_INTERVAL_MS)
 
-  checkForUpdates().catch(() => {});
+  checkForUpdates().catch(() => {})
 }
 
 export function stopUpdateChecker(): void {
   if (checkTimer) {
-    clearInterval(checkTimer);
-    checkTimer = null;
+    clearInterval(checkTimer)
+    checkTimer = null
   }
 }

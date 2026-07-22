@@ -150,4 +150,4 @@ export const CREDENTIAL_ASSIST_SCRIPT = `(function() {
           }, true);
 
           document.body.appendChild(wrapper)
-        })();`;
+        })();`

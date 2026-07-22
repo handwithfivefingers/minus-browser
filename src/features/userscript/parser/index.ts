@@ -1,1 +1,1 @@
-export { parseUserScriptMetadata, generateMetadataBlock, metadataToPartialScript } from "./metadata";
+export { parseUserScriptMetadata, generateMetadataBlock, metadataToPartialScript } from './metadata'

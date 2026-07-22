@@ -1,15 +1,15 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer } from 'electron'
 
-const tabId = process.argv.find((arg) => arg.startsWith("--notification-tab-id="))?.split("=")[1] || "";
+const tabId = process.argv.find((arg) => arg.startsWith('--notification-tab-id='))?.split('=')[1] || ''
 
-contextBridge.exposeInMainWorld("__notificationAPI", {
+contextBridge.exposeInMainWorld('__notificationAPI', {
   notify: (data: { title: string; body: string; tag: string }) => {
-    if(window.Notification.permission === "denied") return;
-    ipcRenderer.send("WEB_NOTIFICATION", { ...data, tabTitle: document.title, tabId });
+    if (window.Notification.permission === 'denied') return
+    ipcRenderer.send('WEB_NOTIFICATION', { ...data, tabTitle: document.title, tabId })
   },
-});
+})
 
-const { webFrame } = require("electron");
+const { webFrame } = require('electron')
 
 webFrame.executeJavaScript(`
   (function() {
@@ -49,4 +49,4 @@ webFrame.executeJavaScript(`
     };
     window.Notification.maxActions = OrigNotify.maxActions || 0;
   })();
-`);
+`)

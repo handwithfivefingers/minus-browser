@@ -1,6 +1,7 @@
 # Capture Page / Capture Selection — Implementation Plan
 
 ## Overview
+
 Add a **Capture** feature that takes screenshots of web pages using `webContents.capturePage()`. Triggered from toolbar + context menu, integrates with the AI sidebar, saves to clipboard. Uses `WebContentsView` (SubWindowService overlay) — no `BrowserView`.
 
 ---
@@ -10,6 +11,7 @@ Add a **Capture** feature that takes screenshots of web pages using `webContents
 ### Flow Diagrams
 
 **Capture Page:**
+
 ```
 User clicks toolbar "Capture Page"
   → renderer IPC emit "send" → channel: "CAPTURE_PAGE"
@@ -24,6 +26,7 @@ User clicks toolbar "Capture Page"
 ```
 
 **Capture Selection:**
+
 ```
 User right-click → "Capture Selection" (or toolbar dropdown)
   → Inject selection script into active tab
@@ -34,43 +37,44 @@ User right-click → "Capture Selection" (or toolbar dropdown)
 ```
 
 ### Overlay Pattern
+
 Use the existing **SubWindowService** (shared `WebContentsView`) — register a new `/capture` route, following vault/translate/spotlight conventions. No new Vite renderer entry needed.
 
 ### Integration Points
 
-| Integration | Detail |
-|-------------|--------|
-| **Toolbar** | Camera icon button + dropdown: "Capture Page" / "Capture Selection" |
-| **Context menu** | Right-click on page → "Capture Page" / "Capture Selection" |
-| **Keyboard shortcut** | `Ctrl+Shift+S` (or similar) — future |
-| **AI sidebar** | New `"capture"` mode showing screenshot + AI actions |
+| Integration           | Detail                                                              |
+| --------------------- | ------------------------------------------------------------------- |
+| **Toolbar**           | Camera icon button + dropdown: "Capture Page" / "Capture Selection" |
+| **Context menu**      | Right-click on page → "Capture Page" / "Capture Selection"          |
+| **Keyboard shortcut** | `Ctrl+Shift+S` (or similar) — future                                |
+| **AI sidebar**        | New `"capture"` mode showing screenshot + AI actions                |
 
 ---
 
 ## 2. Files to Create
 
-| # | File | Purpose |
-|---|------|---------|
-| 1 | `src/features/capture/services/index.ts` | `capturePage(webContents, rect?)` → calls `webContents.capturePage(rect)`, returns NativeImage converted to data URL |
-| 2 | `src/features/capture/controllers/index.ts` | Subscribes to `viewChanges`, exposes `capturePage()`/`captureSelection()` methods, handles IPC invoke/emit |
-| 3 | `src/features/capture/overlay/App.tsx` | React component: displays captured image, "Copy to clipboard" button, close |
-| 4 | `src/features/capture/overlay.register.ts` | `register({ path: "/capture", component: CapturePage, shell: true })` |
-| 5 | `src/features/capture/plugin/index.ts` | `CaptureTabPlugin`: injects selection script, handles `console-message` for region coords |
-| 6 | `src/features/capture/plugin/selectionScript.ts` | Injected JS: darkened overlay, drag-to-select rectangle, sends coordinates via sentinel |
-| 7 | `src/features/capture/index.ts` | Exports |
+| #   | File                                             | Purpose                                                                                                              |
+| --- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | `src/features/capture/services/index.ts`         | `capturePage(webContents, rect?)` → calls `webContents.capturePage(rect)`, returns NativeImage converted to data URL |
+| 2   | `src/features/capture/controllers/index.ts`      | Subscribes to `viewChanges`, exposes `capturePage()`/`captureSelection()` methods, handles IPC invoke/emit           |
+| 3   | `src/features/capture/overlay/App.tsx`           | React component: displays captured image, "Copy to clipboard" button, close                                          |
+| 4   | `src/features/capture/overlay.register.ts`       | `register({ path: "/capture", component: CapturePage, shell: true })`                                                |
+| 5   | `src/features/capture/plugin/index.ts`           | `CaptureTabPlugin`: injects selection script, handles `console-message` for region coords                            |
+| 6   | `src/features/capture/plugin/selectionScript.ts` | Injected JS: darkened overlay, drag-to-select rectangle, sends coordinates via sentinel                              |
+| 7   | `src/features/capture/index.ts`                  | Exports                                                                                                              |
 
 ## 3. Files to Modify
 
-| # | File | Changes |
-|---|------|---------|
-| 1 | `src/shared/constants/ipc.ts` | Add `CAPTURE_PAGE`, `CAPTURE_SELECTION` to `IPC_INVOKE_CHANNEL` |
-| 2 | `src/main/core/controller/viewController.ts` | Add invoke handlers for `CAPTURE_PAGE`/`CAPTURE_SELECTION`; wire `captureController` |
-| 3 | `src/features/tabs/models/tab.ts` | Register `CaptureTabPlugin` in `registerPlugin()` |
-| 4 | `src/renderer/main-window/src/features/aiSider/stores/useAiSidebarStore.ts` | Add `capturedImage: string | null` state, extend `AiSidebarMode` with `"capture"` |
-| 5 | `src/renderer/main-window/src/features/aiSider/components/AiSidebar.tsx` | Add Capture tab (camera icon), render `<CaptureMode />` |
-| 6 | `src/renderer/main-window/src/features/aiSider/modes/CaptureMode.tsx` | New: shows captured screenshot thumbnail + AI action buttons |
-| 7 | `src/main/core/controller/context/index.ts` | Add "Capture Page" / "Capture Selection" context menu items |
-| 8 | `src/renderer/main-window/src/components/toolbar/index.tsx` (or similar) | Add camera icon button with dropdown |
+| #   | File                                                                        | Changes                                                                              |
+| --- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 1   | `src/shared/constants/ipc.ts`                                               | Add `CAPTURE_PAGE`, `CAPTURE_SELECTION` to `IPC_INVOKE_CHANNEL`                      |
+| 2   | `src/main/core/controller/viewController.ts`                                | Add invoke handlers for `CAPTURE_PAGE`/`CAPTURE_SELECTION`; wire `captureController` |
+| 3   | `src/features/tabs/models/tab.ts`                                           | Register `CaptureTabPlugin` in `registerPlugin()`                                    |
+| 4   | `src/renderer/main-window/src/features/aiSider/stores/useAiSidebarStore.ts` | Add `capturedImage: string                                                           | null`state, extend`AiSidebarMode`with`"capture"` |
+| 5   | `src/renderer/main-window/src/features/aiSider/components/AiSidebar.tsx`    | Add Capture tab (camera icon), render `<CaptureMode />`                              |
+| 6   | `src/renderer/main-window/src/features/aiSider/modes/CaptureMode.tsx`       | New: shows captured screenshot thumbnail + AI action buttons                         |
+| 7   | `src/main/core/controller/context/index.ts`                                 | Add "Capture Page" / "Capture Selection" context menu items                          |
+| 8   | `src/renderer/main-window/src/components/toolbar/index.tsx` (or similar)    | Add camera icon button with dropdown                                                 |
 
 ## 4. IPC Channels
 
@@ -161,21 +165,23 @@ Follows the existing `AiTabPlugin` pattern:
 
 ```typescript
 export class CaptureTabPlugin implements ITabPlugin {
-  readonly name = "capture";
+  readonly name = 'capture'
 
   constructor(private emitToRenderer: (channel: string, data: any) => void) {}
 
   register(hooks: ITabLifecycleHooks, ctx: IExecutionContext) {
-    hooks.onConsoleMessage = (_ctx, msg) => this.handleConsoleMessage(ctx, msg);
+    hooks.onConsoleMessage = (_ctx, msg) => this.handleConsoleMessage(ctx, msg)
   }
 
   private handleConsoleMessage(ctx: IExecutionContext, message: string) {
-    if (!message.startsWith("__MINUS_CAPTURE_SELECTION__:")) return;
+    if (!message.startsWith('__MINUS_CAPTURE_SELECTION__:')) return
     try {
-      const rect = JSON.parse(message.slice("__MINUS_CAPTURE_SELECTION__:".length));
+      const rect = JSON.parse(message.slice('__MINUS_CAPTURE_SELECTION__:'.length))
       // rect = { x, y, w, h }
-      this.emitToRenderer("CAPTURE_SELECTION_RESULT", { rect, tabId: ctx.tabId });
-    } catch { /* ignore malformed */ }
+      this.emitToRenderer('CAPTURE_SELECTION_RESULT', { rect, tabId: ctx.tabId })
+    } catch {
+      /* ignore malformed */
+    }
   }
 }
 ```
@@ -189,13 +195,13 @@ export class CaptureTabPlugin implements ITabPlugin {
 
 ## 8. Phases
 
-| Phase | What | Est. Time | Complexity |
-|-------|------|-----------|------------|
-| **1** | Capture service + controller + IPC handlers | 2-3h | Medium |
-| **2** | SubWindow overlay (App.tsx + register) | 1-2h | Low |
-| **3** | Tab plugin + region selection script | 2-3h | Medium |
-| **4** | Toolbar button + context menu triggers | 1-2h | Low |
-| **5** | AI sidebar Capture mode | 1-2h | Low |
-| **6** | Clipboard integration | 0.5h | Low |
-| **7** | Keyboard shortcut (`Ctrl+Shift+S`) | 0.5h | Low |
-| | **Total** | **8-13h** | |
+| Phase | What                                        | Est. Time | Complexity |
+| ----- | ------------------------------------------- | --------- | ---------- |
+| **1** | Capture service + controller + IPC handlers | 2-3h      | Medium     |
+| **2** | SubWindow overlay (App.tsx + register)      | 1-2h      | Low        |
+| **3** | Tab plugin + region selection script        | 2-3h      | Medium     |
+| **4** | Toolbar button + context menu triggers      | 1-2h      | Low        |
+| **5** | AI sidebar Capture mode                     | 1-2h      | Low        |
+| **6** | Clipboard integration                       | 0.5h      | Low        |
+| **7** | Keyboard shortcut (`Ctrl+Shift+S`)          | 0.5h      | Low        |
+|       | **Total**                                   | **8-13h** |            |

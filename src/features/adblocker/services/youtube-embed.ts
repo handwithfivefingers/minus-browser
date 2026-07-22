@@ -1,12 +1,12 @@
-const YOUTUBE_WATCH_RE = /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/;
+const YOUTUBE_WATCH_RE = /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/
 
 export function isYouTubeWatchUrl(url: string): boolean {
-  return YOUTUBE_WATCH_RE.test(url);
+  return YOUTUBE_WATCH_RE.test(url)
 }
 
 export function extractVideoId(url: string): string | null {
-  const match = url.match(YOUTUBE_WATCH_RE);
-  return match ? match[1] : null;
+  const match = url.match(YOUTUBE_WATCH_RE)
+  return match ? match[1] : null
 }
 
 export function buildEmbedDataUrl(videoId: string): string {
@@ -45,6 +45,6 @@ window.addEventListener('message', (e) => {
 window.__youtubeEmbedded = true;
 </script>
 </body>
-</html>`;
-  return `data:text/html;base64,${Buffer.from(html, "utf-8").toString("base64")}`;
+</html>`
+  return `data:text/html;base64,${Buffer.from(html, 'utf-8').toString('base64')}`
 }

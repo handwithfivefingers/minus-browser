@@ -1,15 +1,17 @@
-import { autoUpdater } from "electron";
-import log from "electron-log";
-import { updateElectronApp } from "update-electron-app";
-import type { UpdateStatusEvent } from "./types";
+import { autoUpdater } from 'electron'
 
-const GITHUB_OWNER = "handwithfivefingers";
-const GITHUB_REPO = "minus-browser";
+import log from 'electron-log'
+import { updateElectronApp } from 'update-electron-app'
 
-type EmitFn = (channel: string, data: unknown) => void;
+import type { UpdateStatusEvent } from './types'
+
+const GITHUB_OWNER = 'handwithfivefingers'
+const GITHUB_REPO = 'minus-browser'
+
+type EmitFn = (channel: string, data: unknown) => void
 
 function statusEvent(data: UpdateStatusEvent): UpdateStatusEvent {
-  return data;
+  return data
 }
 
 export function initAutoUpdate(emit: EmitFn, options?: { autoDownload?: boolean }) {
@@ -21,41 +23,41 @@ export function initAutoUpdate(emit: EmitFn, options?: { autoDownload?: boolean 
         type: 1, // StaticStorage
         baseUrl: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download`,
       },
-    });
+    })
   }
 
-  autoUpdater.on("checking-for-update", () => {
-    emit("UPDATE_STATUS", statusEvent({ status: "checking" }));
-  });
+  autoUpdater.on('checking-for-update', () => {
+    emit('UPDATE_STATUS', statusEvent({ status: 'checking' }))
+  })
 
-  autoUpdater.on("update-available", () => {
-    emit("UPDATE_STATUS", statusEvent({ status: "available" }));
-  });
+  autoUpdater.on('update-available', () => {
+    emit('UPDATE_STATUS', statusEvent({ status: 'available' }))
+  })
 
-  autoUpdater.on("update-not-available", () => {
-    emit("UPDATE_STATUS", statusEvent({ status: "not-available" }));
-  });
+  autoUpdater.on('update-not-available', () => {
+    emit('UPDATE_STATUS', statusEvent({ status: 'not-available' }))
+  })
 
-  autoUpdater.on("error", (err) => {
-    emit("UPDATE_STATUS", statusEvent({ status: "error", info: err?.message || String(err) }));
-  });
+  autoUpdater.on('error', (err) => {
+    emit('UPDATE_STATUS', statusEvent({ status: 'error', info: err?.message || String(err) }))
+  })
 
-  autoUpdater.on("download-progress", (progress) => {
-    emit("UPDATE_STATUS", statusEvent({ status: "downloading", info: progress }));
-  });
+  autoUpdater.on('download-progress', (progress) => {
+    emit('UPDATE_STATUS', statusEvent({ status: 'downloading', info: progress }))
+  })
 
-  autoUpdater.on("update-downloaded", (_event, releaseNotes, releaseName, releaseDate, updateURL) => {
+  autoUpdater.on('update-downloaded', (_event, releaseNotes, releaseName, releaseDate, updateURL) => {
     emit(
-      "UPDATE_STATUS",
-      statusEvent({ status: "downloaded", info: { releaseNotes, releaseName, releaseDate, updateURL } }),
-    );
-  });
+      'UPDATE_STATUS',
+      statusEvent({ status: 'downloaded', info: { releaseNotes, releaseName, releaseDate, updateURL } })
+    )
+  })
 }
 
 export function checkForUpdates() {
-  autoUpdater.checkForUpdates();
+  autoUpdater.checkForUpdates()
 }
 
 export function quitAndInstall() {
-  setImmediate(() => autoUpdater.quitAndInstall());
+  setImmediate(() => autoUpdater.quitAndInstall())
 }

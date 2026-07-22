@@ -1,14 +1,14 @@
-import { lazy, Suspense } from "react";
-const Layout = lazy(() => import("../pages/layout"));
-const CustomApp = lazy(() => import("../pages/customApp"));
-const Home = lazy(() => import("../pages/home"));
-const Setting = lazy(() => import("../pages/setting"));
-const History = lazy(() => import("../pages/history"));
+import { lazy, Suspense } from 'react'
+const Layout = lazy(() => import('../pages/layout'))
+const CustomApp = lazy(() => import('../pages/customApp'))
+const Home = lazy(() => import('../pages/home'))
+const Setting = lazy(() => import('../pages/setting'))
+const History = lazy(() => import('../pages/history'))
 const APP_ROUTES = [
   {
-    path: "/",
+    path: '/',
     element: (
-      <Suspense fallback={"Loading..."}>
+      <Suspense fallback={'Loading...'}>
         <Layout />
       </Suspense>
     ),
@@ -16,37 +16,37 @@ const APP_ROUTES = [
       {
         index: true,
         element: (
-          <Suspense fallback={"Loading..."}>
+          <Suspense fallback={'Loading...'}>
             <Home />
           </Suspense>
         ),
       },
       {
-        path: "setting",
+        path: 'setting',
         element: (
-          <Suspense fallback={"Loading..."}>
+          <Suspense fallback={'Loading...'}>
             <Setting />
           </Suspense>
         ),
       },
       {
-        path: "history",
+        path: 'history',
         element: (
-          <Suspense fallback={"Loading..."}>
+          <Suspense fallback={'Loading...'}>
             <History />
           </Suspense>
         ),
       },
       {
-        path: ":customApp",
+        path: ':customApp',
         element: (
-          <Suspense fallback={"Loading..."}>
+          <Suspense fallback={'Loading...'}>
             <CustomApp />
           </Suspense>
         ),
       },
     ],
   },
-];
+]
 
-export { APP_ROUTES };
+export { APP_ROUTES }

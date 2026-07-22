@@ -1,68 +1,69 @@
-import { v7 as uuid_v7 } from "uuid";
-import { IUserScriptRequire, IUserScriptResource, UserScriptGrant, UserScriptRunAt } from "../types";
+import { v7 as uuid_v7 } from 'uuid'
+
+import { IUserScriptRequire, IUserScriptResource, UserScriptGrant, UserScriptRunAt } from '../types'
 
 export interface IUserScript {
-  id: string;
-  name: string;
-  source: string;
-  matches: string[];
-  enabled?: boolean;
-  excludes?: string[];
-  includes?: string[];
-  namespace?: string;
-  version?: string;
-  description?: string;
-  author?: string;
-  requires?: IUserScriptRequire[];
-  resources?: IUserScriptResource[];
-  grants?: UserScriptGrant[];
-  runAt?: UserScriptRunAt;
-  noframes?: boolean;
-  icon?: string;
-  downloadURL?: string;
-  updateURL?: string;
-  supportURL?: string;
-  homepageURL?: string;
-  license?: string;
-  connect?: string[];
-  builtIn?: boolean;
-  rawMetadata?: string;
-  createdAt?: number;
-  updatedAt?: number;
+  id: string
+  name: string
+  source: string
+  matches: string[]
+  enabled?: boolean
+  excludes?: string[]
+  includes?: string[]
+  namespace?: string
+  version?: string
+  description?: string
+  author?: string
+  requires?: IUserScriptRequire[]
+  resources?: IUserScriptResource[]
+  grants?: UserScriptGrant[]
+  runAt?: UserScriptRunAt
+  noframes?: boolean
+  icon?: string
+  downloadURL?: string
+  updateURL?: string
+  supportURL?: string
+  homepageURL?: string
+  license?: string
+  connect?: string[]
+  builtIn?: boolean
+  rawMetadata?: string
+  createdAt?: number
+  updatedAt?: number
 }
 
 export class UserScript implements IUserScript {
-  id: string = uuid_v7();
-  name: string = "";
-  source: string = "";
-  matches: string[] = ["*"];
-  enabled: boolean = false;
-  excludes?: string[] = [];
-  includes?: string[] = [];
-  namespace?: string = "";
-  version?: string = "";
-  description?: string = "";
-  author?: string = "";
-  requires?: IUserScriptRequire[] = [];
-  resources?: IUserScriptResource[] = [];
-  grants?: UserScriptGrant[] = [];
-  runAt: UserScriptRunAt = "document-start";
-  noframes?: boolean = false;
-  icon?: string = "";
-  downloadURL?: string = "";
-  updateURL?: string = "";
-  supportURL?: string = "";
-  homepageURL?: string = "";
-  license?: string = "";
-  connect?: string[] = [];
-  builtIn?: boolean = false;
-  rawMetadata?: string = "";
-  createdAt?: number = Date.now();
-  updatedAt?: number = Date.now();
+  id: string = uuid_v7()
+  name = ''
+  source = ''
+  matches: string[] = ['*']
+  enabled = false
+  excludes?: string[] = []
+  includes?: string[] = []
+  namespace?: string = ''
+  version?: string = ''
+  description?: string = ''
+  author?: string = ''
+  requires?: IUserScriptRequire[] = []
+  resources?: IUserScriptResource[] = []
+  grants?: UserScriptGrant[] = []
+  runAt: UserScriptRunAt = 'document-start'
+  noframes?: boolean = false
+  icon?: string = ''
+  downloadURL?: string = ''
+  updateURL?: string = ''
+  supportURL?: string = ''
+  homepageURL?: string = ''
+  license?: string = ''
+  connect?: string[] = []
+  builtIn?: boolean = false
+  rawMetadata?: string = ''
+  createdAt?: number = Date.now()
+  updatedAt?: number = Date.now()
 
   constructor(props: Partial<IUserScript>) {
-    Object.assign(this, Object.fromEntries(Object.entries(props).filter(([, v]) => v !== undefined)));
-    this.enabled = Boolean(props.enabled);
+    Object.assign(this, Object.fromEntries(Object.entries(props).filter(([, v]) => v !== undefined)))
+    this.enabled = Boolean(props.enabled)
   }
 
   toJSON() {
@@ -94,6 +95,6 @@ export class UserScript implements IUserScript {
       enabled: this.enabled,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-    };
+    }
   }
 }

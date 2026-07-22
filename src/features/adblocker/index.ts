@@ -1,2 +1,2 @@
-export * as AdblockController from "./controllers";
-export * as AdblockService from "./services";
+export * as AdblockController from './controllers'
+export * as AdblockService from './services'

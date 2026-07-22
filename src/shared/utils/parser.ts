@@ -1,10 +1,9 @@
 // import { UserScriptRunAt } from "../interfaces/userscript";
 // const DEFAULT_SCRIPT_NAME = "Custom Script";
 
+const WILDCARD_TO_REGEX = /[.+?^${}()|[\]\\]/g
 
-const WILDCARD_TO_REGEX = /[.+?^${}()|[\]\\]/g;
-
-const escapeRegex = (input: string) => input.replace(WILDCARD_TO_REGEX, "\\$&").replace(/\*/g, ".*");
+const escapeRegex = (input: string) => input.replace(WILDCARD_TO_REGEX, '\\$&').replace(/\*/g, '.*')
 
 // export const parseUserScriptMeta = (source: string) => {
 //   const block = source.match(/\/\/\s*==UserScript==([\s\S]*?)\/\/\s*==\/UserScript==/m);
@@ -54,25 +53,25 @@ const escapeRegex = (input: string) => input.replace(WILDCARD_TO_REGEX, "\\$&").
 // };
 
 const patternToRegex = (pattern: string) => {
-  const normalized = pattern.trim();
-  if (!normalized || normalized === "*") return /^https?:\/\/.+/i;
-  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
-  return new RegExp(`^${escapeRegex(normalized)}`, "i");
+  const normalized = pattern.trim()
+  if (!normalized || normalized === '*') return /^https?:\/\/.+/i
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+    return new RegExp(`^${escapeRegex(normalized)}`, 'i')
   }
-  if (normalized.startsWith("*://")) {
-    const rest = normalized.slice(4);
-    return new RegExp(`^https?://${escapeRegex(rest)}$`, "i");
+  if (normalized.startsWith('*://')) {
+    const rest = normalized.slice(4)
+    return new RegExp(`^https?://${escapeRegex(rest)}$`, 'i')
   }
-  return new RegExp(`^${escapeRegex(normalized)}$`, "i");
-};
+  return new RegExp(`^${escapeRegex(normalized)}$`, 'i')
+}
 
 export const isUrlMatchedByPatterns = (url: string, patterns: string[]) => {
-  if (!patterns.length) return true;
+  if (!patterns.length) return true
   return patterns.some((pattern) => {
     try {
-      return patternToRegex(pattern).test(url);
+      return patternToRegex(pattern).test(url)
     } catch (error) {
-      return false;
+      return false
     }
-  });
-};
+  })
+}

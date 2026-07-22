@@ -1,47 +1,48 @@
-import { useEffect, useMemo } from "react";
-import { LISTENER_CHANNEL } from "~/interface";
+import { useEffect, useMemo } from 'react'
+
+import { LISTENER_CHANNEL } from '~/interface'
 
 interface IEventModel<T> {
-  channel: string;
-  data: T;
+  channel: string
+  data: T
 }
 class EventModel<T> {
-  channel: string;
-  data: T;
+  channel: string
+  data: T
   constructor(props: EventModel<T>) {
-    Object.assign(this, props);
+    Object.assign(this, props)
   }
 }
 class KeyboardBinding {
-  isSearchPage = false;
+  isSearchPage = false
   constructor() {}
 
   onSearchPage() {
-    this.isSearchPage = !this.isSearchPage;
+    this.isSearchPage = !this.isSearchPage
     const event = new EventModel({
-      channel: "SEARCH",
+      channel: 'SEARCH',
       data: { open: this.isSearchPage },
-    });
-    return this.onEmit(event);
+    })
+    return this.onEmit(event)
   }
 
   onInvoke<T>(e: EventModel<T>) {
-    return window.api.INVOKE(e.channel, e.data);
+    return window.api.INVOKE(e.channel, e.data)
   }
   onListen<T>(e: EventModel<T>) {
     return window.api.LISTENER(e.channel as LISTENER_CHANNEL, (value: T) => {
-      return value;
-    });
+      return value
+    })
   }
   onEmit<T>(e: EventModel<T>) {
-    return window.api.EMIT(e.channel, e.data);
+    return window.api.EMIT(e.channel, e.data)
   }
 }
 
 export const useKeyboardBinding = () => {
   const keyboardBinding = useMemo(() => {
-    return new KeyboardBinding();
-  }, []);
+    return new KeyboardBinding()
+  }, [])
 
   // useEffect(() => {
   //   if (!keyboardBinding) return;
@@ -56,5 +57,5 @@ export const useKeyboardBinding = () => {
   //   };
   // }, [keyboardBinding]);
 
-  return keyboardBinding;
-};
+  return keyboardBinding
+}

@@ -64,4 +64,4 @@ export const CAPTURE_SELECTION_SCRIPT = `
     }
   });
 })();
-`;
+`

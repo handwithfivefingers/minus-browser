@@ -1,43 +1,44 @@
-import { BrowserWindow, session, WebContentsView } from "electron";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-import { SUB_WINDOW_EMIT } from "~/shared/constants/ipc/sub-window";
+import { BrowserWindow, session, WebContentsView } from 'electron'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
-const preloadPath = path.join(__dirname, "/preload.js");
+import { SUB_WINDOW_EMIT } from '~/shared/constants/ipc/sub-window'
+
+const preloadPath = path.join(__dirname, '/preload.js')
 
 interface PendingRequest {
-  resolve: (data: any) => void;
-  reject: (err: Error) => void;
-  timer: NodeJS.Timeout;
+  resolve: (data: any) => void
+  reject: (err: Error) => void
+  timer: NodeJS.Timeout
 }
 
 export class SubWindowService {
-  isOpen = false;
-  onDidOpen: (() => void) | null = null;
-  onDidClose: (() => void) | null = null;
-  private view: WebContentsView | null = null;
-  private mainWindow: BrowserWindow | null = null;
-  private resizeHandler: (() => void) | null = null;
-  private blurHandler: (() => void) | null = null;
-  private readyPromise: Promise<void> | null = null;
-  private pendingRequests = new Map<string, PendingRequest>();
-  private lastOpenTime = 0;
+  isOpen = false
+  onDidOpen: (() => void) | null = null
+  onDidClose: (() => void) | null = null
+  private view: WebContentsView | null = null
+  private mainWindow: BrowserWindow | null = null
+  private resizeHandler: (() => void) | null = null
+  private blurHandler: (() => void) | null = null
+  private readyPromise: Promise<void> | null = null
+  private pendingRequests = new Map<string, PendingRequest>()
+  private lastOpenTime = 0
 
   init(mainWindow: BrowserWindow) {
-    this.mainWindow = mainWindow;
+    this.mainWindow = mainWindow
   }
 
   resolveRequest(data: { requestId?: string; payload?: any }) {
-    console.log("[SubWindowService] RESOLVE", data);
-    const requestId = data?.requestId;
+    console.log('[SubWindowService] RESOLVE', data)
+    const requestId = data?.requestId
     if (requestId && this.pendingRequests.has(requestId)) {
-      const pending = this.pendingRequests.get(requestId)!;
-      clearTimeout(pending.timer);
-      this.pendingRequests.delete(requestId);
-      pending.resolve(data.payload ?? data);
-      this.close();
+      const pending = this.pendingRequests.get(requestId)!
+      clearTimeout(pending.timer)
+      this.pendingRequests.delete(requestId)
+      pending.resolve(data.payload ?? data)
+      this.close()
     }
-    return { success: true };
+    return { success: true }
   }
 
   private getURL() {
@@ -45,145 +46,145 @@ export class SubWindowService {
       /**@ts-ignore */
       if (SUB_WINDOW_VITE_DEV_SERVER_URL) {
         /**@ts-ignore */
-        return SUB_WINDOW_VITE_DEV_SERVER_URL;
+        return SUB_WINDOW_VITE_DEV_SERVER_URL
       }
     } catch {}
-    const filePath = path.join(__dirname, "../renderer/sub_window/index.html");
-    return pathToFileURL(filePath).toString();
+    const filePath = path.join(__dirname, '../renderer/sub_window/index.html')
+    return pathToFileURL(filePath).toString()
   }
 
   private syncViewBounds() {
-    if (!this.mainWindow || !this.view) return;
-    const { width, height } = this.mainWindow.getBounds();
-    this.view.setBounds({ x: 0, y: 0, width, height });
+    if (!this.mainWindow || !this.view) return
+    const { width, height } = this.mainWindow.getBounds()
+    this.view.setBounds({ x: 0, y: 0, width, height })
   }
 
   async warmup(): Promise<void> {
     if (this.readyPromise) {
       if (this.view && !this.view.webContents.isDestroyed()) {
-        return this.readyPromise;
+        return this.readyPromise
       }
-      this.readyPromise = null;
-      this.view = null;
+      this.readyPromise = null
+      this.view = null
     }
-    this.readyPromise = this.initView();
-    return this.readyPromise;
+    this.readyPromise = this.initView()
+    return this.readyPromise
   }
 
   private async initView() {
-    if (this.view) return;
+    if (this.view) return
     this.view = new WebContentsView({
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         preload: preloadPath,
         backgroundThrottling: false,
-        session: session.fromPartition("minus-sub-window"),
+        session: session.fromPartition('minus-sub-window'),
         transparent: true,
       },
-    });
+    })
     // this.view.webContents.openDevTools();
-    this.view.setBackgroundColor("#00000000");
-    await this.view.webContents.loadURL(this.getURL()).catch(() => {});
+    this.view.setBackgroundColor('#00000000')
+    await this.view.webContents.loadURL(this.getURL()).catch(() => {})
     // this.view.webContents.reloadIgnoringCache();
   }
 
   ensureOnTop() {
-    if (!this.isOpen || !this.mainWindow || !this.view) return;
+    if (!this.isOpen || !this.mainWindow || !this.view) return
     try {
-      this.mainWindow.contentView.removeChildView(this.view);
+      this.mainWindow.contentView.removeChildView(this.view)
     } catch {}
-    this.mainWindow.contentView.addChildView(this.view);
+    this.mainWindow.contentView.addChildView(this.view)
   }
 
   async open(route: string, payload?: any): Promise<any> {
-    if (!this.mainWindow) return;
-    await this.warmup();
-    if (!this.view) return;
-    if (this.view.webContents.isDestroyed()) return;
+    if (!this.mainWindow) return
+    await this.warmup()
+    if (!this.view) return
+    if (this.view.webContents.isDestroyed()) return
 
-    this.syncViewBounds();
+    this.syncViewBounds()
 
     if (payload) {
-      this.view.webContents.send(SUB_WINDOW_EMIT.PAYLOAD, payload);
+      this.view.webContents.send(SUB_WINDOW_EMIT.PAYLOAD, payload)
     }
-    this.view.webContents.send(SUB_WINDOW_EMIT.NAVIGATE, { route });
+    this.view.webContents.send(SUB_WINDOW_EMIT.NAVIGATE, { route })
 
-    this.mainWindow.contentView.addChildView(this.view);
-    this.view.webContents.focus();
-    this.isOpen = true;
-    this.lastOpenTime = Date.now();
-    this.onDidOpen?.();
+    this.mainWindow.contentView.addChildView(this.view)
+    this.view.webContents.focus()
+    this.isOpen = true
+    this.lastOpenTime = Date.now()
+    this.onDidOpen?.()
 
-    this.resizeHandler = () => this.syncViewBounds();
-    this.mainWindow.on("resize", this.resizeHandler);
+    this.resizeHandler = () => this.syncViewBounds()
+    this.mainWindow.on('resize', this.resizeHandler)
 
-    this.blurHandler = () => this.close();
+    this.blurHandler = () => this.close()
     // this.mainWindow.on("blur", this.blurHandler);
 
-    return true;
+    return true
   }
 
   async openWithResult(route: string, payload?: any, timeoutMs = 30000): Promise<any> {
-    const requestId = `sub-${route}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    await this.open(route, { requestId, ...payload });
+    const requestId = `sub-${route}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    await this.open(route, { requestId, ...payload })
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        this.pendingRequests.delete(requestId);
-        this.close();
-        reject(new Error(`Sub-window ${route} timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
+        this.pendingRequests.delete(requestId)
+        this.close()
+        reject(new Error(`Sub-window ${route} timed out after ${timeoutMs}ms`))
+      }, timeoutMs)
 
-      this.pendingRequests.set(requestId, { resolve, reject, timer });
-    });
+      this.pendingRequests.set(requestId, { resolve, reject, timer })
+    })
   }
 
   close() {
-    if (!this.isOpen || !this.mainWindow || !this.view) return;
+    if (!this.isOpen || !this.mainWindow || !this.view) return
     // Ignore close if opened less than 300ms ago (prevents focus()
     // from triggering a BrowserWindow blur that closes immediately)
-    if (Date.now() - this.lastOpenTime < 300) return;
-    this.isOpen = false;
-    this.onDidClose?.();
+    if (Date.now() - this.lastOpenTime < 300) return
+    this.isOpen = false
+    this.onDidClose?.()
 
     for (const [, pending] of this.pendingRequests) {
-      clearTimeout(pending.timer);
-      pending.reject(new Error("Sub-window closed"));
+      clearTimeout(pending.timer)
+      pending.reject(new Error('Sub-window closed'))
     }
-    this.pendingRequests.clear();
+    this.pendingRequests.clear()
 
     if (this.resizeHandler) {
-      this.mainWindow.off("resize", this.resizeHandler);
-      this.resizeHandler = null;
+      this.mainWindow.off('resize', this.resizeHandler)
+      this.resizeHandler = null
     }
     if (this.blurHandler) {
-      this.mainWindow.off("blur", this.blurHandler);
-      this.blurHandler = null;
+      this.mainWindow.off('blur', this.blurHandler)
+      this.blurHandler = null
     }
 
     if (!this.view.webContents.isDestroyed()) {
-      this.view.webContents.send(SUB_WINDOW_EMIT.NAVIGATE, { route: "/" });
+      this.view.webContents.send(SUB_WINDOW_EMIT.NAVIGATE, { route: '/' })
     }
 
     try {
-      this.mainWindow.contentView.removeChildView(this.view);
+      this.mainWindow.contentView.removeChildView(this.view)
     } catch {}
   }
 
   send(channel: string, data?: any) {
-    if (!this.view || this.view.webContents.isDestroyed()) return;
-    this.view.webContents.send(channel, data);
+    if (!this.view || this.view.webContents.isDestroyed()) return
+    this.view.webContents.send(channel, data)
   }
 
   destroy() {
-    this.close();
+    this.close()
     if (this.view) {
-      this.view.webContents.close();
-      this.view = null;
+      this.view.webContents.close()
+      this.view = null
     }
-    this.readyPromise = null;
+    this.readyPromise = null
   }
 }
 
-export const subWindowService = new SubWindowService();
+export const subWindowService = new SubWindowService()

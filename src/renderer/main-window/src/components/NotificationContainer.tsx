@@ -1,42 +1,47 @@
-import { IconX } from "@tabler/icons-react";
-import { useNotificationStore } from "../stores/useNotificationStore";
+import { IconX } from '@tabler/icons-react'
+
+import { useNotificationStore } from '../stores/useNotificationStore'
 
 export const NotificationContainer = () => {
-  const { notifications, remove } = useNotificationStore();
+  const { notifications, remove } = useNotificationStore()
 
-  if (notifications.length === 0) return null;
+  if (notifications.length === 0) return null
 
   const styles: Record<string, string> = {
-    success: "bg-green-600",
-    error: "bg-red-600",
-    info: "bg-blue-600",
-  };
+    success: 'bg-green-600',
+    error: 'bg-red-600',
+    info: 'bg-blue-600',
+  }
 
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
       {notifications.map((n) => (
         <div
           key={n.id}
-          className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm min-w-[320px] max-w-md animate-in slide-in-from-right ${styles[n.type] || styles.info}`}
+          className={`animate-in slide-in-from-right flex max-w-md min-w-[320px] items-center gap-3 rounded-lg px-4 py-3 text-sm text-white shadow-lg ${styles[n.type] || styles.info}`}
         >
-          <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{n.title}</p>
-            {n.message && <p className="opacity-90 text-xs mt-0.5">{n.message}</p>}
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium">{n.title}</p>
+            {n.message && <p className="mt-0.5 text-xs opacity-90">{n.message}</p>}
           </div>
           {n.action && (
             <button
               type="button"
               onClick={n.action.onClick}
-              className="bg-white/20 hover:bg-white/30 px-3 py-1 rounded text-xs font-medium cursor-pointer whitespace-nowrap shrink-0"
+              className="shrink-0 cursor-pointer rounded bg-white/20 px-3 py-1 text-xs font-medium whitespace-nowrap hover:bg-white/30"
             >
               {n.action.label}
             </button>
           )}
-          <button type="button" onClick={() => remove(n.id)} className="opacity-70 hover:opacity-100 cursor-pointer shrink-0">
+          <button
+            type="button"
+            onClick={() => remove(n.id)}
+            className="shrink-0 cursor-pointer opacity-70 hover:opacity-100"
+          >
             <IconX size={14} />
           </button>
         </div>
       ))}
     </div>
-  );
-};
+  )
+}

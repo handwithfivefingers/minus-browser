@@ -8,14 +8,14 @@ Detects YouTube watch URLs in tabs and creates a floating overlay window that pl
 
 ### Files
 
-| File | Role |
-|------|------|
-| `src/features/youtubeEmbed/index.ts` | Entry — re-exports plugin |
-| `src/features/youtubeEmbed/plugin/index.ts` | Core logic — URL detection, overlay lifecycle |
-| `src/features/youtubeEmbed/overlay/main.tsx` | React overlay app — iframe + drag handle |
-| `src/features/youtubeEmbed/overlay/index.html` | Overlay HTML shell |
-| `src/shared/constants/ipc/youtube-embed.ts` | IPC channel constants |
-| `vite.youtube-embed.renderer.config.ts` | Vite config for overlay bundle |
+| File                                           | Role                                          |
+| ---------------------------------------------- | --------------------------------------------- |
+| `src/features/youtubeEmbed/index.ts`           | Entry — re-exports plugin                     |
+| `src/features/youtubeEmbed/plugin/index.ts`    | Core logic — URL detection, overlay lifecycle |
+| `src/features/youtubeEmbed/overlay/main.tsx`   | React overlay app — iframe + drag handle      |
+| `src/features/youtubeEmbed/overlay/index.html` | Overlay HTML shell                            |
+| `src/shared/constants/ipc/youtube-embed.ts`    | IPC channel constants                         |
+| `vite.youtube-embed.renderer.config.ts`        | Vite config for overlay bundle                |
 
 ### Dependencies
 
@@ -71,9 +71,9 @@ Implements `ITabPlugin`. Registered per-tab in `Tab.registerPlugin()` (`src/feat
 
 ```ts
 export const YOUTUBE_EMBED_RENDERER_EVENT = {
-  WATCH_ID: "YOUTUBE_EMBED_WATCH_ID",
-  CLOSE: "YOUTUBE_EMBED_CLOSE",
-} as const;
+  WATCH_ID: 'YOUTUBE_EMBED_WATCH_ID',
+  CLOSE: 'YOUTUBE_EMBED_CLOSE',
+} as const
 ```
 
 These are defined but not yet used — the plugin still uses console-message based communication.
@@ -93,6 +93,7 @@ URL change / dom-ready
 ## Build
 
 Overlay is built as a separate Vite entrypoint (`vite.youtube-embed.renderer.config.ts`):
+
 - Root: `src/features/youtubeEmbed/overlay`
 - Output: `.vite/renderer/youtube_embeded/`
 - Dev server URL injected via `YOUTUBE_EMBED_VITE_DEV_SERVER_URL` global

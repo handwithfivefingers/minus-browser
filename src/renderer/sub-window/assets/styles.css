@@ -1,12 +1,12 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 /* @source "../../../features/spotlight/"; */
 /* @source "../../../features/tabGroup/"; */
-@source "../../../features/vault/";
-@source "../../../features/translate/";
-@source "../../../features/userscript/";
-@source "../../../features/permission/";
+@source '../../../features/vault/';
+@source '../../../features/translate/';
+@source '../../../features/userscript/';
+@source '../../../features/permission/';
 
 @theme {
   --animate-fade-in: fade-in 200ms ease-out;
@@ -34,29 +34,29 @@
 }
 
 @font-face {
-  font-family: "lexend";
-  src: url("./font/lexend/Lexend-Light.ttf") format("truetype");
+  font-family: 'lexend';
+  src: url('./font/lexend/Lexend-Light.ttf') format('truetype');
   font-weight: 300;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
-  font-family: "lexend";
-  src: url("./font/lexend/Lexend-Light.ttf") format("truetype");
+  font-family: 'lexend';
+  src: url('./font/lexend/Lexend-Light.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
-  font-family: "lexend";
-  src: url("./font/lexend/Lexend-Medium.ttf") format("truetype");
+  font-family: 'lexend';
+  src: url('./font/lexend/Lexend-Medium.ttf') format('truetype');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
-  font-family: "lexend";
-  src: url("./font/lexend/Lexend-Bold.ttf") format("truetype");
+  font-family: 'lexend';
+  src: url('./font/lexend/Lexend-Bold.ttf') format('truetype');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -64,10 +64,10 @@
 
 body {
   font-family:
-    "lexend",
+    'lexend',
     -apple-system,
     BlinkMacSystemFont,
-    "Segoe UI",
+    'Segoe UI',
     Roboto,
     Helvetica,
     Arial,

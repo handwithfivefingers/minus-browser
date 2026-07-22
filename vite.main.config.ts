@@ -1,39 +1,39 @@
-import { defineConfig } from "vite";
-import path from "node:path";
+import { defineConfig } from 'vite'
+import path from 'node:path'
 
 // https://vitejs.dev/config
 export default defineConfig({
   resolve: {
     // For Node.js native modules
-    conditions: ["node"], // this is the change
-    mainFields: ["module", "jsnext:main", "jsnext"],
+    conditions: ['node'], // this is the change
+    mainFields: ['module', 'jsnext:main', 'jsnext'],
     alias: [
       {
-        find: "~",
-        replacement: path.resolve(__dirname, "src"),
+        find: '~',
+        replacement: path.resolve(__dirname, 'src'),
       },
     ],
   },
   plugins: [
     {
-      name: "restart",
+      name: 'restart',
       closeBundle() {
-        process.stdin.emit("data", "rs");
+        process.stdin.emit('data', 'rs')
       },
     },
   ],
   define: {
-    "process.platform": JSON.stringify(process.platform),
+    'process.platform': JSON.stringify(process.platform),
     ELECTRON_DISABLE_GPU: JSON.stringify(process.env.ELECTRON_DISABLE_GPU),
   },
   build: {
     lib: {
-      entry: "src/main/index.ts",
-      formats: ["cjs"],
-      fileName: () => "main.js",
+      entry: 'src/main/index.ts',
+      formats: ['cjs'],
+      fileName: () => 'main.js',
     },
     rollupOptions: {
-      external: ["node:sqlite"],
+      external: ['node:sqlite'],
     },
   },
-});
+})

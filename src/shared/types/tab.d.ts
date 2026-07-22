@@ -1,40 +1,40 @@
 export interface TabError {
-  code: string;
-  description: string;
-  url: string;
-  httpResponseCode?: number;
-  isCertError?: boolean;
+  code: string
+  description: string
+  url: string
+  httpResponseCode?: number
+  isCertError?: boolean
 }
 
 export interface ITab {
-  id?: string;
-  title: string;
-  url: string;
-  index: number;
-  isPinned: boolean;
-  isFocused: boolean;
-  favicon?: string;
-  cookies?: any[];
-  isBookmarked?: boolean;
-  isHibernated?: boolean;
-  audible: boolean;
-  isLoading?: boolean;
-  preventHibernate?: boolean;
-  groupId?: string;
-  isMuted?: boolean;
-  isUsingCamera?: boolean;
-  isUsingMicrophone?: boolean;
-  isUsingScreenShare?: boolean;
-  blockedNotifications?: number;
-  error?: TabError | null;
+  id?: string
+  title: string
+  url: string
+  index: number
+  isPinned: boolean
+  isFocused: boolean
+  favicon?: string
+  cookies?: any[]
+  isBookmarked?: boolean
+  isHibernated?: boolean
+  audible: boolean
+  isLoading?: boolean
+  preventHibernate?: boolean
+  groupId?: string
+  isMuted?: boolean
+  isUsingCamera?: boolean
+  isUsingMicrophone?: boolean
+  isUsingScreenShare?: boolean
+  blockedNotifications?: number
+  error?: TabError | null
 }
 
 export interface ITabManager {
-  tabs: Map<string, ITab>;
-  index: number;
-  getTabs: ITab[];
-  getTab: (id: string) => ITab | boolean;
-  createTab: (tab: Partial<ITab>) => void;
-  updateTab: (params: Partial<ITab> & { id: string }) => void;
-  deleteTab: (id: string) => void;
+  tabs: Map<string, ITab>
+  index: number
+  getTabs: ITab[]
+  getTab: (id: string) => ITab | boolean
+  createTab: (tab: Partial<ITab>) => void
+  updateTab: (params: Partial<ITab> & { id: string }) => void
+  deleteTab: (id: string) => void
 }

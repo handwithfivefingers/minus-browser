@@ -1,43 +1,42 @@
-import { ipcRenderer } from "electron";
-import { DOMMonitor } from "@ghostery/adblocker-content";
+import { ipcRenderer } from 'electron'
+
+import { DOMMonitor } from '@ghostery/adblocker-content'
 
 function injectCosmeticFilters(data?: any): Promise<void> {
-  return ipcRenderer.invoke("@adb/inject-cosmetic-filters", window.location.href, data);
+  return ipcRenderer.invoke('@adb/inject-cosmetic-filters', window.location.href, data)
 }
 
-if (window === window.top && !window.location.href.startsWith("devtools://")) {
-  let domMonitor: DOMMonitor | null = null;
+if (window === window.top && !window.location.href.startsWith('devtools://')) {
+  let domMonitor: DOMMonitor | null = null
 
   const unload = () => {
     if (domMonitor) {
-      domMonitor.stop();
-      domMonitor = null;
+      domMonitor.stop()
+      domMonitor = null
     }
-  };
+  }
 
-  ipcRenderer.invoke("@adb/is-cosmetic-filtering-enabled").then((enabled) => {
-    if (!enabled) return;
+  ipcRenderer.invoke('@adb/is-cosmetic-filtering-enabled').then((enabled) => {
+    if (!enabled) return
 
-    injectCosmeticFilters();
+    injectCosmeticFilters()
 
     window.addEventListener(
-      "DOMContentLoaded",
+      'DOMContentLoaded',
       () => {
         domMonitor = new DOMMonitor((update) => {
-          if (update.type === "features") {
-            injectCosmeticFilters(update);
+          if (update.type === 'features') {
+            injectCosmeticFilters(update)
           }
-        });
+        })
 
-        domMonitor.queryAll(window);
+        domMonitor.queryAll(window)
 
-        ipcRenderer
-          .invoke("@adb/is-mutation-observer-enabled")
-          .then((enabled) => enabled && domMonitor?.start(window));
+        ipcRenderer.invoke('@adb/is-mutation-observer-enabled').then((enabled) => enabled && domMonitor?.start(window))
       },
-      { once: true, passive: true },
-    );
+      { once: true, passive: true }
+    )
 
-    window.addEventListener("unload", unload, { once: true, passive: true });
-  });
+    window.addEventListener('unload', unload, { once: true, passive: true })
+  })
 }

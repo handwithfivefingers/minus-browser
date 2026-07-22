@@ -1,3 +1,3 @@
-import { AdBlocker } from "../controllers";
+import { AdBlocker } from '../controllers'
 
-export const adblocker = new AdBlocker();
+export const adblocker = new AdBlocker()

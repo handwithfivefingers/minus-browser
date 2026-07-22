@@ -29,31 +29,33 @@ update-electron-app (auto-check every 10 min)
 
 ### New
 
-| File | Description |
-|---|---|
-| `src/features/autoUpdate/types.ts` | `UpdateStatusEvent` — discriminated union for all update states |
-| `src/features/autoUpdate/autoUpdate.init.ts` | `initAutoUpdate(emit)`, `checkForUpdates()`, `quitAndInstall()` |
-| `src/renderer/main-window/src/stores/useUpdateStore.ts` | Zustand store (`status`, `checkForUpdate`, `quitAndInstall`) + `setupUpdateListener()` |
-| `src/renderer/main-window/src/components/UpdateBanner.tsx` | Top-of-screen banner: download progress, restart button, retry, dismiss |
+| File                                                       | Description                                                                            |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `src/features/autoUpdate/types.ts`                         | `UpdateStatusEvent` — discriminated union for all update states                        |
+| `src/features/autoUpdate/autoUpdate.init.ts`               | `initAutoUpdate(emit)`, `checkForUpdates()`, `quitAndInstall()`                        |
+| `src/renderer/main-window/src/stores/useUpdateStore.ts`    | Zustand store (`status`, `checkForUpdate`, `quitAndInstall`) + `setupUpdateListener()` |
+| `src/renderer/main-window/src/components/UpdateBanner.tsx` | Top-of-screen banner: download progress, restart button, retry, dismiss                |
 
 ### Modified
 
-| File | Change |
-|---|---|
-| `src/main/index.ts` | Removed `updateElectronApp()` call (moved to ViewController) |
-| `src/shared/constants/ipc.ts` | Added `CHECK_FOR_UPDATE`, `QUIT_AND_INSTALL_UPDATE` (invoke), `UPDATE_STATUS` (renderer event) |
-| `src/main/core/controller/viewController.ts` | Imports autoUpdate, registers invoke handlers, calls `initAutoUpdate()` in `init()` |
-| `src/renderer/main-window/src/pages/layout.tsx` | Renders `<UpdateBanner />`, calls `setupUpdateListener()` |
-| `src/renderer/main-window/src/components/index.ts` | Exports `UpdateBanner` |
-| `src/renderer/main-window/src/pages/setting/components/Interface.tsx` | Added "Updates" section under System settings |
+| File                                                                  | Change                                                                                         |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `src/main/index.ts`                                                   | Removed `updateElectronApp()` call (moved to ViewController)                                   |
+| `src/shared/constants/ipc.ts`                                         | Added `CHECK_FOR_UPDATE`, `QUIT_AND_INSTALL_UPDATE` (invoke), `UPDATE_STATUS` (renderer event) |
+| `src/main/core/controller/viewController.ts`                          | Imports autoUpdate, registers invoke handlers, calls `initAutoUpdate()` in `init()`            |
+| `src/renderer/main-window/src/pages/layout.tsx`                       | Renders `<UpdateBanner />`, calls `setupUpdateListener()`                                      |
+| `src/renderer/main-window/src/components/index.ts`                    | Exports `UpdateBanner`                                                                         |
+| `src/renderer/main-window/src/pages/setting/components/Interface.tsx` | Added "Updates" section under System settings                                                  |
 
 ## IPC Protocol
 
 **Invoke (renderer → main):**
+
 - `CHECK_FOR_UPDATE` — triggers `autoUpdater.checkForUpdates()`
 - `QUIT_AND_INSTALL_UPDATE` — triggers `autoUpdater.quitAndInstall()`
 
 **Event (main → renderer):**
+
 - `UPDATE_STATUS` — payload is `UpdateStatusEvent`:
   - `{ status: "checking" }`
   - `{ status: "available" }`

@@ -1,28 +1,28 @@
-import { Menu, MenuItem } from "electron";
+import { Menu, MenuItem } from 'electron'
 
 class MenuApplication {
-  menu: Menu | undefined;
+  menu: Menu | undefined
 
   constructor() {
-    this.rebuild();
+    this.rebuild()
   }
 
   rebuild(customItems: MenuItem[] = []) {
     this.menu = Menu.buildFromTemplate([
-      new MenuItem({ role: "appMenu" }),
-      new MenuItem({ role: "editMenu" }),
-      new MenuItem({ role: "windowMenu" }),
+      new MenuItem({ role: 'appMenu' }),
+      new MenuItem({ role: 'editMenu' }),
+      new MenuItem({ role: 'windowMenu' }),
       ...(customItems.length > 0
         ? [
             new MenuItem({
-              label: "Shortcuts",
+              label: 'Shortcuts',
               submenu: Menu.buildFromTemplate(customItems),
             }),
           ]
         : []),
-    ]);
-    Menu.setApplicationMenu(this.menu);
+    ])
+    Menu.setApplicationMenu(this.menu)
   }
 }
 
-export const menuApplication = new MenuApplication();
+export const menuApplication = new MenuApplication()

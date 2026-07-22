@@ -1,9 +1,9 @@
-export { registerGMAPIHandlers } from "./handler";
-export { handleStorage } from "./storage";
-export { handleNetwork, abortRequest } from "./network";
-export { handleNotification } from "./notification";
-export { handleClipboard } from "./clipboard";
-export { handleOpenInTab, handleGetTab, handleSaveTab, handleGetTabs } from "./tab";
-export { handleDownload } from "./download";
-export { handleGetResourceText, handleGetResourceURL } from "./resource";
-export { handleLog } from "./log";
+export { registerGMAPIHandlers } from './handler'
+export { handleStorage } from './storage'
+export { handleNetwork, abortRequest } from './network'
+export { handleNotification } from './notification'
+export { handleClipboard } from './clipboard'
+export { handleOpenInTab, handleGetTab, handleSaveTab, handleGetTabs } from './tab'
+export { handleDownload } from './download'
+export { handleGetResourceText, handleGetResourceURL } from './resource'
+export { handleLog } from './log'

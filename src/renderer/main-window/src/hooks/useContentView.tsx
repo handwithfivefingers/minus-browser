@@ -1,30 +1,31 @@
-import { useMemo } from "react";
-import { Tab } from "../interfaces";
+import { useMemo } from 'react'
+
+import { Tab } from '../interfaces'
 
 const EVENT_TYPE = {
-  SHOW_VIEW_BY_ID: "SHOW_VIEW_BY_ID",
-  VIEW_CHANGE_URL: "VIEW_CHANGE_URL",
-};
+  SHOW_VIEW_BY_ID: 'SHOW_VIEW_BY_ID',
+  VIEW_CHANGE_URL: 'VIEW_CHANGE_URL',
+}
 
 interface IShowViewProps {
-  tab: Partial<Tab>;
+  tab: Partial<Tab>
   screen: {
-    width: number;
-    height: number;
-    x: number;
-    y: number;
-  };
+    width: number
+    height: number
+    x: number
+    y: number
+  }
 }
 
 interface IViewChange {
-  id: string;
-  url?: string;
-  title?: string;
-  favicon?: string;
+  id: string
+  url?: string
+  title?: string
+  favicon?: string
 }
 
 interface IUseContentView {
-  showViewByID: (params: IShowViewProps) => Promise<void>;
+  showViewByID: (params: IShowViewProps) => Promise<void>
 }
 
 export const useContentView = () => {
@@ -32,14 +33,14 @@ export const useContentView = () => {
     return {
       showViewByID: async (params: IShowViewProps) => {
         try {
-          const response = await window.api.EMIT(EVENT_TYPE.SHOW_VIEW_BY_ID, params);
-          return response;
+          const response = await window.api.EMIT(EVENT_TYPE.SHOW_VIEW_BY_ID, params)
+          return response
         } catch (error) {
-          console.error("Error getting tabs:", error);
+          console.error('Error getting tabs:', error)
         }
       },
-    };
-  }, []);
+    }
+  }, [])
 
-  return apis as IUseContentView;
-};
+  return apis as IUseContentView
+}

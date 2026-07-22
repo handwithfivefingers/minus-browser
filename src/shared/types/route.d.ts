@@ -1,6 +1,6 @@
-import { IPasswordItem } from "./password";
+import { IPasswordItem } from './password'
 
 interface VaultUpdateParams {
-  id: string;
-  patch: Partial<Pick<IPasswordItem, "site" | "username" | "password" | "notes">>;
+  id: string
+  patch: Partial<Pick<IPasswordItem, 'site' | 'username' | 'password' | 'notes'>>
 }

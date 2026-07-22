@@ -6,11 +6,11 @@ Tabs are automatically hibernated (WebContentsView destroyed, memory freed) afte
 
 Navigate to **Settings → Hibernate** to configure:
 
-| Mode   | Timeout | Description                            |
-|--------|---------|----------------------------------------|
-| Fast   | 15 min  | Aggressive memory saving               |
-| Normal | 1 hr    | Balanced (default)                     |
-| Slow   | 4 hr    | Tabs stay alive longer                 |
+| Mode   | Timeout      | Description                          |
+| ------ | ------------ | ------------------------------------ |
+| Fast   | 15 min       | Aggressive memory saving             |
+| Normal | 1 hr         | Balanced (default)                   |
+| Slow   | 4 hr         | Tabs stay alive longer               |
 | Custom | User-defined | Set any value between 1-1440 minutes |
 
 Changes take effect on the next hibernation check cycle (every 60 seconds).
@@ -33,9 +33,9 @@ Protection does not prevent manual hibernation via `hibernateTab(id)`.
 
 ## IPC
 
-| Channel                      | Direction | Description                         |
-|------------------------------|-----------|-------------------------------------|
-| `TOGGLE_PREVENT_HIBERNATE`   | Invoke    | Toggle protection for a tab by ID   |
+| Channel                    | Direction | Description                       |
+| -------------------------- | --------- | --------------------------------- |
+| `TOGGLE_PREVENT_HIBERNATE` | Invoke    | Toggle protection for a tab by ID |
 
 ## Related Files
 

@@ -295,4 +295,4 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
   });
 </script>
 </body>
-</html>`;
+</html>`

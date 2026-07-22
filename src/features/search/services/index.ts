@@ -1,4 +1,4 @@
-import { WebContentsView } from "electron";
+import { WebContentsView } from 'electron'
 
 const SEARCH_BAR_SCRIPT = `
 (() => {
@@ -161,15 +161,15 @@ const SEARCH_BAR_SCRIPT = `
 
   console.log("__MINUS_SEARCH_OPEN__");
 })();
-`;
+`
 
 export class SearchService {
   async showSearchBar(view: WebContentsView) {
     const result = await view.webContents.executeJavaScript(SEARCH_BAR_SCRIPT, true).catch((e) => {
-      console.error("[Search] Failed to inject search bar:", e?.message || e);
-      return false;
-    });
-    return result !== false;
+      console.error('[Search] Failed to inject search bar:', e?.message || e)
+      return false
+    })
+    return result !== false
   }
 
   async hideSearchBar(view: WebContentsView) {
@@ -183,15 +183,15 @@ export class SearchService {
         if (style) style.remove();
       })();
     `,
-        true,
+        true
       )
-      .catch(() => {});
-    view.webContents.stopFindInPage("clearSelection");
+      .catch(() => {})
+    view.webContents.stopFindInPage('clearSelection')
   }
 
   async updateSearchCount(webContents: Electron.WebContents, activeMatchOrdinal: number, matches: number) {
-    const noMatch = matches === 0;
-    const text = noMatch ? "no results" : `${activeMatchOrdinal} / ${matches}`;
+    const noMatch = matches === 0
+    const text = noMatch ? 'no results' : `${activeMatchOrdinal} / ${matches}`
     await webContents
       .executeJavaScript(
         `
@@ -208,8 +208,8 @@ export class SearchService {
         }
       })();
     `,
-        true,
+        true
       )
-      .catch(() => {});
+      .catch(() => {})
   }
 }

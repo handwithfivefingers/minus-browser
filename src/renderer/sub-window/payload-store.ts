@@ -1,11 +1,11 @@
-let _payload: any = null;
+let _payload: any = null
 
 export function setPayload(payload: any) {
-  _payload = payload;
+  _payload = payload
 }
 
 export function consumePayload<T>(): T | null {
-  const p = _payload;
-  _payload = null;
-  return p;
+  const p = _payload
+  _payload = null
+  return p
 }

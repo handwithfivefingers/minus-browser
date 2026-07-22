@@ -1,6 +1,7 @@
 # MinusBrowser — Agent Guide
 
 ## Quick start
+
 ```bash
 npm install        # install deps
 npm start          # dev (uses cross-env NODE_OPTIONS=--no-deprecation)
@@ -14,6 +15,7 @@ No `test` or `typecheck` scripts exist — only `lint` is wired. Tests (Vitest) 
 ## Architecture
 
 ### Entry points (Electron Forge Vite plugin — `forge.config.ts`)
+
 - **Main process**: `src/main/index.ts` → built by `vite.main.config.ts`
 - **Primary preload**: `src/preload/preload.ts` → `vite.preload.config.ts`
 - **Feature preloads** (each its own Vite config, output lands in `.vite/build/` with `emptyOutDir: false`):
@@ -22,6 +24,7 @@ No `test` or `typecheck` scripts exist — only `lint` is wired. Tests (Vitest) 
 - **Renderer 2 (sub_window)**: root `src/renderer/sub-window/index.html`, built by `vite.sub-window.renderer.config.ts` → `.vite/renderer/sub_window`
 
 ### Source layout
+
 - `src/main/core/` — controllers, IPC handlers, services, window management, stores
 - `src/renderer/main-window/src/` — main React UI (hash router, Tailwind, Zustand)
 - `src/renderer/sub-window/` — overlays (spotlight, capture, permissions, translate, userscript, vault, tab context)
@@ -29,9 +32,11 @@ No `test` or `typecheck` scripts exist — only `lint` is wired. Tests (Vitest) 
 - `src/shared/` — constants (IPC channels), types, utils, stores
 
 ### IPC pattern
+
 Renderer talks to main via `window.api.INVOKE` / `window.api.EMIT` / `window.api.LISTENER` (typed in `src/interface.d.ts`). Channels are centralized in `src/shared/constants/ipc.ts`.
 
 ## Key quirks
+
 - **Path alias**: `~` maps to `./src` (configured in every Vite config + tsconfig paths). Always use `~/...` for imports from anywhere.
 - **TypeScript**: pinned to `~4.5.4`. No `tsc` — only ESLint for static checking.
 - **Tailwind**: v4, loaded via `@tailwindcss/vite` plugin.
@@ -44,4 +49,5 @@ Renderer talks to main via `window.api.INVOKE` / `window.api.EMIT` / `window.api
 - **Signing**: local dev builds use ad-hoc signing identity `LocalMinusBrowser`. Entitlements in `entitlements.mac.plist` allow JIT, unsigned library loading, and unsigned executable memory.
 
 ## CI
+
 GitHub Actions builds for `macos-latest` and `windows-latest` on `v*` tags. No test/lint step in CI — only `npm run make`.

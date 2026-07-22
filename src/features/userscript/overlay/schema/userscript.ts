@@ -1,5 +1,5 @@
-import z from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { zodResolver } from '@hookform/resolvers/zod'
+import z from 'zod'
 //   id: string;
 //   name: string;
 //   source: string;
@@ -33,9 +33,9 @@ const userscript = z.object({
   connect: z.array(z.string()).optional(),
   requires: z.array(z.object({ url: z.string() })).optional(),
   resources: z.array(z.object({ name: z.string(), url: z.string() })).optional(),
-  runAt: z.enum(["document-start", "document-end", "document-idle"]).optional(),
+  runAt: z.enum(['document-start', 'document-end', 'document-idle']).optional(),
   enabled: z.boolean().optional(),
-});
+})
 
-export const userScriptResolve = zodResolver(userscript);
-export type UserScriptSchema = z.infer<typeof userscript>;
+export const userScriptResolve = zodResolver(userscript)
+export type UserScriptSchema = z.infer<typeof userscript>
