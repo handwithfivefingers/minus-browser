@@ -5,16 +5,16 @@ import {
   IconCode,
   IconDatabase,
   IconDeviceFloppy,
-  IconFilter,
   IconPuzzle,
   IconRefresh,
   IconTrash,
 } from '@tabler/icons-react'
-import clsx from 'clsx'
 import { useEffect, useState } from 'react'
 
 import { Switch } from '~/renderer/main-window/src/components'
 import { useMinusThemeStore } from '~/renderer/main-window/src/stores/useMinusTheme'
+
+import { cn } from '../../../libs/cn'
 
 interface FilterEntry {
   key: string
@@ -107,6 +107,17 @@ export const Extension = () => {
 
   function toggleGroup(group: string) {
     setExpandedGroups((prev) => ({ ...prev, [group]: prev[group] === undefined ? false : !prev[group] }))
+  }
+  function onToggleGroupFilter(isChecked: boolean, groupItems: FilterEntry[]) {
+    const result = new Set(disabledFilters)
+    for (const item of groupItems) {
+      if (!isChecked) {
+        result.add(item.key)
+      } else {
+        result.delete(item.key)
+      }
+    }
+    setExtension({ ...extension, disabledFilters: Array.from(result) })
   }
 
   const filteredList = filterSearch
@@ -277,27 +288,33 @@ export const Extension = () => {
                       const isExpanded = expandedGroups[group] !== false
                       return (
                         <div key={group} className="border-b border-slate-200 last:border-b-0 dark:border-slate-700">
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            className="sticky top-0 flex cursor-pointer items-center gap-1.5 bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600 select-none hover:bg-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:bg-slate-700"
-                            onClick={() => toggleGroup(group)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault()
-                                toggleGroup(group)
-                              }
-                            }}
-                          >
-                            {isExpanded ? (
-                              <IconChevronDown size={16} className="shrink-0 text-slate-400 dark:text-slate-500" />
-                            ) : (
-                              <IconChevronRight size={16} className="shrink-0 text-slate-400 dark:text-slate-500" />
-                            )}
-                            <span className="truncate">{group}</span>
-                            <span className="shrink-0 font-normal text-slate-400 dark:text-slate-500">
-                              ({items.length})
-                            </span>
+                          <div className="flex items-center justify-between bg-slate-100 pr-2 hover:bg-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:hover:bg-slate-700">
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              className="sticky top-0 flex flex-1 cursor-pointer items-center gap-1.5  px-3 py-2 text-xs font-medium text-slate-600 select-none"
+                              onClick={() => toggleGroup(group)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  toggleGroup(group)
+                                }
+                              }}
+                            >
+                              {isExpanded ? (
+                                <IconChevronDown size={16} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                              ) : (
+                                <IconChevronRight size={16} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                              )}
+                              <span className="truncate">{group}</span>
+                              <span className="shrink-0 font-normal text-slate-400 dark:text-slate-500">
+                                ({items.length})
+                              </span>
+                            </div>
+                            <Switch
+                              value={!items.every((item) => disabledFilters.includes(item.key))}
+                              onCheck={(v) => onToggleGroupFilter(v, items)}
+                            />
                           </div>
                           {isExpanded && (
                             <div>
@@ -333,7 +350,7 @@ export const Extension = () => {
                                       {name}
                                     </span>
                                     <span
-                                      className={clsx(
+                                      className={cn(
                                         'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium',
                                         isDisabled
                                           ? 'bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500'

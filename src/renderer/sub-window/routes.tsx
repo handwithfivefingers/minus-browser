@@ -8,7 +8,6 @@ export function buildRoutes() {
       path: '/',
       element: <div className="flex h-screen items-center justify-center text-sm text-white/30">Select an overlay</div>,
     },
-
     ...entries.map((entry) => ({
       path: entry.path,
       element: <OverlayPage register={entry} />,

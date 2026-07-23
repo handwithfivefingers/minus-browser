@@ -29,7 +29,6 @@ export class SubWindowService {
   }
 
   resolveRequest(data: { requestId?: string; payload?: any }) {
-    console.log('[SubWindowService] RESOLVE', data)
     const requestId = data?.requestId
     if (requestId && this.pendingRequests.has(requestId)) {
       const pending = this.pendingRequests.get(requestId)!
@@ -85,7 +84,7 @@ export class SubWindowService {
         transparent: true,
       },
     })
-    // this.view.webContents.openDevTools();
+    // this.view.webContents.openDevTools()
     this.view.setBackgroundColor('#00000000')
     await this.view.webContents.loadURL(this.getURL()).catch(() => {
       // ignore
@@ -124,10 +123,9 @@ export class SubWindowService {
 
     this.resizeHandler = () => this.syncViewBounds()
     this.mainWindow.on('resize', this.resizeHandler)
-
-    this.blurHandler = () => this.close()
-    // this.mainWindow.on("blur", this.blurHandler);
-
+    // Turn Off Close on Blur
+    // this.blurHandler = () => this.close()
+    // this.mainWindow.on('blur', this.blurHandler)
     return true
   }
 
@@ -150,7 +148,7 @@ export class SubWindowService {
     if (!this.isOpen || !this.mainWindow || !this.view) return
     // Ignore close if opened less than 300ms ago (prevents focus()
     // from triggering a BrowserWindow blur that closes immediately)
-    if (Date.now() - this.lastOpenTime < 300) return
+    // if (Date.now() - this.lastOpenTime < 300) return
     this.isOpen = false
     this.onDidClose?.()
 

@@ -8,7 +8,6 @@ import { cacheSystem } from '~/features/cacheSystem'
 import { NotificationService } from '~/features/notification/service'
 import { SearchRoute, searchController as splitSearchController } from '~/features/search'
 import {
-  spotlightEmitHandlers,
   spotlightInvokeHandlers,
   tabGroupEmitHandlers,
   tabGroupInvokeHandlers,
@@ -209,6 +208,7 @@ export class ViewController {
         [IPC_EMIT_CHANNEL.OPEN_TAB_BY_ID]: (data) => this.handleOpenTabById(data),
         [IPC_EMIT_CHANNEL.REORDER_TABS]: (data) => this.reorderTabs(data),
         ...tabGroupEmitHandlers,
+        ...spotlightInvokeHandlers,
         [IPC_EMIT_CHANNEL.SUB_WINDOW_CLOSE]: () => subWindowService.close(),
         [SUB_WINDOW_RENDERER_EVENT.RESOLVE]: (data) => subWindowService.resolveRequest(data),
         [IPC_EMIT_CHANNEL.TOGGLE_MUTE_TAB]: (data: { tabId: string }) => {
@@ -326,14 +326,14 @@ export class ViewController {
   }
 
   private onInvoke(args: IPC) {
+    const { channel, data } = args
     try {
-      const { channel, data } = args
       const handler = this.invokeHandlers?.[channel]
       if (handler) {
         return handler(data)
       }
     } catch (error) {
-      console.error('[ERRROR] INVOKE :', error)
+      log.error(`No listener invoke for channel: "${channel}"`)
     }
   }
 

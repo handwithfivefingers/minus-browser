@@ -49,13 +49,13 @@ export class AdBlocker {
   engine: FiltersEngine | undefined
   isInitialize = false
   isEnabled = false
+  isCosmeticFilteringEnabled = true
   private initializing?: Promise<void>
   private lastDisabledKey = ''
   private _disabledFilters: string[] = []
   private ipcHandlersRegistered = false
   private session: Electron.Session | null = null
   private watchedWebContents = new Map<number, () => void>()
-  isCosmeticFilteringEnabled = true
   private _fullList: Record<string, string> = {}
 
   private autoUpdateTimer: ReturnType<typeof setInterval> | null = null
@@ -110,7 +110,7 @@ export class AdBlocker {
   }
 
   private async load() {
-    // console.log("[AdBlocker] load: starting engine load...");
+    console.log('[AdBlocker] load: starting engine load...')
     try {
       const cacheDir = path.join(app.getPath('userData'), 'adblock-cache')
       // console.log("[AdBlocker] load: cache dir =", cacheDir);
@@ -370,7 +370,7 @@ export class AdBlocker {
     return {
       '@adb/get-filter-metadata': () => {
         const count = Object.keys(this._fullList).length
-        // console.log("[AdBlocker] @adb/get-filter-metadata →", count, "lists");
+        console.log('[AdBlocker] @adb/get-filter-metadata →', count, 'lists')
         return Object.entries(this._fullList).map(([key, url]) => ({
           key,
           url,
@@ -482,7 +482,7 @@ export class AdBlocker {
   }
 
   enable() {
-    // console.log("[AdBlocker] enable called");
+    console.log('[AdBlocker] enable called')
     if (!this.session || !this.engine) {
       // console.log("[AdBlocker] enable: skipped, session=", !!this.session, "engine=", !!this.engine);
       return
