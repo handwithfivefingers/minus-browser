@@ -1,5 +1,6 @@
 import { IconBell, IconBellFilled } from '@tabler/icons-react'
 import clsx from 'clsx'
+
 import { useWebNotificationStore } from '~/shared/store/useNotificationStore'
 
 export const NotificationBell = () => {

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+
 import { useNotificationStore } from '~/renderer/main-window/src/stores/useNotificationStore'
 
 describe('useNotificationStore (renderer)', () => {

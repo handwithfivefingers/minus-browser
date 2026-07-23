@@ -1,18 +1,27 @@
 import { app, BrowserWindow, Menu, Notification, systemPreferences } from 'electron'
 import path from 'node:path'
+
 import log from 'electron-log'
 import started from 'electron-squirrel-startup'
+
 import { findbarService } from '../features/findbar/service'
+
 import { CommandController } from './core/controller/commandController'
 import { ViewController } from './core/controller/viewController'
 import { menuApplication } from './core/services/menu'
 import { browserSession, sessionInitPromise } from './core/services/session'
+import { registerAsWindowsBrowser, unregisterAsWindowsBrowser } from './core/services/windowsBrowser'
 import { createMainWindow, loadAppURL, setupLogging, setupUserAgent, setupWindowCrashHandlers } from './core/window'
 
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled')
 
 Object.assign(console, log.functions)
 
+if (process.argv.includes('--squirrel-install')) {
+  registerAsWindowsBrowser()
+} else if (process.argv.includes('--squirrel-uninstall')) {
+  unregisterAsWindowsBrowser()
+}
 if (started) app.quit()
 
 Menu.setApplicationMenu(null)
@@ -31,8 +40,8 @@ if (process.env.NODE_ENV !== 'development') {
 
 let browser: BrowserWindow | null = null
 let viewController: ViewController | null = null
-let isPersistingBeforeQuit = false
 let didRunBeforeQuit = false
+let persistPromise: Promise<void> | null = null
 if (process.env.NODE_ENV !== 'development') {
   const gotTheLock = app.requestSingleInstanceLock()
   if (!gotTheLock) {
@@ -41,13 +50,16 @@ if (process.env.NODE_ENV !== 'development') {
 }
 
 async function flushPersistenceOnQuit() {
-  if (isPersistingBeforeQuit) return
-  isPersistingBeforeQuit = true
-  try {
-    await viewController?.persist()
-  } catch (error) {
-    log.error('flushPersistenceOnQuit failed', error)
+  if (!persistPromise) {
+    persistPromise = (async () => {
+      try {
+        await viewController?.persist()
+      } catch (error) {
+        log.error('flushPersistenceOnQuit failed', error)
+      }
+    })()
   }
+  await persistPromise
 }
 
 async function createWindow() {
@@ -89,6 +101,11 @@ app.on('before-quit', async (event) => {
   app.quit()
 })
 app.on('will-quit', flushPersistenceOnQuit)
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
+})
 
 app.on('render-process-gone', () => app.quit())
 

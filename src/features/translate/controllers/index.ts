@@ -51,9 +51,9 @@ export class TranslateController {
     return this.service.detectLanguage(data.text)
   }
 
-  async shouldAutoTranslate(domain: string, language?: string) {
+  async shouldAutoTranslate(domain: string, language?: string, url?: string) {
     await this.initialize()
-    return this.service.shouldAutoTranslate(domain, language)
+    return this.service.shouldAutoTranslate(domain, language, url)
   }
 
   async translateSelection(data: ITranslateSelection) {

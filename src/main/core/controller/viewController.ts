@@ -8,7 +8,6 @@ import { cacheSystem } from '~/features/cacheSystem'
 import { NotificationService } from '~/features/notification/service'
 import { SearchRoute, searchController as splitSearchController } from '~/features/search'
 import {
-  spotlightEmitHandlers,
   spotlightInvokeHandlers,
   tabGroupEmitHandlers,
   tabGroupInvokeHandlers,
@@ -204,11 +203,13 @@ export class ViewController {
         [IPC_EMIT_CHANNEL.ON_RELOAD]: (data) => this.handleReloadTab(data),
         [IPC_EMIT_CHANNEL.CLOSE_APP]: () => this.onCloseApp(),
         [IPC_EMIT_CHANNEL.REQUEST_PIP]: (data) => this.requestPIP(data),
+        [IPC_EMIT_CHANNEL.PIP_EXITED]: (data) => this.handleOpenTabById(data),
         // [IPC_EMIT_CHANNEL.TOGGLE_BOOKMARK]: (data) => this.handleToggleBookmark(data),
         // ...spotlightEmitHandlers,
         [IPC_EMIT_CHANNEL.OPEN_TAB_BY_ID]: (data) => this.handleOpenTabById(data),
         [IPC_EMIT_CHANNEL.REORDER_TABS]: (data) => this.reorderTabs(data),
         ...tabGroupEmitHandlers,
+        ...spotlightInvokeHandlers,
         [IPC_EMIT_CHANNEL.SUB_WINDOW_CLOSE]: () => subWindowService.close(),
         [SUB_WINDOW_RENDERER_EVENT.RESOLVE]: (data) => subWindowService.resolveRequest(data),
         [IPC_EMIT_CHANNEL.TOGGLE_MUTE_TAB]: (data: { tabId: string }) => {
@@ -326,14 +327,14 @@ export class ViewController {
   }
 
   private onInvoke(args: IPC) {
+    const { channel, data } = args
     try {
-      const { channel, data } = args
       const handler = this.invokeHandlers?.[channel]
       if (handler) {
         return handler(data)
       }
     } catch (error) {
-      console.error('[ERRROR] INVOKE :', error)
+      log.error(`No listener invoke for channel: "${channel}"`)
     }
   }
 
@@ -574,6 +575,7 @@ export class ViewController {
   }
 
   async persist() {
+    // Save tab state to DB (non-critical for cookies)
     try {
       const tabs = this.getTabs()
       const index = this.tabController?.index || 0
@@ -629,10 +631,25 @@ export class ViewController {
           )
         }
       })
-      await Promise.all([this.minusSession?.cookies.flushStore(), this.minusSession?.flushStorageData()])
-      return this.window.webContents?.send('SYNC')
     } catch (error) {
-      return new ErrorServices(error)
+      log.error('persist: failed to save tab state', error)
+    }
+
+    // Always flush cookies and storage data — critical for session persistence
+    try {
+      if (this.minusSession) {
+        await Promise.all([this.minusSession.cookies.flushStore(), this.minusSession.flushStorageData()])
+      } else {
+        log.error('persist: minusSession is undefined, cannot flush cookies')
+      }
+    } catch (error) {
+      log.error('persist: failed to flush session storage', error)
+    }
+
+    try {
+      this.window.webContents?.send('SYNC')
+    } catch {
+      // window may already be closing
     }
   }
 

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+
 import { useMinusThemeStore } from '~/renderer/main-window/src/stores/useMinusTheme'
 
 describe('useMinusThemeStore', () => {

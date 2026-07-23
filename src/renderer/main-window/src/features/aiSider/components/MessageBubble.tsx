@@ -28,6 +28,7 @@ function CodeBlock({
       <div className="flex items-center justify-between rounded-t-lg bg-slate-800 px-3 py-1.5 text-[10px] text-slate-400">
         <span>{className?.replace('language-', '') || 'code'}</span>
         <button
+          type="button"
           onClick={handleCopy}
           className="flex cursor-pointer items-center gap-1 transition-colors hover:text-white"
         >
@@ -50,15 +51,30 @@ type CodeProps = ComponentPropsWithoutRef<'code'> & { className?: string }
 
 const MessageBubble = ({ message }: { message: ChatMessage }) => {
   const isUser = message.role === 'user'
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(message.content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
+    <div className={`group flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
       {isUser ? (
-        <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-indigo-500 px-3 py-2 text-sm leading-relaxed text-white">
+        <div className="relative max-w-[85%] rounded-2xl rounded-tr-sm bg-indigo-500 px-3 py-2 text-sm leading-relaxed text-white">
           {message.content}
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="absolute right-0 -bottom-5 flex cursor-pointer items-center gap-1 rounded-md bg-indigo-400 px-1.5 py-0.5 text-[9px] text-white opacity-0 transition-opacity group-hover:opacity-100"
+          >
+            {copied ? <IconCheck size={10} /> : <IconCopy size={10} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
         </div>
       ) : (
-        <div className="max-w-[92%] rounded-2xl rounded-tl-sm border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-800">
+        <div className="relative max-w-[92%] rounded-2xl rounded-tl-sm border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-800">
           {message.content ? (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -105,6 +121,14 @@ const MessageBubble = ({ message }: { message: ChatMessage }) => {
           ) : (
             <span className="text-slate-400 italic">Thinking...</span>
           )}
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="absolute right-0 -bottom-5 flex cursor-pointer items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] text-slate-500 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:text-indigo-600"
+          >
+            {copied ? <IconCheck size={10} /> : <IconCopy size={10} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
         </div>
       )}
     </div>

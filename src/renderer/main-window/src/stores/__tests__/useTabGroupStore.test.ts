@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+
 import { useTabGroupStore } from '~/renderer/main-window/src/stores/useTabGroupStore'
 
 const makeGroup = (id: string, name: string) => ({

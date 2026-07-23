@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { clipboard } from 'electron'
+
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
 import { handleClipboard } from '~/features/userscript/gm-api/clipboard'
 
 vi.mock('electron', () => ({

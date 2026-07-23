@@ -18,8 +18,8 @@ export const translateInvokeHandlers = {
     subWindowService.open('/translate', { preference })
     return { success: true }
   },
-  [IPC_INVOKE_CHANNEL.TRANSLATE_SHOULD_AUTO]: (data: { domain: string; language?: string }) =>
-    translateController.shouldAutoTranslate(data.domain, data.language),
+  [IPC_INVOKE_CHANNEL.TRANSLATE_SHOULD_AUTO]: (data: { domain: string; language?: string; url?: string }) =>
+    translateController.shouldAutoTranslate(data.domain, data.language, data.url),
   [IPC_INVOKE_CHANNEL.TRANSLATE_SHOW_PROMPT]: (data: { language: string }) =>
     translateController.showTranslatePrompt(data),
 }

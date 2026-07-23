@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+
 import { useTabStore } from '~/renderer/main-window/src/stores/useTabStore'
 
 describe('useTabStore', () => {
