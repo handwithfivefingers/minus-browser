@@ -9,9 +9,10 @@ export const useTranslation = (tab?: ITab) => {
     if (!payload || payload.tabId !== tab?.id) return
     if (!payload.language) return
     try {
+      const pageUrl = payload.url || tab?.url || ''
       const domain = (() => {
         try {
-          return new URL(payload.url || tab?.url || '').hostname
+          return new URL(pageUrl).hostname
         } catch {
           return ''
         }
@@ -19,6 +20,7 @@ export const useTranslation = (tab?: ITab) => {
       const shouldAuto = await window.api.INVOKE<boolean>('TRANSLATE_SHOULD_AUTO', {
         domain,
         language: payload.language,
+        url: pageUrl,
       })
       if (!shouldAuto) return
       await window.api.INVOKE('TRANSLATE_SHOW_PROMPT', { language: payload.language })

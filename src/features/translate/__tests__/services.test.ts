@@ -138,6 +138,42 @@ describe('TranslateService', () => {
       })
       expect(service.shouldAutoTranslate('conflict.com')).toBe(false)
     })
+
+    it('matches wildcard patterns in neverTranslateDomains', async () => {
+      await service.savePreference({
+        neverTranslateDomains: ['*.example.com'],
+      })
+      expect(service.shouldAutoTranslate('sub.example.com', undefined, 'https://sub.example.com/page')).toBe(false)
+      expect(service.shouldAutoTranslate('deep.sub.example.com', undefined, 'https://deep.sub.example.com/')).toBe(
+        false
+      )
+      expect(service.shouldAutoTranslate('other.com', undefined, 'https://other.com/page')).toBe(true)
+    })
+
+    it('matches wildcard patterns in alwaysTranslateDomains', async () => {
+      await service.savePreference({
+        alwaysTranslateDomains: ['trusted.org/*'],
+      })
+      expect(service.shouldAutoTranslate('trusted.org', undefined, 'https://trusted.org/about')).toBe(true)
+      expect(service.shouldAutoTranslate('trusted.org', undefined, 'https://trusted.org')).toBe(true)
+    })
+
+    it('matches wildcard pattern without URL fallback', async () => {
+      await service.savePreference({
+        neverTranslateDomains: ['*.example.com/*'],
+      })
+      expect(service.shouldAutoTranslate('sub.example.com')).toBe(false)
+      expect(service.shouldAutoTranslate('other.com')).toBe(true)
+    })
+
+    it('exact domain match still works without wildcard chars', async () => {
+      await service.savePreference({
+        neverTranslateDomains: ['exact.com'],
+      })
+      expect(service.shouldAutoTranslate('exact.com')).toBe(false)
+      expect(service.shouldAutoTranslate('sub.exact.com')).toBe(true)
+      expect(service.shouldAutoTranslate('exact.com.other')).toBe(true)
+    })
   })
 
   describe('buildGoogleTranslateUrl', () => {

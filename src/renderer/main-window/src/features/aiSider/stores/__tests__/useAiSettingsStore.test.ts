@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+
 import { useAiSettingsStore } from '~/renderer/main-window/src/features/aiSider/stores/useAiSettingsStore'
 
 describe('useAiSettingsStore', () => {

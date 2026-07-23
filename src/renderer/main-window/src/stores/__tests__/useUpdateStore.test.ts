@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+
 import { useUpdateStore } from '~/renderer/main-window/src/stores/useUpdateStore'
 
 describe('useUpdateStore', () => {

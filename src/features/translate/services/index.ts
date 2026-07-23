@@ -3,6 +3,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { appDb } from '~/main/core/stores'
+import { isUrlMatchedByPatterns } from '~/shared/utils/parser'
 
 import { ITranslateDetectResult, ITranslatePreference } from '../types'
 
@@ -212,13 +213,21 @@ export class TranslateService {
     return this.preference
   }
 
-  shouldAutoTranslate(domain: string, language?: string) {
+  shouldAutoTranslate(domain: string, language?: string, url?: string) {
     const safeDomain = normalizeDomain(domain)
     const safeLanguage = normalizeLanguage(language || '')
     if (!this.preference.autoTranslate) return false
-    if (safeDomain && this.preference.neverTranslateDomains.includes(safeDomain)) return false
+    if (safeDomain) {
+      for (const entry of this.preference.neverTranslateDomains) {
+        if (matchDomainOrPattern(safeDomain, entry, url)) return false
+      }
+    }
     if (safeLanguage && this.preference.neverTranslateLanguages.includes(safeLanguage)) return false
-    if (safeDomain && this.preference.alwaysTranslateDomains.includes(safeDomain)) return true
+    if (safeDomain) {
+      for (const entry of this.preference.alwaysTranslateDomains) {
+        if (matchDomainOrPattern(safeDomain, entry, url)) return true
+      }
+    }
     return true
   }
 
@@ -401,4 +410,20 @@ function normalizeDomain(domain: string) {
     .trim()
     .toLowerCase()
     .replace(/^www\./, '')
+}
+
+function matchDomainOrPattern(safeDomain: string, entry: string, url?: string): boolean {
+  if (entry.includes('*') || entry.includes('?')) {
+    const targetUrl = url || `https://${safeDomain}/`
+    return domainPatternMatch(targetUrl, entry)
+  }
+  return safeDomain === entry
+}
+
+function domainPatternMatch(url: string, pattern: string): boolean {
+  const regexStr = pattern
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.')
+  return new RegExp(`^${regexStr}`, 'i').test(url)
 }

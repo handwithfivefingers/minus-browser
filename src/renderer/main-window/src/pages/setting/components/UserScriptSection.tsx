@@ -11,19 +11,21 @@ import {
   IconWorldUpload,
   IconX,
 } from '@tabler/icons-react'
-
 import Prism from 'prismjs'
 import { ReactNode, useEffect, useState } from 'react'
 import Editor from 'react-simple-code-editor'
 
 import { generateMetadataBlock, parseUserScriptMetadata } from '~/features/userscript/parser'
-import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
+
 // @ts-ignore
 import 'prismjs/themes/prism.min.css'
 import { FormProvider, useFieldArray, useForm, useFormContext } from 'react-hook-form'
+
 import { userScriptResolve, UserScriptSchema } from '~/features/userscript/overlay/schema/userscript'
 import FormControl from '~/renderer/sub-window/components/formControl'
 import Input from '~/renderer/sub-window/components/input'
+import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
+
 import { Switch } from '../../../components'
 import { cn } from '../../../libs/cn'
 

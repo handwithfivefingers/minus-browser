@@ -17,6 +17,8 @@ if (platform === 'win32') {
   makers.push(
     new MakerSquirrel({
       name: 'MinusBrowser',
+      setupExe: 'MinusBrowserSetup.exe',
+      noMsi: true,
     }),
     new MakerZIP({}, ['win32'])
   )
@@ -51,6 +53,7 @@ const config: ForgeConfig = {
   packagerConfig: {
     name: 'MinusBrowser',
     appBundleId: appBundleId,
+    appCategoryType: 'public.app-category.utilities',
     osxSign: {
       identity: 'LocalMinusBrowser',
       optionsForFile: (filePath) => {
@@ -59,6 +62,12 @@ const config: ForgeConfig = {
           entitlements: './entitlements.mac.plist', // Xem bước 3 bên dưới
         }
       },
+    },
+    extendInfo: {
+      NSMicrophoneUsageDescription:
+        'MinusBrowser needs microphone access to enable voice input and web conferencing on supported websites.',
+      NSCameraUsageDescription:
+        'MinusBrowser needs camera access to enable video calls and media capture on supported websites.',
     },
     icon: './images/icon',
     asar: true,

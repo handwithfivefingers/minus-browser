@@ -28,6 +28,14 @@ const preloadScript = () => {
   video.requestPictureInPicture().catch(() => {
     //
   })
+  document.addEventListener(
+    'leavepictureinpicture',
+    () => {
+      // @ts-ignore
+      window.__notificationAPI?.pipExited?.()
+    },
+    { once: true }
+  )
 }
 
 export class Tab extends TabPermission {

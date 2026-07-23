@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
 import { handleLog } from '~/features/userscript/gm-api/log'
 
 describe('handleLog', () => {

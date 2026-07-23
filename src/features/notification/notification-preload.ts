@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('__notificationAPI', {
     if (window.Notification.permission === 'denied') return
     ipcRenderer.send('WEB_NOTIFICATION', { ...data, tabTitle: document.title, tabId })
   },
+  pipExited: () => {
+    ipcRenderer.send('send', { channel: 'PIP_EXITED', data: { id: tabId } })
+  },
 })
 
 webFrame.executeJavaScript(`

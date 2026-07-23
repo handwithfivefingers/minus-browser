@@ -1,4 +1,5 @@
 import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
+
 import { History } from './historyController'
 import { HistoryIPCChannel } from './types'
 
