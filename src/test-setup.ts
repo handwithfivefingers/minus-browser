@@ -1,7 +1,12 @@
 import { vi } from 'vitest'
 
+vi.mock('update-electron-app', () => ({
+  updateElectronApp: vi.fn(),
+}))
+
 vi.mock('electron', () => ({
   app: {
+    isPackaged: true,
     getPath: vi.fn(() => '/tmp/test-user-data'),
     getVersion: vi.fn(() => '1.0.0'),
     whenReady: vi.fn(() => Promise.resolve()),
@@ -13,6 +18,12 @@ vi.mock('electron', () => ({
     exit: vi.fn(),
     setAppUserModelId: vi.fn(),
     commandLine: { appendSwitch: vi.fn() },
+  },
+  autoUpdater: {
+    on: vi.fn().mockReturnThis(),
+    checkForUpdates: vi.fn(),
+    quitAndInstall: vi.fn(),
+    setFeedURL: vi.fn(),
   },
   BrowserWindow: vi.fn(() => ({
     webContents: {

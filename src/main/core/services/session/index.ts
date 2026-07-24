@@ -1,4 +1,5 @@
 import { BrowserWindow, session, app } from 'electron'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import {
@@ -20,6 +21,19 @@ let browserSession: Electron.Session
 const sessionInitPromise = app.whenReady().then(async () => {
   await migrateUserData()
   browserSession = createSession()
+
+  // One-time clear of IndexedDB to fix corrupted session data from
+  // previous runs. Remove this block after the next release once
+  // existing corruption is flushed out.
+  const sentinel = path.join(app.getPath('userData'), '.indexeddb-cleared')
+  try {
+    await fs.access(sentinel)
+  } catch {
+    await browserSession.clearStorageData({ storages: ['indexdb'] })
+    await fs.writeFile(sentinel, '').catch(() => {
+      //
+    })
+  }
 
   // Register userscript preload for GM API support
   const userscriptPreload = path.join(__dirname, 'userscript-preload.js')
@@ -89,7 +103,10 @@ async function handleVersionChange() {
   if (change.appChanged) {
     // Rely on Electron's native partition SQLite store — re-importing via
     // cookies.set() strips third-party attributes and breaks Google auth.
-    console.error(`[Version] App version changed (${app.getVersion()}) — keeping native cookie store`)
+    // Clear IndexedDB only — it can get corrupted across versions while
+    // cookies are kept intact via the native store.
+    console.error(`[Version] App version changed (${app.getVersion()}) — clearing IndexedDB`)
+    await browserSession.clearStorageData({ storages: ['indexdb'] })
   }
 }
 

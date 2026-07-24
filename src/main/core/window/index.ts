@@ -41,17 +41,6 @@ export function loadAppURL(browser: BrowserWindow) {
   }
 }
 
-function buildUserAgent(): string {
-  const chromeVersion = process.versions.chrome
-  // Minus/${app.getVersion()}
-  return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`
-}
-
-export function setupUserAgent(browser: BrowserWindow, session: Electron.Session) {
-  const userAgent = buildUserAgent()
-  session.setUserAgent(userAgent)
-}
-
 export function setupWindowCrashHandlers(browser: BrowserWindow) {
   browser.webContents?.on('render-process-gone', function (event, detailed) {
     log.error('!crashed, reason: ' + detailed.reason + ', exitCode = ' + detailed.exitCode)

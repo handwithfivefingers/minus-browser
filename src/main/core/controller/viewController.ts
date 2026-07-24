@@ -795,18 +795,67 @@ export class ViewController {
     )
   }
 
+  private pendingPermissions: Array<{
+    permissionId: number
+    webContents: Electron.WebContents
+    origin: string
+    permission: string
+  }> = []
+
+  private nextPermissionId = 1
+
+  private extractHostname(url: string): string | null {
+    try {
+      return new URL(url).hostname
+    } catch {
+      return null
+    }
+  }
+
+  private isPermissionGrantedForOrigin(requestOrigin: string, permission: string, details: any): boolean {
+    const stored = permissionStore.getSitePermission(requestOrigin, permission as PermissionType)
+    if (stored === 'grant') return true
+
+    if (permission === 'media') {
+      const mediaTypes: string[] = details.mediaTypes || (details.mediaType ? [details.mediaType] : [])
+      if (
+        mediaTypes.length > 0 &&
+        mediaTypes.every(
+          (t: string) => permissionStore.getSitePermission(requestOrigin, `media:${t}` as PermissionType) === 'grant'
+        )
+      ) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  private hasPendingRequestForOrigin(requestOrigin: string, permission: string): boolean {
+    return this.pendingPermissions.some((p) => p.origin === requestOrigin && p.permission === permission)
+  }
+
+  private removePermissionsForContents(wc: Electron.WebContents) {
+    this.pendingPermissions = this.pendingPermissions.filter((p) => p.webContents !== wc)
+    const tab = this.findTabByWebContents(wc)
+    if (tab) {
+      tab.isUsingCamera = false
+      tab.isUsingMicrophone = false
+      tab.isUsingScreenShare = false
+      tab.persistInformationToRenderer({
+        isUsingCamera: false,
+        isUsingMicrophone: false,
+        isUsingScreenShare: false,
+      })
+    }
+  }
+
   private setupPermissionHandler(view: WebContentsView) {
-    console.log('Permission handler')
-    view.webContents.session.setPermissionRequestHandler(async (wc, permission, request) => {
-      console.log('permission', permission)
+    const wc = view.webContents
+    const session = wc.session
+
+    session.setPermissionRequestHandler(async (wc, permission, request, details) => {
       const permissionType = permission as PermissionType
-      // const autoDenyPermissions: PermissionType[] = [
-      //   "unknown", "fileSystem", "storage-access",
-      //   "top-level-storage-access", "mediaKeySystem",
-      // ];
-      // if (autoDenyPermissions.includes(permissionType)) {
-      //   return request(false);
-      // }
 
       const autoGrantPermissions: PermissionType[] = [
         'clipboard-write',
@@ -820,42 +869,100 @@ export class ViewController {
         return request(true)
       }
 
-      const origin = (() => {
-        try {
-          return new URL(wc.getURL()).origin
-        } catch {
-          return wc.getURL()
-        }
-      })()
+      if (!details.isMainFrame) {
+        return request(false)
+      }
 
-      const stored = permissionStore.getSitePermission(origin, permissionType)
-      if (stored === 'grant') {
+      if (!details.requestingUrl) {
+        return request(false)
+      }
+
+      const hostname = this.extractHostname(details.requestingUrl)
+      if (!hostname) {
+        return request(false)
+      }
+
+      const supportedPermissions = ['media', 'notifications', 'pointerLock']
+      if (!supportedPermissions.includes(permissionType)) {
+        return request(false)
+      }
+
+      if (this.isPermissionGrantedForOrigin(hostname, permissionType, details)) {
         return request(true)
       }
 
-      if (stored === 'deny') {
-        if (permissionType === 'notifications') {
-          this.trackBlockedNotification(wc)
-        }
+      if (permissionType === 'notifications' && this.hasPendingRequestForOrigin(hostname, permissionType)) {
         return request(false)
       }
+
+      const stored = permissionStore.getSitePermission(hostname, permissionType)
+      if (stored === 'deny') {
+        if (permissionType === 'notifications') this.trackBlockedNotification(wc)
+        return request(false)
+      }
+
+      const permissionId = this.nextPermissionId++
+      this.pendingPermissions.push({ permissionId, webContents: wc, origin: hostname, permission: permissionType })
 
       try {
         const result = await subWindowService.openWithResult('/permission', {
           permission: permissionType,
-          origin,
+          origin: hostname,
         })
         const { decision, remember } = result || {}
+
+        this.pendingPermissions = this.pendingPermissions.filter((p) => p.permissionId !== permissionId)
+
         if (remember) {
-          permissionStore.setSitePermission(origin, permissionType, decision ? 'grant' : 'deny')
+          const reqDetails = details as any
+          if (permissionType === 'media' && reqDetails.mediaTypes) {
+            for (const type of reqDetails.mediaTypes) {
+              permissionStore.setSitePermission(
+                hostname,
+                `media:${type}` as PermissionType,
+                decision ? 'grant' : 'deny'
+              )
+            }
+          }
+          permissionStore.setSitePermission(hostname, permissionType, decision ? 'grant' : 'deny')
         }
+
         if (!decision && permissionType === 'notifications') {
           this.trackBlockedNotification(wc)
         }
         request(!!decision)
       } catch {
+        this.pendingPermissions = this.pendingPermissions.filter((p) => p.permissionId !== permissionId)
         request(false)
       }
+    })
+
+    session.setPermissionCheckHandler((wc, permission, requestingOrigin, details) => {
+      if (permission === 'clipboard-sanitized-write') {
+        return true
+      }
+
+      if (!details.isMainFrame && requestingOrigin !== details.embeddingOrigin) {
+        return false
+      }
+
+      if (!requestingOrigin) {
+        return false
+      }
+
+      const hostname = this.extractHostname(requestingOrigin)
+      if (!hostname) return false
+
+      return this.isPermissionGrantedForOrigin(hostname, permission, details)
+    })
+
+    wc.on('did-start-navigation', (_e, _url, isInPlace, isMainFrame) => {
+      if (isMainFrame && !isInPlace) {
+        this.removePermissionsForContents(wc)
+      }
+    })
+    wc.once('destroyed', () => {
+      this.removePermissionsForContents(wc)
     })
   }
 

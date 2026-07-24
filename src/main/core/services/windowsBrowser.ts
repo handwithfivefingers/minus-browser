@@ -3,16 +3,20 @@ import { execSync } from 'node:child_process'
 const APP_NAME = 'MinusBrowser'
 const APP_ID = 'MinusBrowser'
 
-function regAdd(key: string): void {
+function regCreateKey(key: string): void {
   execSync(`REG ADD "${key}" /F`, { stdio: 'pipe' })
 }
 
-function regSet(key: string, valueName: string, data: string): void {
-  execSync(`REG ADD "${key}" /V "${valueName}" /D "${data}" /F`, { stdio: 'pipe' })
+function regSetString(key: string, valueName: string, data: string): void {
+  execSync(`REG ADD "${key}" /V "${valueName}" /D "${data}" /T REG_SZ /F`, { stdio: 'pipe' })
 }
 
 function regSetDefault(key: string, data: string): void {
-  execSync(`REG ADD "${key}" /VE /D "${data}" /F`, { stdio: 'pipe' })
+  execSync(`REG ADD "${key}" /VE /D "${data}" /T REG_SZ /F`, { stdio: 'pipe' })
+}
+
+function regSetDword(key: string, valueName: string, data: number): void {
+  execSync(`REG ADD "${key}" /V "${valueName}" /D "${data}" /T REG_DWORD /F`, { stdio: 'pipe' })
 }
 
 function regDeleteKey(key: string): void {
@@ -23,52 +27,101 @@ function regDeleteKey(key: string): void {
   }
 }
 
-function regDeleteValue(key: string, valueName: string): void {
-  try {
-    execSync(`REG DELETE "${key}" /V "${valueName}" /F`, { stdio: 'pipe' })
-  } catch {
-    // value may not exist
-  }
-}
+const keysToCreate = [
+  `HKCU\\Software\\Classes\\${APP_ID}`,
+  `HKCU\\Software\\Classes\\${APP_ID}\\Application`,
+  `HKCU\\Software\\Classes\\${APP_ID}\\DefaultIcon`,
+  `HKCU\\Software\\Classes\\${APP_ID}\\shell\\open\\command`,
+  `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\Capabilities\\FileAssociations`,
+  `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\Capabilities\\StartMenu`,
+  `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\Capabilities\\URLAssociations`,
+  `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\DefaultIcon`,
+  `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\InstallInfo`,
+  `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\shell\\open\\command`,
+]
 
 export function registerAsWindowsBrowser(): void {
   if (process.platform !== 'win32') return
 
   try {
-    const appPath = process.execPath
-    const capabilitiesKey = `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\Capabilities`
+    const installPath = process.execPath
 
-    regAdd(`HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}`)
-    regSetDefault(`HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}`, APP_NAME)
+    for (const key of keysToCreate) {
+      regCreateKey(key)
+    }
 
-    regAdd(capabilitiesKey)
-    regSet(capabilitiesKey, 'ApplicationName', APP_NAME)
-    regSet(capabilitiesKey, 'ApplicationDescription', `${APP_NAME} - Lightweight, cross-platform browser`)
-
-    regAdd(`${capabilitiesKey}\\URLAssociations`)
-    regSet(`${capabilitiesKey}\\URLAssociations`, 'http', `${APP_ID}.URL.http`)
-    regSet(`${capabilitiesKey}\\URLAssociations`, 'https', `${APP_ID}.URL.https`)
-
-    regAdd(`HKCU\\Software\\Classes\\${APP_ID}.URL.http`)
-    regSetDefault(`HKCU\\Software\\Classes\\${APP_ID}.URL.http`, 'HTTP URL')
-    regSet(`HKCU\\Software\\Classes\\${APP_ID}.URL.http`, 'URL Protocol', '')
-    regAdd(`HKCU\\Software\\Classes\\${APP_ID}.URL.http\\shell\\open\\command`)
-    regSetDefault(`HKCU\\Software\\Classes\\${APP_ID}.URL.http\\shell\\open\\command`, `"${appPath}" "%1"`)
-
-    regAdd(`HKCU\\Software\\Classes\\${APP_ID}.URL.https`)
-    regSetDefault(`HKCU\\Software\\Classes\\${APP_ID}.URL.https`, 'HTTPS URL')
-    regSet(`HKCU\\Software\\Classes\\${APP_ID}.URL.https`, 'URL Protocol', '')
-    regAdd(`HKCU\\Software\\Classes\\${APP_ID}.URL.https\\shell\\open\\command`)
-    regSetDefault(`HKCU\\Software\\Classes\\${APP_ID}.URL.https\\shell\\open\\command`, `"${appPath}" "%1"`)
-
-    regSet(
+    regSetString(
       `HKCU\\Software\\RegisteredApplications`,
       APP_ID,
       `Software\\Clients\\StartMenuInternet\\${APP_ID}\\Capabilities`
     )
+
+    regSetDefault(`HKCU\\Software\\Classes\\${APP_ID}`, 'MinusBrowser Document')
+
+    regSetString(`HKCU\\Software\\Classes\\${APP_ID}\\Application`, 'ApplicationIcon', `${installPath},0`)
+    regSetString(`HKCU\\Software\\Classes\\${APP_ID}\\Application`, 'ApplicationName', APP_NAME)
+    regSetString(`HKCU\\Software\\Classes\\${APP_ID}\\Application`, 'AppUserModelId', APP_ID)
+
+    regSetString(`HKCU\\Software\\Classes\\${APP_ID}\\DefaultIcon`, 'default', `${installPath},0`)
+
+    regSetDefault(`HKCU\\Software\\Classes\\${APP_ID}\\shell\\open\\command`, `"${installPath}" "%1"`)
+
+    regSetString(`HKCU\\Software\\Classes\\.htm\\OpenWithProgIds`, APP_ID, '')
+    regSetString(`HKCU\\Software\\Classes\\.html\\OpenWithProgIds`, APP_ID, '')
+
+    regSetString(
+      `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\Capabilities\\FileAssociations`,
+      '.htm',
+      APP_ID
+    )
+    regSetString(
+      `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\Capabilities\\FileAssociations`,
+      '.html',
+      APP_ID
+    )
+
+    regSetString(
+      `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\Capabilities\\StartMenu`,
+      'StartMenuInternet',
+      APP_ID
+    )
+
+    regSetString(`HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\Capabilities\\URLAssociations`, 'http', APP_ID)
+    regSetString(
+      `HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\Capabilities\\URLAssociations`,
+      'https',
+      APP_ID
+    )
+
+    regSetString(`HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\DefaultIcon`, 'default', `${installPath},0`)
+
+    regSetDword(`HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\InstallInfo`, 'IconsVisible', 1)
+
+    regSetDefault(`HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}\\shell\\open\\command`, installPath)
   } catch (error) {
     console.error('Failed to register as Windows browser:', error)
   }
+}
+
+const oldProtocolKeys = [
+  `HKCU\\Software\\Classes\\${APP_ID}.URL.http`,
+  `HKCU\\Software\\Classes\\${APP_ID}.URL.http\\shell\\open\\command`,
+  `HKCU\\Software\\Classes\\${APP_ID}.URL.https`,
+  `HKCU\\Software\\Classes\\${APP_ID}.URL.https\\shell\\open\\command`,
+]
+
+export function migrateWindowsBrowserRegistry(): void {
+  if (process.platform !== 'win32') return
+
+  try {
+    for (const key of oldProtocolKeys) {
+      regDeleteKey(key)
+    }
+  } catch (error) {
+    console.error('Failed to clean old registry keys:', error)
+  }
+
+  registerAsWindowsBrowser()
 }
 
 export function unregisterAsWindowsBrowser(): void {
@@ -76,9 +129,22 @@ export function unregisterAsWindowsBrowser(): void {
 
   try {
     regDeleteKey(`HKCU\\Software\\Clients\\StartMenuInternet\\${APP_ID}`)
-    regDeleteKey(`HKCU\\Software\\Classes\\${APP_ID}.URL.http`)
-    regDeleteKey(`HKCU\\Software\\Classes\\${APP_ID}.URL.https`)
-    regDeleteValue(`HKCU\\Software\\RegisteredApplications`, APP_ID)
+    regDeleteKey(`HKCU\\Software\\Classes\\${APP_ID}`)
+    try {
+      execSync(`REG DELETE "HKCU\\Software\\Classes\\.htm\\OpenWithProgIds" /V "${APP_ID}" /F`, { stdio: 'pipe' })
+    } catch {
+      // value may not exist
+    }
+    try {
+      execSync(`REG DELETE "HKCU\\Software\\Classes\\.html\\OpenWithProgIds" /V "${APP_ID}" /F`, { stdio: 'pipe' })
+    } catch {
+      // value may not exist
+    }
+    try {
+      execSync(`REG DELETE "HKCU\\Software\\RegisteredApplications" /V "${APP_ID}" /F`, { stdio: 'pipe' })
+    } catch {
+      // value may not exist
+    }
   } catch (error) {
     console.error('Failed to unregister Windows browser:', error)
   }
