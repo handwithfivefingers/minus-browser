@@ -11,8 +11,12 @@
     <!-- Cho phép thực thi bộ nhớ không được ký -->
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
-    <!-- macOS 14+ web browser entitlement: nhận diện app là trình duyệt web -->
-    <key>com.apple.developer.web-browser</key>
+
+   <!-- Hardware Access Entitlements -->
+    <key>com.apple.security.device.camera</key>
     <true/>
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+
   </dict>
 </plist>

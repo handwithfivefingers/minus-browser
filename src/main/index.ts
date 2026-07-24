@@ -10,12 +10,19 @@ import { CommandController } from './core/controller/commandController'
 import { ViewController } from './core/controller/viewController'
 import { menuApplication } from './core/services/menu'
 import { browserSession, sessionInitPromise } from './core/services/session'
-import { registerAsWindowsBrowser, unregisterAsWindowsBrowser } from './core/services/windowsBrowser'
-import { createMainWindow, loadAppURL, setupLogging, setupUserAgent, setupWindowCrashHandlers } from './core/window'
+import {
+  migrateWindowsBrowserRegistry,
+  registerAsWindowsBrowser,
+  unregisterAsWindowsBrowser,
+} from './core/services/windowsBrowser'
+import { createMainWindow, loadAppURL, setupLogging, setupWindowCrashHandlers } from './core/window'
+import { initializeUserAgent, setupUserAgent } from './core/window/userAgent'
 
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled')
 
 Object.assign(console, log.functions)
+
+initializeUserAgent()
 
 if (process.argv.includes('--squirrel-install')) {
   registerAsWindowsBrowser()
@@ -23,6 +30,10 @@ if (process.argv.includes('--squirrel-install')) {
   unregisterAsWindowsBrowser()
 }
 if (started) app.quit()
+
+if (process.platform === 'win32') {
+  migrateWindowsBrowserRegistry()
+}
 
 Menu.setApplicationMenu(null)
 
@@ -66,7 +77,7 @@ async function createWindow() {
   try {
     if (browser) return
     const win = await createMainWindow({ session: browserSession })
-    setupUserAgent(win, browserSession)
+    setupUserAgent(browserSession)
     browser = win
 
     viewController = new ViewController(win)
@@ -85,6 +96,7 @@ async function createWindow() {
     win.show()
     if (process.env.NODE_ENV === 'development') win.webContents.openDevTools()
   } catch (error) {
+    alert('[ERROR] Create Window Error - ' + error)
     console.error('[ERROR] Create Window Error - ', error)
   }
 }

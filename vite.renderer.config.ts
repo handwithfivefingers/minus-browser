@@ -21,3 +21,5 @@ export default defineConfig({
 })
 
 // debug: npx asar list ./out/MinusBrowser-darwin-arm64/MinusBrowser.app/Contents/Resources/app.asar
+// debug: lldb ./out/MinusBrowser-darwin-arm64/MinusBrowser.app/Contents/MacOS/MinusBrowser
+// log stream --predicate 'process == "MinusBrowser"' --level debug

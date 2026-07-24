@@ -1,5 +1,4 @@
 import { BrowserWindow, WebContentsAudioStateChangedEventParams, WebContentsView } from 'electron'
-import path from 'node:path'
 
 import { v7 as uuid_v7 } from 'uuid'
 
@@ -17,6 +16,7 @@ import { AiTabPlugin } from '~/renderer/main-window/src/features/aiSider/plugin'
 import { ITab, IUserInterface } from '~/shared/types'
 
 import { TabPermission } from './permission'
+import { getDefaultViewWebPreferences } from './webPreferences'
 
 interface IDestroy {
   destroy?: () => void
@@ -95,13 +95,7 @@ export class Tab extends TabPermission {
 
   createView() {
     this._view = new WebContentsView({
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        session: this.minusSession,
-        preload: path.join(__dirname, 'notification-preload.js'),
-        additionalArguments: [`--notification-tab-id=${this.id}`],
-      },
+      webPreferences: getDefaultViewWebPreferences(this.id, this.minusSession),
     })
     this._webContents = this._view.webContents
     this._view.setMaxListeners(30)
@@ -479,9 +473,19 @@ export class Tab extends TabPermission {
   clearCache() {
     if (!this._view) return
     this._view.webContents.session.clearCache()
-    this._view.webContents.session.clearStorageData({
-      origin: this.url,
-    })
+    try {
+      const url = new URL(this.url)
+      const origins = [url.origin]
+      const parts = url.hostname.split('.')
+      if (parts.length > 2) {
+        origins.push(`${url.protocol}//${parts.slice(1).join('.')}`)
+      }
+      for (const origin of origins) {
+        this._view.webContents.session.clearStorageData({ origin })
+      }
+    } catch {
+      this._view.webContents.session.clearStorageData()
+    }
   }
 
   toJSON() {

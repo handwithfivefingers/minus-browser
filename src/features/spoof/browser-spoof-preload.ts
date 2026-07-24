@@ -17,12 +17,22 @@ webFrame.executeJavaScript(`
         var obj = { addListener: function() {}, removeListener: function() {}, hasListener: function() {} };
         return obj;
       };
+      var makePort = function() {
+        return {
+          name: '',
+          disconnect: function() {},
+          postMessage: function() {},
+          onMessage: { addListener: function() {}, removeListener: function() {}, hasListener: function() {} },
+          onDisconnect: { addListener: function() {}, removeListener: function() {}, hasListener: function() {} },
+        };
+      };
+      var now = Date.now();
       window.chrome = {
         runtime: {
           id: '',
-          connect: function() {},
+          connect: function() { return makePort(); },
           sendMessage: function() {},
-          getManifest: function() { return {}; },
+          getManifest: function() { return { name: '', version: '', manifest_version: 2 }; },
           getURL: function(p) { return p; },
           reload: function() {},
           restart: function() {},
@@ -44,7 +54,14 @@ webFrame.executeJavaScript(`
           installState: function(cb) { if (cb) cb('not_installed'); },
           runningState: function(cb) { if (cb) cb('cannot_run'); },
         },
-        csi: function() { return {}; },
+        csi: function() {
+          return {
+            onloadT: now,
+            pageT: now,
+            startE: now,
+            tran: 0,
+          };
+        },
         loadTimes: function() {
           return {
             requestTime: 0,

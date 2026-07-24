@@ -92,25 +92,24 @@ const TabItem = memo(
             <div className="relative flex">
               <Avatar src={tab?.favicon} />
 
-              {tab?.audible && !tab?.isMuted && (
+              {/* {tab?.audible && !tab?.isMuted && (
                 <button
                   className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-0"
                   onClick={handleMuteToggle}
                   title="Mute tab"
                   type="button"
-                >
-                  <IconVolume className="text-slate-700 dark:text-slate-300" size={12} />
-                </button>
-              )}
+                ></button>
+              )} */}
 
-              {tab?.isMuted && (
+              {tab?.audible && (
                 <button
-                  className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-0"
+                  className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded border-none bg-transparent p-0.5 backdrop-blur-md hover:bg-white/50"
                   onClick={handleMuteToggle}
-                  title="Unmute tab"
+                  title={tab?.isMuted ? 'Unmute tab' : 'Mute tab'}
                   type="button"
                 >
-                  <IconVolumeOff className="text-slate-700 dark:text-slate-300" size={12} />
+                  {tab?.isMuted && <IconVolumeOff className="text-slate-700 dark:text-slate-300" size={12} />}
+                  {!tab?.isMuted && <IconVolume className="text-slate-700 dark:text-slate-300" size={12} />}
                 </button>
               )}
 

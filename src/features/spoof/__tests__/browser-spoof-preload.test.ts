@@ -23,6 +23,7 @@ describe('browser-spoof-preload', () => {
     expect(source).toContain('csi:')
     expect(source).toContain('loadTimes:')
     expect(source).toContain('webstore:')
+    expect(source).toContain('makePort')
   })
 
   it('wraps in IIFE', () => {
@@ -40,11 +41,24 @@ describe('browser-spoof-preload', () => {
 
   it('sets runtime chrome APIs', () => {
     expect(source).toContain('runtime:')
-    expect(source).toContain('connect: function() {}')
+    expect(source).toContain('connect: function() { return makePort(); }')
     expect(source).toContain('sendMessage: function() {}')
-    expect(source).toContain('getManifest: function() { return {}; }')
+    expect(source).toContain("getManifest: function() { return { name: '', version: '', manifest_version: 2 }; }")
     expect(source).toContain('onConnect: makeEvent()')
     expect(source).toContain('onMessage: makeEvent()')
+  })
+
+  it('returns a port object from connect', () => {
+    expect(source).toContain('var makePort = function()')
+    expect(source).toContain('name:')
+    expect(source).toContain('onDisconnect:')
+  })
+
+  it('returns realistic timing data from csi', () => {
+    expect(source).toContain('onloadT:')
+    expect(source).toContain('pageT:')
+    expect(source).toContain('startE:')
+    expect(source).toContain('tran:')
   })
 
   it('sets app chrome APIs', () => {
