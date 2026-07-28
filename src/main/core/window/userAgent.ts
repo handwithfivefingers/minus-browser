@@ -32,11 +32,6 @@ function enableGoogleUASwitcher(ses: Electron.Session): void {
       }
     }
 
-    const chromiumVersion = process.versions.chrome.split('.')[0]
-    details.requestHeaders['SEC-CH-UA'] =
-      `"Chromium";v="${chromiumVersion}", "Google Chrome";v="${chromiumVersion}", "Not=A?Brand";v="99"`
-    details.requestHeaders['SEC-CH-UA-MOBILE'] = '?0'
-
     callback({ cancel: false, requestHeaders: details.requestHeaders })
   })
 }
@@ -53,16 +48,7 @@ export function initializeUserAgent(): void {
     newUserAgent = process.env.MINUS_CUSTOM_USER_AGENT
     hasCustomUserAgent = true
   } else {
-    newUserAgent = defaultUserAgent
-      .replace(/MinusBrowser\/\S+\s/, '')
-      .replace(/Electron\/\S+\s/, '')
-      .replace(
-        process.versions.chrome,
-        process.versions.chrome
-          .split('.')
-          .map((v, idx) => (idx === 0 ? v : '0'))
-          .join('.')
-      )
+    newUserAgent = defaultUserAgent.replace(/MinusBrowser\/\S+\s/, '').replace(/Electron\/\S+\s/, '')
   }
 
   app.userAgentFallback = newUserAgent

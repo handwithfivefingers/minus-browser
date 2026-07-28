@@ -1,13 +1,14 @@
 import { IconInnerShadowTopLeft } from '@tabler/icons-react'
-import { lazy, useEffect, useRef } from 'react'
-import { Navigate, useOutletContext, useParams } from 'react-router'
+import { useEffect, useRef } from 'react'
+import { Navigate, useParams } from 'react-router'
 
 import { TabErrorPage } from '~/renderer/main-window/src/components/tab/TabErrorPage'
+import { ITab } from '~/shared/types'
 
 import { useContentView } from '../../hooks/useContentView'
-import { useTabEvents } from '../../hooks/useTabEvents'
 import { Tab } from '../../interfaces'
-import { debounce } from '../../libs'
+import { debounce, navigateOrSearch } from '../../libs'
+import { tabServices } from '../../services/tab.service'
 import { useMinusThemeStore } from '../../stores/useMinusTheme'
 import { useTabStore } from '../../stores/useTabStore'
 
@@ -23,13 +24,48 @@ const WEBVIEW_CLASSES = {
 const CustomApp = () => {
   const { customApp: tabId = '' } = useParams<{ customApp: string }>()
   const { layout } = useMinusThemeStore()
-  const tab = useTabStore((s) => s.tabs.find((t) => t.id === tabId)) || ({} as Tab)
-  const outletContext = useOutletContext<ReturnType<typeof useTabEvents>>()
+  const tab = useTabStore((s) => s.tabs.find((t) => t.id === tabId))
+  const updateTab = useTabStore((s) => s.updateTab)
+  const setActiveTab = useTabStore((s) => s.setActiveTab)
+
+  const getScreenData = async () => {
+    const tab = await window.api.INVOKE<Tab>('GET_TAB', { id: tabId })
+    updateTab(tabId, tab)
+  }
+
+  useEffect(() => {
+    if (!tabId) return
+    setActiveTab(tabId)
+    getScreenData()
+    tabServices.subscribeTab<ITab>(tabId, (tab) => {
+      updateTab(tabId, tab)
+    })
+  }, [tabId])
+
+  const handleSearch = async (url: string) => {
+    try {
+      const outputFormat = navigateOrSearch(url)
+      updateTab(tabId, { url: outputFormat, error: null })
+      window.api.EMIT('VIEW_CHANGE_URL', { id: tabId, url: outputFormat })
+    } catch (error) {
+      console.error('VIEW_CHANGE_URL error', error)
+    }
+  }
+
+  const handleRetry = async () => {
+    if (!tab?.error?.url) return
+    await handleSearch(tab.error.url)
+  }
+
+  const handleGoHome = async () => {
+    await handleSearch('https://google.com')
+  }
+
   if (!tabId) return <Navigate to={'/'} />
   return (
     <div className={LAYOUT_HEADER_CLASS[layout as keyof typeof LAYOUT_HEADER_CLASS]}>
       {tab?.error ? (
-        <TabErrorPage error={tab.error} onRetry={outletContext?.handleRetry} onGoHome={outletContext?.handleGoHome} />
+        <TabErrorPage error={tab.error} onRetry={handleRetry} onGoHome={handleGoHome} />
       ) : (
         <WebViewInstance id={tabId} />
       )}

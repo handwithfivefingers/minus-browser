@@ -254,7 +254,7 @@ export class Tab extends TabPermission {
     this._webContents.on('did-navigate', (_event, url, httpResponseCode, _httpStatusText) => {
       this.updateUrl(url)
       if (url && url !== 'about:blank') {
-        if (httpResponseCode >= 400) {
+        if (httpResponseCode >= 500) {
           this.handleNavigationError(
             `HTTP_${httpResponseCode}`,
             `HTTP ${httpResponseCode} ${_httpStatusText || ''}`,
