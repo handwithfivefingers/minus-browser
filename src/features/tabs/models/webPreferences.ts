@@ -8,7 +8,7 @@ export const getDefaultViewWebPreferences = (id: string, session: Electron.Sessi
     safeDialogsMessage: 'Prevent this page from creating additional dialogs',
     preload: join(__dirname, 'notification-preload.js'),
     contextIsolation: true,
-    sandbox: false,
+    sandbox: true,
     enableRemoteModule: false,
     allowPopups: false,
     enableWebSQL: false,
@@ -16,7 +16,7 @@ export const getDefaultViewWebPreferences = (id: string, session: Electron.Sessi
     additionalArguments: [`--notification-tab-id=${id}`],
     session, // partition: partition || 'persist:webcontent',
     // match Chrome's default for anti-fingerprinting purposes (Electron defaults to 0)
-    // autoplayPolicy: settings.get('enableAutoplay') ? 'no-user-gesture-required' : 'user-gesture-required',
+    autoplayPolicy: 'no-user-gesture-required',
     // javascript: !settings.get('filtering')?.contentTypes?.includes('script'),
   }
   // webPreferences: {
