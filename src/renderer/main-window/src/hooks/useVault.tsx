@@ -32,8 +32,7 @@ export const useVault = (tab?: Tab) => {
 
       const existingVault = await window.api.INVOKE<IPasswordVaultItem[]>('VAULT_LIST')
       const existing = existingVault.find(
-        (item) =>
-          item.site.toLowerCase() === hostname && item.username.trim().toLowerCase() === username.toLowerCase()
+        (item) => item.site.toLowerCase() === hostname && item.username.trim().toLowerCase() === username.toLowerCase()
       )
       if (existing && existing.password === payload.password) return
 
