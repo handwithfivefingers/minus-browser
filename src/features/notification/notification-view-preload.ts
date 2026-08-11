@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('notificationViewAPI', {
   onClose: () => {
     ipcRenderer.send('NOTIFICATION_VIEW_CLOSE')
   },
+  onDismissToast: () => {
+    ipcRenderer.send('NOTIFICATION_VIEW_TOAST_DISMISSED')
+  },
   onGetHistory: () => {
     ipcRenderer.send('NOTIFICATION_VIEW_GET_HISTORY')
   },

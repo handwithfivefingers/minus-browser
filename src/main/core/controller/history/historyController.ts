@@ -10,6 +10,7 @@ const DEFAULT_RETENTION_DAYS = 30
 export class History {
   private cleanupTimer: ReturnType<typeof setInterval> | null = null
   retentionDays: number = DEFAULT_RETENTION_DAYS
+  private cache: IHistoryEntry[] | null = null
 
   async initialize() {
     this.cleanOldEntries()
@@ -18,11 +19,17 @@ export class History {
 
   setRetentionDays(days: number) {
     this.retentionDays = days > 0 ? days : DEFAULT_RETENTION_DAYS
+    this.invalidateCache()
   }
 
   cleanOldEntries() {
     const cutoff = Date.now() - this.retentionDays * 86400000
     appDb.run('DELETE FROM history_entries WHERE timestamp < ?', [cutoff])
+    this.invalidateCache()
+  }
+
+  private invalidateCache() {
+    this.cache = null
   }
 
   private startCleanupTimer() {
@@ -54,12 +61,16 @@ export class History {
         [uuid_v7(), url, title || url, favicon || '', now, 1]
       )
     }
+    this.invalidateCache()
   }
 
   getAll(): IHistoryEntry[] {
-    return appDb.query<IHistoryEntry>(
-      'SELECT id, url, title, favicon, timestamp, visit_count as visitCount FROM history_entries ORDER BY timestamp DESC'
-    )
+    if (!this.cache) {
+      this.cache = appDb.query<IHistoryEntry>(
+        'SELECT id, url, title, favicon, timestamp, visit_count as visitCount FROM history_entries ORDER BY timestamp DESC'
+      )
+    }
+    return this.cache
   }
 
   search(query: string): IHistoryEntry[] {
@@ -84,13 +95,16 @@ export class History {
     if (favicon) {
       appDb.run('UPDATE history_entries SET favicon = ? WHERE url = ?', [favicon, url])
     }
+    this.invalidateCache()
   }
 
   deleteEntry(id: string): void {
     appDb.run('DELETE FROM history_entries WHERE id = ?', [id])
+    this.invalidateCache()
   }
 
   clearAll(): void {
     appDb.run('DELETE FROM history_entries')
+    this.invalidateCache()
   }
 }

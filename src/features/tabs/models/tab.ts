@@ -7,7 +7,6 @@ import { CaptureTabPlugin } from '~/features/capture'
 import { SearchTabPlugin } from '~/features/search/plugin'
 import { TabPluginManager } from '~/features/tabPluginManager'
 import { TranslateTabPlugin } from '~/features/translate/plugin'
-import { VaultTabPlugin } from '~/features/vault'
 import { ContextMenuController } from '~/main/core/controller/context'
 import { historyController } from '~/main/core/controller/history'
 import { browserSession } from '~/main/core/services/session'
@@ -211,18 +210,7 @@ export class Tab extends TabPermission {
           return data as IUserInterface
         }))
       if (extensionManager && 'extension' in extensionManager) {
-        const { vault, translate, userscript } = extensionManager.extension
-        if (vault) {
-          const vaulPlugin = new VaultTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }))
-          this.pluginManager.register(vaulPlugin)
-        }
-        // Script injection is now handled by the userscript preload (registered via session.setPreloads).
-        // The UserScriptTabPlugin is kept for potential future use but disabled to avoid double injection.
-        // if (userscript) {
-        //   this.pluginManager.register(
-        //     new UserScriptTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
-        //   );
-        // }
+        const { translate } = extensionManager.extension
         if (translate) {
           this.pluginManager.register(
             new TranslateTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }))

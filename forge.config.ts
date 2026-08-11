@@ -130,6 +130,11 @@ const config: ForgeConfig = {
           config: 'vite.preload.config.ts',
           target: 'preload',
         },
+        {
+          entry: 'src/features/vault/vault-preload.ts',
+          config: 'vite.vault-preload.config.ts',
+          target: 'preload',
+        },
       ],
       renderer: [
         {

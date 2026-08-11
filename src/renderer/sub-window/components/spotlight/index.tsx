@@ -19,6 +19,28 @@ import { SUB_WINDOW_EMIT } from '~/shared/constants/ipc/sub-window'
 
 import { IHistoryEntry, SpotlightAction, SpotlightProps } from '../../types/spotlight'
 
+const normalizeHref = (value: string): string | null => {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const candidates = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? [trimmed] : [`https://${trimmed}`]
+  for (const candidate of candidates) {
+    try {
+      const url = new URL(candidate)
+      const pathname = url.pathname && url.pathname !== '/' ? url.pathname : ''
+      return `${url.origin}${pathname}${url.search}${url.hash}`
+    } catch (error) {
+      /* ignore */
+    }
+  }
+  return null
+}
+
+const isSameHref = (a: string, b: string): boolean => {
+  const normalized = normalizeHref(a)
+  const target = normalizeHref(b)
+  return !!normalized && !!target && normalized === target
+}
+
 export const SpotlightComponent = () => {
   const [query, setQuery] = useState('')
   const [tabs, setTabs] = useState<Tab[]>([])
@@ -110,6 +132,8 @@ export const SpotlightComponent = () => {
     }
   }
 
+  const recentHistory = useMemo(() => history.slice(-300), [history])
+
   const fuseTabs = useMemo(
     () =>
       new Fuse(tabs, {
@@ -117,98 +141,149 @@ export const SpotlightComponent = () => {
           { name: 'title', weight: 0.6 },
           { name: 'url', weight: 0.4 },
         ],
-        threshold: 0.4,
+        threshold: 0.35,
         distance: 100,
-        minMatchCharLength: 1,
+        minMatchCharLength: 2,
+        includeScore: true,
       }),
     [tabs]
   )
 
   const fuseHistory = useMemo(
     () =>
-      new Fuse(history, {
+      new Fuse(recentHistory, {
         keys: [
           { name: 'title', weight: 0.6 },
           { name: 'url', weight: 0.4 },
         ],
-        threshold: 0.4,
+        threshold: 0.35,
         distance: 100,
-        minMatchCharLength: 1,
+        minMatchCharLength: 2,
+        includeScore: true,
       }),
-    [history]
+    [recentHistory]
   )
 
   const actions = useMemo<SpotlightAction[]>(() => {
-    const queryText = normalizedQuery.toLowerCase()
-    const matchingTabs = (queryText ? fuseTabs.search(queryText).map((r) => r.item) : tabs)
-      .slice(0, 6)
-      .map((tab, index) => ({
+    const queryText = normalizedQuery.trim().toLowerCase()
+    const hasQuery = queryText.length > 0
+    const activeTab = tabs.find((tab) => tab.id === activeTabId)
+    const items: SpotlightAction[] = []
+    const tabUrls = new Set<string>()
+
+    // Re-entering the current page's URL should reload it, like an omnibox.
+    if (activeTab && hasQuery && isSameHref(activeTab.url, normalizedQuery)) {
+      items.push({
+        id: 'reload:active',
+        kind: 'create',
+        label: `Reload ${activeTab.title || activeTab.url}`,
+        description: 'Reload the current page',
+        score: 1000,
+        onSelect: () => {
+          window.api.EMIT('ON_RELOAD', { id: activeTab.id })
+          closeSpotlight()
+        },
+      })
+    }
+
+    const rawTabResults: Array<{ tab: Tab; fuzzy: number; order: number }> = hasQuery
+      ? fuseTabs
+          .search(queryText)
+          .slice(0, 6)
+          .map((r) => ({ tab: r.item, fuzzy: (r.score ?? 0.5) as number, order: 0 }))
+      : tabs.slice(0, 6).map((tab, order) => ({ tab, fuzzy: 0, order }))
+
+    for (const { tab, fuzzy, order } of rawTabResults) {
+      const isActive = tab.id === activeTabId
+      const exactUrl = hasQuery && isSameHref(tab.url, normalizedQuery)
+      const exactTitle = hasQuery && (tab.title || '').toLowerCase() === queryText
+      // The active tab with the exact URL is already covered by the reload action.
+      if (isActive && exactUrl) continue
+
+      let score: number
+      if (exactUrl || exactTitle) score = 900
+      else if (hasQuery) score = 800 - Math.round(fuzzy * 300)
+      else score = 290 - order * 10 + (isActive ? 5 : 0)
+
+      items.push({
         id: `tab:${tab.id}`,
-        kind: 'tab' as const,
+        kind: 'tab',
         label: tab.title || tab.url || 'New tab',
         description: tab.url || 'Switch to tab',
-        score: queryText ? Math.max(90 - index, 1) : 100 - index,
+        score,
         onSelect: () => {
           window.api.EMIT('OPEN_TAB_BY_ID', { id: tab.id })
           closeSpotlight()
         },
-      }))
+      })
+      tabUrls.add(normalizeHref(tab.url) || tab.url)
+    }
 
-    const historyEntries = (queryText ? fuseHistory.search(queryText).map((r) => r.item) : history)
-      .slice(0, 5)
-      .map((entry, index) => ({
-        id: `history:${entry.id}`,
-        kind: 'history' as const,
-        label: entry.title || entry.url,
-        description: entry.url,
-        score: queryText ? Math.max(80 - index * 2, 1) : 0,
-        onSelect: () => {
-          window.api
-            .INVOKE<{ id: string }>('CREATE_TAB', { url: entry.url })
-            // @ts-ignore
-            .finally(closeSpotlight)
-        },
-      }))
-
-    const extraActions: SpotlightAction[] = []
-
-    if (normalizedQuery) {
-      const isDomain = isValidDomainOrIP(normalizedQuery)
-
-      if (isDomain) {
-        const url = navigateOrSearch(normalizedQuery)
-        extraActions.push({
-          id: `goto:${normalizedQuery}`,
-          kind: 'create' as const,
-          label: `Go to "${normalizedQuery}"`,
-          description: 'Navigate current tab',
-          score: 95,
+    if (hasQuery) {
+      for (const [index, r] of fuseHistory.search(queryText).slice(0, 5).entries()) {
+        const entry = r.item
+        if (tabUrls.has(normalizeHref(entry.url) || entry.url)) continue
+        const fuzzy: number = (r.score ?? 0.5) as number
+        const exactUrl = isSameHref(entry.url, normalizedQuery)
+        const score = exactUrl ? 620 : Math.max(290, 540 - Math.round(fuzzy * 250))
+        items.push({
+          id: `history:${entry.id}:${index}`,
+          kind: 'history',
+          label: entry.title || entry.url,
+          description: entry.url,
+          score,
           onSelect: () => {
-            navigateCurrentTab(url as string)
+            window.api
+              .INVOKE<{ id: string }>('CREATE_TAB', { url: entry.url })
+              // @ts-ignore
+              .finally(closeSpotlight)
+          },
+        })
+      }
+    }
+
+    if (hasQuery) {
+      const isDomain = isValidDomainOrIP(normalizedQuery)
+      const gotoUrl = navigateOrSearch(normalizedQuery)
+      const gotoMatchesActive = activeTab && !!gotoUrl && isSameHref(activeTab.url, gotoUrl)
+      const gotoMatchesTab = !!gotoUrl && tabs.some((tab) => isSameHref(tab.url, gotoUrl))
+
+      if (isDomain && gotoUrl && !gotoMatchesActive) {
+        items.push({
+          id: `goto:${normalizedQuery}`,
+          kind: 'create',
+          label: `Go to "${normalizedQuery}"`,
+          description: gotoMatchesTab ? 'Navigate to an address that is already open' : 'Navigate current tab',
+          score: gotoMatchesTab ? 360 : 680,
+          onSelect: () => {
+            navigateCurrentTab(gotoUrl)
             closeSpotlight()
           },
         })
-        extraActions.push({
+      }
+
+      if (isDomain && gotoUrl && !gotoMatchesTab) {
+        items.push({
           id: `open-new-tab:${normalizedQuery}`,
-          kind: 'create' as const,
+          kind: 'create',
           label: `Open "${normalizedQuery}" in a new tab`,
           description: 'Open the typed address in a fresh tab',
-          score: 85,
+          score: 480,
           onSelect: () => {
             window.api
-              .INVOKE<{ id: string }>('CREATE_TAB', { url })
+              .INVOKE<{ id: string }>('CREATE_TAB', { url: gotoUrl })
               // @ts-ignore
               .finally(closeSpotlight)
           },
         })
       }
 
-      extraActions.push({
+      items.push({
         id: `search:${normalizedQuery}`,
-        kind: 'search' as const,
+        kind: 'search',
         label: `Search for "${normalizedQuery}"`,
         description: isDomain ? 'Search for this text' : 'Navigate current tab to search results',
-        score: isDomain ? 60 : 70,
+        score: isDomain ? 460 : 500,
         onSelect: () => {
           const url = `https://google.com/search?q=${encodeURIComponent(normalizedQuery)}`
           navigateCurrentTab(url)
@@ -217,40 +292,41 @@ export const SpotlightComponent = () => {
       })
 
       if (!isDomain) {
-        const searchUrl = `https://google.com/search?q=${encodeURIComponent(normalizedQuery)}`
-        extraActions.push({
+        items.push({
           id: `search-new-tab:${normalizedQuery}`,
-          kind: 'create' as const,
+          kind: 'create',
           label: `Search "${normalizedQuery}" in a new tab`,
           description: 'Open search results in a fresh tab',
-          score: 55,
+          score: 440,
           onSelect: () => {
             window.api
-              .INVOKE<{ id: string }>('CREATE_TAB', { url: searchUrl })
+              .INVOKE<{ id: string }>('CREATE_TAB', {
+                url: `https://google.com/search?q=${encodeURIComponent(normalizedQuery)}`,
+              })
               // @ts-ignore
               .finally(closeSpotlight)
           },
         })
       }
 
-      extraActions.push({
+      items.push({
         id: 'create:new-tab',
-        kind: 'create' as const,
+        kind: 'create',
         label: 'Create new tab',
         description: 'Open a blank tab',
-        score: 40,
+        score: 420,
         onSelect: () => {
           // @ts-ignore
           window.api.INVOKE<{ id: string }>('CREATE_TAB').finally(closeSpotlight)
         },
       })
     } else {
-      extraActions.push({
+      items.push({
         id: 'create:new-tab',
-        kind: 'create' as const,
+        kind: 'create',
         label: 'Create new tab',
         description: 'Open a fresh tab',
-        score: 110,
+        score: 200,
         onSelect: () => {
           // @ts-ignore
           window.api.INVOKE<{ id: string }>('CREATE_TAB').finally(closeSpotlight)
@@ -258,8 +334,8 @@ export const SpotlightComponent = () => {
       })
     }
 
-    return [...matchingTabs, ...historyEntries, ...extraActions].sort((a, b) => b.score - a.score)
-  }, [normalizedQuery, tabs, history, activeTabId])
+    return items.sort((a, b) => b.score - a.score)
+  }, [normalizedQuery, tabs, history, recentHistory, activeTabId])
 
   useEffect(() => {
     if (activeIndex >= actions.length) {

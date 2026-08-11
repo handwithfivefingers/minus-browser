@@ -8,6 +8,7 @@ import { IUserInterface } from '~/shared/types'
 
 import { AiSidebar, NotificationContainer, SideMenu, UpdateBanner } from '../components'
 import Header from '../components/header'
+import { CaptureBar } from '../components/vault/CaptureBar'
 import { useAiSidebarStore } from '../features/aiSider/stores/useAiSidebarStore'
 import { useTabEvents } from '../hooks/useTabEvents'
 import { useTranslation } from '../hooks/useTranslation'
@@ -126,6 +127,7 @@ const Layout = () => {
           onTogglePreventHibernate={() => window.api.INVOKE('TOGGLE_PREVENT_HIBERNATE', { id: tabId })}
           onCapturePage={() => window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_PAGE)}
         />
+        <CaptureBar />
         <NotificationContainer />
         <UpdateBanner />
         <div className={LAYOUT_CLASS[layout as keyof typeof LAYOUT_CLASS]}>

@@ -28,6 +28,16 @@ export class CommandController {
         click: () => this.onCreateTabCallback(),
       }),
       new MenuItem({
+        label: 'Next Tab',
+        accelerator: 'Control+Tab',
+        click: () => this.onSwitchToNextTab(),
+      }),
+      new MenuItem({
+        label: 'Previous Tab',
+        accelerator: 'Control+Shift+Tab',
+        click: () => this.onSwitchToPreviousTab(),
+      }),
+      new MenuItem({
         label: 'Spotlight',
         accelerator: 'CommandOrControl+K',
         click: () => this.onOpenSpotlight(),
@@ -77,6 +87,12 @@ export class CommandController {
 
   onCreateTabCallback() {
     this.viewController.createTab()
+  }
+  onSwitchToNextTab() {
+    this.viewController.switchTab(1)
+  }
+  onSwitchToPreviousTab() {
+    this.viewController.switchTab(-1)
   }
   onToggleDevTools() {
     // let view = BrowserWindow.getFocusedWindow();

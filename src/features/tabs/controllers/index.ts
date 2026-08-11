@@ -214,6 +214,16 @@ export class TabController {
   getTabById(id: string) {
     return this.tabs.get(id) || null
   }
+
+  getTabByWebContents(webContents: Electron.WebContents) {
+    for (const [, tab] of this.tabs) {
+      if (tab.isAlive && tab.webContents.id === webContents.id) {
+        return tab
+      }
+    }
+    return null
+  }
+
   async addNewTab(tab?: Partial<Tab>) {
     const tabObject = new Tab({
       isFocused: false,

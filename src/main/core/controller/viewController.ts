@@ -23,6 +23,7 @@ import { Tab } from '~/features/tabs/models/tab'
 import { registerGMAPIHandlers } from '~/features/userscript/gm-api'
 import { registerErrorHandler } from '~/features/userscript/services/error-service'
 import { startUpdateChecker } from '~/features/userscript/services/update-service'
+import { registerVaultPageIpc } from '~/features/vault/controllers/pageIpc'
 import { historyController, HistoryRoute } from '~/main/core/controller/history'
 import { TodoRoute } from '~/main/core/controller/todo'
 import { IHandleResizeView, IPC, ITab } from '~/main/core/interfaces'
@@ -181,9 +182,6 @@ export class ViewController {
         [IPC_RENDERER_EVENT.VAULT_CREDENTIAL_DETECTED]: (data) => {
           this.window.webContents.send(IPC_RENDERER_EVENT.VAULT_CREDENTIAL_DETECTED, data)
         },
-        [IPC_RENDERER_EVENT.FILL_PASSWORD_REQUEST]: (data) => {
-          this.window.webContents.send(IPC_RENDERER_EVENT.FILL_PASSWORD_REQUEST, data)
-        },
         [IPC_RENDERER_EVENT.TRANSLATE_LANGUAGE_DETECTED]: (data) => {
           this.window.webContents.send(IPC_RENDERER_EVENT.TRANSLATE_LANGUAGE_DETECTED, data)
         },
@@ -256,6 +254,11 @@ export class ViewController {
 
   async init() {
     try {
+      setImmediate(() => {
+        subWindowService.warmup().catch(() => {
+          console.log('subWindowService warmup error')
+        })
+      })
       await Promise.all([
         this.initializeHandlers(),
         this.tabController?.initialize(),
@@ -264,6 +267,7 @@ export class ViewController {
         permissionStore.initialize(),
       ])
       tabGroupController.onChanged = () => this.syncTabsToWindows()
+      this.window.on('focus', () => this.focusActiveTab())
       ipcMain.handle('invoke', (event, args: IPC) => this.onInvoke(args))
       ipcMain.on('send', (event, args: IPC) => this.onListener(args))
 
@@ -303,6 +307,14 @@ export class ViewController {
       registerGMAPIHandlers()
       registerErrorHandler()
       startUpdateChecker()
+      registerVaultPageIpc({
+        isVaultEnabled: () => this.userInterface?.extension?.vault !== false,
+        getNeverSaveDomains: () => this.userInterface?.passwordsNeverSaveDomains || [],
+        findTabId: (wc) => this.tabController?.getTabByWebContents(wc)?.id,
+        onCredentialDetected: (payload) => {
+          this.window.webContents.send(IPC_RENDERER_EVENT.VAULT_CREDENTIAL_DETECTED, payload)
+        },
+      })
       initAutoUpdate((channel, data) => this.forwardRendererEvent(channel, data), {
         autoDownload: this.userInterface?.autoDownload,
       })
@@ -388,6 +400,7 @@ export class ViewController {
       currentTab.view.setBounds(props.screen)
       this.tabController?.setActiveTab(currentTab.id)
       this.syncTabsToWindows()
+      currentTab.webContents.focus()
     } catch (error) {
       return new ErrorServices(error)
     }
@@ -517,6 +530,7 @@ export class ViewController {
       hibernateCustomMinutes: 60,
       autoDownload: true,
       notificationRetentionDays: '30',
+      passwordsNeverSaveDomains: [],
     }
     try {
       const userInterface = await cacheSystem.get<IUserInterface>('interface', () => {
@@ -686,6 +700,27 @@ export class ViewController {
     this.forwardRendererEvent('OPEN_TAB_BY_ID', { id: data.id })
     this.tabController?.setActiveTab(data.id)
     this.syncTabsToWindows()
+  }
+
+  switchTab(direction: 1 | -1) {
+    const tabs = this.tabController?.getTabInstances() || []
+    if (tabs.length < 2) return
+    const activeIndex = tabs.findIndex((t) => t.id === this.tabController?.activeTab?.id)
+    const startIndex = activeIndex === -1 ? 0 : activeIndex
+    const count = tabs.length
+    let targetIndex = startIndex + direction
+    if (targetIndex >= count) targetIndex = 0
+    if (targetIndex < 0) targetIndex = count - 1
+    const targetTab = tabs[targetIndex]
+    if (!targetTab) return
+    this.handleOpenTabById({ id: targetTab.id })
+  }
+
+  focusActiveTab() {
+    const tab = this.tabController?.activeTab
+    if (!tab?.isAlive || !tab.view?.getVisible()) return
+    if (subWindowService.isOpen) return
+    tab.webContents.focus()
   }
 
   attachChildView(view: WebContentsView) {

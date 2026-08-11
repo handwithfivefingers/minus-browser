@@ -66,9 +66,18 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
   .toast-close:hover { color: #94a3b8; }
 
   /* List */
+  .backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 50;
+    background: transparent;
+    cursor: default;
+  }
   .list {
+    position: fixed;
+    top: 12px; right: 12px;
     width: 380px;
-    max-height: 480px;
+    max-height: calc(100vh - 24px);
     background: white;
     border-radius: 12px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.15);
@@ -76,6 +85,7 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    z-index: 100;
   }
   .list-header {
     display: flex;
@@ -88,7 +98,7 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
   .list-header button { background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 12px; }
   .list-header button:hover { color: #6366f1; }
   .mark-all { color: #6366f1 !important; font-size: 11px !important; display: flex; align-items: center; gap: 4px; }
-  .items { flex: 1; overflow-y: auto; max-height: 430px; }
+  .items { flex: 1; overflow-y: auto; max-height: calc(100vh - 100px); }
   .item {
     display: flex; gap: 10px; padding: 12px 16px;
     border-bottom: 1px solid #f1f5f9; cursor: pointer;
@@ -134,6 +144,8 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <div class="backdrop" id="backdrop" style="display:none"></div>
+
   <div class="list" id="list" style="display:none">
     <div class="list-header">
       <h3>Notifications</h3>
@@ -150,6 +162,7 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
   const api = window.notificationViewAPI;
   const toastEl = document.getElementById('toast');
   const listEl = document.getElementById('list');
+  const backdropEl = document.getElementById('backdrop');
   const items = document.getElementById('items');
   const markAllBtn = document.getElementById('markAllBtn');
   const clearAllBtn = document.getElementById('clearAllBtn');
@@ -188,6 +201,7 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
 
   function dismissToast() {
     if (!toastShowing) return;
+    api.onDismissToast();
     toastEl.className = 'toast dismissing';
     setTimeout(function() {
       toastEl.style.display = 'none';
@@ -263,6 +277,7 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
   closeBtn.onclick = function() { api.onClose(); };
   markAllBtn.onclick = function() { api.onMarkAllRead(); };
   clearAllBtn.onclick = function() { api.onClearAll(); };
+  backdropEl.onclick = function() { api.onClose(); };
 
   /* --- IPC --- */
   api.onToast(function(data) {
@@ -287,11 +302,13 @@ export const NOTIFICATION_LIST_HTML = `<!DOCTYPE html>
 
   api.onShowList(function() {
     listEl.style.display = '';
+    backdropEl.style.display = '';
     renderList();
   });
 
   api.onHideList(function() {
     listEl.style.display = 'none';
+    backdropEl.style.display = 'none';
   });
 </script>
 </body>
