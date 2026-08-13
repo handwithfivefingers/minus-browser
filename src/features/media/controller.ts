@@ -6,7 +6,7 @@ import { MediaTabEntry, MediaVideo } from '~/shared/types'
 
 type TabInfo = { title: string; favicon?: string }
 
-class MediaListController {
+export class MediaListController {
   private tabs = new Map<string, { title: string; favicon?: string; videos: MediaVideo[] }>()
   private infoResolver: (tabId: string) => TabInfo | undefined = () => undefined
   private mainWindow: BrowserWindow | null = null
@@ -21,8 +21,26 @@ class MediaListController {
 
   updateTabVideos(tabId: string, videos: MediaVideo[]) {
     const info = this.infoResolver(tabId)
-    this.tabs.set(tabId, { title: info?.title || '', favicon: info?.favicon, videos })
+    this.tabs.set(tabId, { title: info?.title || '', favicon: info?.favicon, videos: this.dedupeVideos(videos) })
     this.broadcast()
+  }
+
+  private dedupeVideos(videos: MediaVideo[]): MediaVideo[] {
+    const seen = new Set<string>()
+    const result: MediaVideo[] = []
+    for (const video of videos) {
+      const key = this.videoDedupeKey(video)
+      if (seen.has(key)) continue
+      seen.add(key)
+      result.push(video)
+    }
+    return result
+  }
+
+  private videoDedupeKey(video: MediaVideo): string {
+    const src = (video.src || '').trim()
+    if (src && !src.startsWith('blob:')) return `src:${src}`
+    return `content:${video.title}::${video.duration}`
   }
 
   removeTab(tabId: string) {
