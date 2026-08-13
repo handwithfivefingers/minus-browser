@@ -1,6 +1,7 @@
 import { BrowserWindow } from 'electron'
 
 import { ITab } from '~/shared/types'
+import { isSafeUrl } from '~/shared/utils'
 
 export class TabPermission {
   isMuted = false
@@ -31,6 +32,7 @@ export class TabPermission {
     if (!webContents) return
     webContents.setWindowOpenHandler(({ url }) => {
       try {
+        if (!isSafeUrl(url)) return { action: 'deny' }
         const browserView = BrowserWindow.getFocusedWindow()
         browserView?.webContents?.send('CREATE_TAB', { url: url })
         return { action: 'deny' }

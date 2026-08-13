@@ -20,10 +20,13 @@ import { subWindowService } from '~/features/sub-window/service'
 import { tabGroupController } from '~/features/tabGroup'
 import { TabController } from '~/features/tabs/controllers'
 import { Tab } from '~/features/tabs/models/tab'
+import { translateController } from '~/features/translate/controllers'
 import { registerGMAPIHandlers } from '~/features/userscript/gm-api'
 import { registerErrorHandler } from '~/features/userscript/services/error-service'
 import { startUpdateChecker } from '~/features/userscript/services/update-service'
 import { registerVaultPageIpc } from '~/features/vault/controllers/pageIpc'
+import { aiSettingsController } from '~/main/core/controller/aiSettingsController'
+import { aiSettingsInvokeHandlers } from '~/main/core/controller/aiSettingsHandlers'
 import { historyController, HistoryRoute } from '~/main/core/controller/history'
 import { TodoRoute } from '~/main/core/controller/todo'
 import { IHandleResizeView, IPC, ITab } from '~/main/core/interfaces'
@@ -36,6 +39,7 @@ import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from '~/shar
 import { SUB_WINDOW_INVOKE, SUB_WINDOW_RENDERER_EVENT } from '~/shared/constants/ipc/sub-window'
 import { IPC_TAB_GROUP_INVOKE, IPC_TAB_GROUP_RENDERER_EVENT } from '~/shared/constants/ipc/tabGroup'
 import { IUserInterface, PermissionDecision, PermissionType } from '~/shared/types'
+import { isSafeUrl } from '~/shared/utils'
 
 export type EmitToRenderer = (channel: string, data?: unknown) => void
 export class ViewController {
@@ -71,6 +75,19 @@ export class ViewController {
         [IPC_INVOKE_CHANNEL.CLOUD_SAVE]: () => this.persist(),
         [IPC_INVOKE_CHANNEL.INTERFACE_SAVE]: (data) => this.interfaceSave(data),
         ...vaultInvokeHandlers,
+        [IPC_INVOKE_CHANNEL.VAULT_SHOW_CAPTURE]: (data) => {
+          subWindowService.open('/vault-capture', data)
+          return { success: true }
+        },
+        [IPC_INVOKE_CHANNEL.VAULT_NEVER_SAVE]: (data: { hostname?: string }) => {
+          const hostname = (data?.hostname || '').toLowerCase()
+          if (!hostname) return { success: false }
+          const current = this.userInterface?.passwordsNeverSaveDomains || []
+          if (current.includes(hostname)) return { success: true }
+          const next = { ...(this.userInterface as IUserInterface), passwordsNeverSaveDomains: [...current, hostname] }
+          return this.interfaceSave(next).then(() => ({ success: true }))
+        },
+        ...aiSettingsInvokeHandlers,
         ...translateInvokeHandlers,
         ...userScriptInvokeHandlers,
         ...SearchRoute,
@@ -90,11 +107,14 @@ export class ViewController {
 
           const tabIds = group.tabIds
 
-          // If active tab is in this group, switch to another tab first
+          // If active tab is in this group, switch to another visible tab first
           const activeTab = this.tabController?.activeTab
           if (activeTab && tabIds.includes(activeTab.id)) {
             const allTabs = this.tabController?.getTabInstances() || []
-            const targetTab = allTabs.find((t) => t.id && !tabIds.includes(t.id))
+            const hiddenGroupTabIds = this.getHiddenGroupTabIds()
+            const targetTab = allTabs.find(
+              (t) => t.id && !tabIds.includes(t.id) && (t.isPinned || !hiddenGroupTabIds.has(t.id))
+            )
             if (targetTab) {
               if (targetTab.isHibernated) targetTab.wake()
               this.tabController?.setActiveTab(targetTab.id)
@@ -185,7 +205,13 @@ export class ViewController {
         [IPC_RENDERER_EVENT.TRANSLATE_LANGUAGE_DETECTED]: (data) => {
           this.window.webContents.send(IPC_RENDERER_EVENT.TRANSLATE_LANGUAGE_DETECTED, data)
         },
-        [IPC_RENDERER_EVENT.TRANSLATE_SELECTION_AVAILABLE]: (data) => {
+        [IPC_RENDERER_EVENT.TRANSLATE_SELECTION_AVAILABLE]: async (data: { tabId?: string; text?: string }) => {
+          // Auto-translate on text selection only runs when the toggle is enabled.
+          // The context-menu flow sends the event without a tabId and stays available.
+          if (data?.tabId) {
+            const preference = await translateController.getPreference()
+            if (!preference?.autoTranslate) return
+          }
           this.window.webContents.send(IPC_RENDERER_EVENT.TRANSLATE_SELECTION_AVAILABLE, data)
         },
       }
@@ -265,11 +291,12 @@ export class ViewController {
         historyController.initialize(),
         tabGroupController.initialize(),
         permissionStore.initialize(),
+        aiSettingsController.initialize(),
       ])
       tabGroupController.onChanged = () => this.syncTabsToWindows()
       this.window.on('focus', () => this.focusActiveTab())
-      ipcMain.handle('invoke', (event, args: IPC) => this.onInvoke(args))
-      ipcMain.on('send', (event, args: IPC) => this.onListener(args))
+      ipcMain.handle('invoke', (event, args: IPC) => this.onInvoke(args, event))
+      ipcMain.on('send', (event, args: IPC) => this.onListener(args, event))
 
       await this.loadUserInterface()
       this.tabController?.setUserInterface(this.userInterface!)
@@ -338,8 +365,12 @@ export class ViewController {
     return tab?.toJSON()
   }
 
-  private onInvoke(args: IPC) {
+  private onInvoke(args: IPC, event?: Electron.IpcMainInvokeEvent) {
     const { channel, data } = args
+    if (!this.isSenderAllowed(event, channel)) {
+      log.error(`Blocked privileged invoke from untrusted frame: "${channel}"`)
+      return undefined
+    }
     try {
       const handler = this.invokeHandlers?.[channel]
       if (handler) {
@@ -350,8 +381,12 @@ export class ViewController {
     }
   }
 
-  private onListener(args: IPC) {
+  private onListener(args: IPC, event?: Electron.IpcMainEvent) {
     const { channel, data } = args
+    if (!this.isSenderAllowed(event, channel)) {
+      log.error(`Blocked privileged emit from untrusted frame: "${channel}"`)
+      return
+    }
     const handler = this.listenerHandlers?.[channel]
     if (handler) {
       handler(data)
@@ -360,7 +395,31 @@ export class ViewController {
     }
   }
 
+  private isTrustedSender(event?: { sender?: Electron.WebContents }): boolean {
+    if (!event?.sender) return false
+    if (event.sender === this.window.webContents) return true
+    return subWindowService.getWebContents() === event.sender
+  }
+
+  private readonly privilegedChannels = new Set<string>([
+    IPC_INVOKE_CHANNEL.VAULT_LIST,
+    IPC_INVOKE_CHANNEL.VAULT_ADD,
+    IPC_INVOKE_CHANNEL.VAULT_UPDATE,
+    IPC_INVOKE_CHANNEL.VAULT_DELETE,
+    IPC_INVOKE_CHANNEL.VAULT_OPEN_MANAGER,
+    IPC_INVOKE_CHANNEL.CLEAR_BROWSING_DATA,
+    IPC_INVOKE_CHANNEL.AI_GET_API_KEY,
+    IPC_INVOKE_CHANNEL.AI_SET_API_KEY,
+    IPC_INVOKE_CHANNEL.AI_SET_FLOATING_BUTTON,
+  ])
+
+  private isSenderAllowed(event: { sender?: Electron.WebContents } | undefined, channel: string): boolean {
+    if (!this.privilegedChannels.has(channel)) return true
+    return this.isTrustedSender(event)
+  }
+
   async createTab(tab?: Partial<ITab>) {
+    if (tab?.url && !isSafeUrl(tab.url)) return undefined
     const newTab = await this.tabController?.addNewTab(tab)
     this.syncTabsToWindows()
     if (newTab?.id) {
@@ -394,7 +453,7 @@ export class ViewController {
       this.attachChildView(currentTab.view)
       const url1 = currentTab.url
       const url2 = currentTab.webContents.getURL()
-      if (!isSameURl(url1, url2)) {
+      if (!isSameURl(url1, url2) && isSafeUrl(currentTab.url)) {
         currentTab.webContents.loadURL(currentTab.url)
       }
       currentTab.view.setBounds(props.screen)
@@ -413,8 +472,8 @@ export class ViewController {
       const currentTab = this.tabController?.getTabById(id)
       if (!currentTab) throw new Error('Tab not found')
       if (currentTab.isHibernated) {
-        currentTab.wake(url)
-      } else {
+        currentTab.wake(isSafeUrl(url) ? url : currentTab.url)
+      } else if (isSafeUrl(url)) {
         currentTab.webContents.loadURL(url)
       }
       currentTab.updateUrl(url)
@@ -703,7 +762,12 @@ export class ViewController {
   }
 
   switchTab(direction: 1 | -1) {
-    const tabs = this.tabController?.getTabInstances() || []
+    const allTabs = this.tabController?.getTabInstances() || []
+
+    // Tabs of hidden groups are not visible in the sidebar - skip them
+    const hiddenGroupTabIds = this.getHiddenGroupTabIds()
+    const tabs = allTabs.filter((t) => t.isPinned || !hiddenGroupTabIds.has(t.id))
+
     if (tabs.length < 2) return
     const activeIndex = tabs.findIndex((t) => t.id === this.tabController?.activeTab?.id)
     const startIndex = activeIndex === -1 ? 0 : activeIndex
@@ -714,6 +778,15 @@ export class ViewController {
     const targetTab = tabs[targetIndex]
     if (!targetTab) return
     this.handleOpenTabById({ id: targetTab.id })
+  }
+
+  private getHiddenGroupTabIds(): Set<string> {
+    const hiddenTabIds = new Set<string>()
+    for (const group of tabGroupController.getGroups()) {
+      if (!group.hidden) continue
+      for (const id of group.tabIds) hiddenTabIds.add(id)
+    }
+    return hiddenTabIds
   }
 
   focusActiveTab() {

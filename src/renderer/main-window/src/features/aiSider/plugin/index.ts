@@ -1,3 +1,4 @@
+import { aiSettingsController } from '~/main/core/controller/aiSettingsController'
 import { IPC_RENDERER_EVENT } from '~/shared/constants/ipc'
 import { IExecutionContext, ITabLifecycleHooks, ITabPlugin } from '~/shared/types'
 
@@ -21,6 +22,7 @@ export class AiTabPlugin implements ITabPlugin {
   }
 
   private async installAiSelectionCapture(ctx: IExecutionContext) {
+    if (!aiSettingsController.getShowFloatingButton()) return
     try {
       await ctx.webContents.executeJavaScript(AI_SELECTION_SCRIPT, true)
     } catch {

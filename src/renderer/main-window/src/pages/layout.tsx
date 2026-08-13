@@ -8,7 +8,6 @@ import { IUserInterface } from '~/shared/types'
 
 import { AiSidebar, NotificationContainer, SideMenu, UpdateBanner } from '../components'
 import Header from '../components/header'
-import { CaptureBar } from '../components/vault/CaptureBar'
 import { useAiSidebarStore } from '../features/aiSider/stores/useAiSidebarStore'
 import { useTabEvents } from '../hooks/useTabEvents'
 import { useTranslation } from '../hooks/useTranslation'
@@ -33,22 +32,12 @@ const Layout = () => {
   const vault = useVault(tabEvent?.tab)
   const userScript = useUserScript(tabEvent?.tab)
   useEffect(() => {
-    const timeout = setInterval(async () => {
-      const tabs = await tabServices.getTabs()
-      if (tabs?.length) {
-        setTabs?.(tabs)
-        if (timeout) clearInterval(timeout)
-      }
-    }, 1000)
-
     window.api.LISTENER('GET_TABS', (v) => {
-      if (timeout) clearInterval(timeout)
       setTabs(v)
     })
-
-    return () => {
-      if (timeout) clearInterval(timeout)
-    }
+    Promise.resolve(tabServices.getTabs()).then((v) => {
+      if (v) setTabs(v)
+    })
   }, [])
 
   useEffect(() => {
@@ -127,7 +116,6 @@ const Layout = () => {
           onTogglePreventHibernate={() => window.api.INVOKE('TOGGLE_PREVENT_HIBERNATE', { id: tabId })}
           onCapturePage={() => window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_PAGE)}
         />
-        <CaptureBar />
         <NotificationContainer />
         <UpdateBanner />
         <div className={LAYOUT_CLASS[layout as keyof typeof LAYOUT_CLASS]}>

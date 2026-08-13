@@ -13,6 +13,7 @@ import { browserSession } from '~/main/core/services/session'
 import { appDb } from '~/main/core/stores'
 import { AiTabPlugin } from '~/renderer/main-window/src/features/aiSider/plugin'
 import { ITab, IUserInterface } from '~/shared/types'
+import { escapeHtml } from '~/shared/utils'
 
 import { TabPermission } from './permission'
 import { getDefaultViewWebPreferences } from './webPreferences'
@@ -327,7 +328,10 @@ export class Tab extends TabPermission {
 
   private loadErrorPage(tabError: ITab['error']) {
     if (!this._webContents || !tabError) return
-    const title = this.getErrorTitle(tabError.code)
+    const title = escapeHtml(this.getErrorTitle(tabError.code))
+    const code = escapeHtml(tabError.code)
+    const description = escapeHtml(tabError.description)
+    const url = escapeHtml(tabError.url)
     const html = `<!DOCTYPE html>
       <html lang="en">
       <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -348,12 +352,12 @@ export class Tab extends TabPermission {
       </head>
       <body>
       <div class="container">
-        <div class="icon">${tabError.code.startsWith('HTTP_4') || tabError.code.startsWith('HTTP_5') ? '⚠️' : '🔒'}</div>
+        <div class="icon">${code.startsWith('HTTP_4') || code.startsWith('HTTP_5') ? '⚠️' : '🔒'}</div>
         <h1>${title}</h1>
-        ${tabError.httpResponseCode ? `<div class="code-badge">${tabError.httpResponseCode}</div>` : ''}
-        <p>${tabError.description}</p>
-        <div class="url">${tabError.url}</div>
-        <button onclick="location.href='${tabError.url}'">Retry</button>
+        ${tabError.httpResponseCode ? `<div class="code-badge">${escapeHtml(String(tabError.httpResponseCode))}</div>` : ''}
+        <p>${description}</p>
+        <div class="url">${url}</div>
+        <button onclick="location.href='${url}'">Retry</button>
         <button class="secondary" onclick="location.href='https://google.com'">Go to Home</button>
       </div>
       </body>

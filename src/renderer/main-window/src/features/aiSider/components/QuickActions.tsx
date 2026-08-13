@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import { chatCompletion } from '../services/aiProvider'
+import { useStreamingCompletion } from '../hooks/useStreamingCompletion'
 import { buildQuickActionMessages } from '../services/promptTemplates'
 
 const ACTIONS = [
@@ -13,16 +13,18 @@ const ACTIONS = [
 
 const QuickActions = ({ text, onResult }: { text: string; onResult: (result: string) => void }) => {
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
+  const { start } = useStreamingCompletion()
 
   const handleAction = async (actionId: string) => {
     if (!text.trim() || loadingAction) return
     setLoadingAction(actionId)
     try {
-      const messages = buildQuickActionMessages(actionId, text)
-      const result = await chatCompletion(messages, { temperature: 0.3 })
-      onResult(result)
+      await start(() => buildQuickActionMessages(actionId, text), {
+        temperature: 0.3,
+        onChunk: onResult,
+      })
     } catch {
-      onResult('Failed to process. Please try again.')
+      if (!loadingAction) onResult('Failed to process. Please try again.')
     } finally {
       setLoadingAction(null)
     }

@@ -1,18 +1,13 @@
 import { create } from 'zustand'
+import { createJSONStorage, persist } from 'zustand/middleware'
+
+import { useAiSettingsStore } from './useAiSettingsStore'
 
 export type AiSidebarMode = 'chat' | 'summarize' | 'generate' | 'explain' | 'capture'
 
 function getDefaultMode(): AiSidebarMode {
-  try {
-    const raw = localStorage.getItem('minus_ai_settings')
-    if (raw) {
-      const settings = JSON.parse(raw)
-      const mode = settings.defaultMode
-      if (['chat', 'summarize', 'generate', 'explain', 'capture'].includes(mode)) return mode
-    }
-  } catch {
-    console.log('getDefaultMode error')
-  }
+  const mode = useAiSettingsStore.getState().defaultMode
+  if (['chat', 'summarize', 'generate', 'explain', 'capture'].includes(mode)) return mode
   return 'chat'
 }
 
@@ -41,23 +36,32 @@ interface IAiSidebarStore {
   setCapturedImage: (image: string | null) => void
 }
 
-const useAiSidebarStore = create<IAiSidebarStore>((set) => ({
-  isOpen: false,
-  activeMode: getDefaultMode(),
-  width: 380,
-  pendingText: '',
-  chatMessages: [],
-  capturedImage: null,
-  toggle: () => set((state) => ({ isOpen: !state.isOpen })),
-  open: () => set({ isOpen: true }),
-  close: () => set({ isOpen: false }),
-  setMode: (mode) => set({ activeMode: mode }),
-  setWidth: (width) => set({ width }),
-  setPendingText: (text) => set({ pendingText: text }),
-  clearPendingText: () => set({ pendingText: '' }),
-  setChatMessages: (messages) => set({ chatMessages: messages }),
-  clearChatMessages: () => set({ chatMessages: [] }),
-  setCapturedImage: (image) => set({ capturedImage: image }),
-}))
+const useAiSidebarStore = create<IAiSidebarStore>()(
+  persist(
+    (set) => ({
+      isOpen: false,
+      activeMode: getDefaultMode(),
+      width: 380,
+      pendingText: '',
+      chatMessages: [],
+      capturedImage: null,
+      toggle: () => set((state) => ({ isOpen: !state.isOpen })),
+      open: () => set({ isOpen: true }),
+      close: () => set({ isOpen: false }),
+      setMode: (mode) => set({ activeMode: mode }),
+      setWidth: (width) => set({ width }),
+      setPendingText: (text) => set({ pendingText: text }),
+      clearPendingText: () => set({ pendingText: '' }),
+      setChatMessages: (messages) => set({ chatMessages: messages }),
+      clearChatMessages: () => set({ chatMessages: [] }),
+      setCapturedImage: (image) => set({ capturedImage: image }),
+    }),
+    {
+      name: 'minus_ai_sidebar',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ chatMessages: state.chatMessages }),
+    }
+  )
+)
 
 export { useAiSidebarStore }

@@ -38,6 +38,11 @@ export class CommandController {
         click: () => this.onSwitchToPreviousTab(),
       }),
       new MenuItem({
+        label: 'Close Tab',
+        accelerator: 'CommandOrControl+F4',
+        click: () => this.onCloseCurrentTab(),
+      }),
+      new MenuItem({
         label: 'Spotlight',
         accelerator: 'CommandOrControl+K',
         click: () => this.onOpenSpotlight(),
@@ -94,12 +99,16 @@ export class CommandController {
   onSwitchToPreviousTab() {
     this.viewController.switchTab(-1)
   }
+  onCloseCurrentTab() {
+    const activeTab = this.viewController?.tabController?.activeTab
+    if (activeTab) {
+      this.viewController.onCloseTab({ id: activeTab.id })
+    }
+  }
   onToggleDevTools() {
-    // let view = BrowserWindow.getFocusedWindow();
-    // view?.webContents?.send("TOGGLE_DEV_TOOLS");
     const view = this.viewController?.tabController?.activeTab
     if (view) {
-      view.webContents.openDevTools()
+      view.webContents.toggleDevTools()
     }
   }
 

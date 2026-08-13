@@ -56,16 +56,19 @@ export function registerVaultPageIpc(deps: IVaultPageIpcDeps): void {
   ipcMain.on('password-form-filled', (event, args) => {
     if (!deps.isVaultEnabled()) return
 
-    const [domain, username, password] = Array.isArray(args) ? args : []
-    if (!domain || !password) return
+    const frameURL = event.senderFrame?.url
+    if (!frameURL || !isHttpUrl(frameURL)) return
 
-    let hostname = String(domain).replace(/^www\./, '')
+    let hostname = ''
     try {
-      hostname = new URL(`https://${hostname}`).hostname.replace(/^www\./, '')
+      hostname = new URL(frameURL).hostname.replace(/^www\./, '')
     } catch {
-      // keep the raw hostname
+      return
     }
     if (!hostname) return
+
+    const [, username, password] = Array.isArray(args) ? args : []
+    if (!password) return
 
     if (deps.getNeverSaveDomains().includes(hostname)) return
 

@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+import { tabGroupController } from '~/features/tabGroup'
+
 const { mockDb } = vi.hoisted(() => ({
   mockDb: {
     query: vi.fn(),
@@ -109,6 +111,7 @@ describe('ViewController tab switching & focus', () => {
     vi.clearAllMocks()
     mockDb.get.mockReturnValue(undefined)
     mockDb.query.mockReturnValue([])
+    tabGroupController.groups.clear()
 
     win = createMockWindow()
     vc = new ViewController(win)
@@ -118,6 +121,19 @@ describe('ViewController tab switching & focus', () => {
     const controller = (vc as any).tabController
     controller.tabs = new Map(tabs.map((t) => [t.id, t]))
     controller.activeTab = tabs[0] ?? null
+  }
+
+  function seedHiddenGroup(tabIds: string[]) {
+    tabGroupController.groups.set('hidden-group', {
+      id: 'hidden-group',
+      name: 'Hidden',
+      color: '#6366f1',
+      tabIds,
+      hidden: true,
+      collapsed: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    })
   }
 
   describe('switchTab', () => {
@@ -174,6 +190,54 @@ describe('ViewController tab switching & focus', () => {
 
     it('does nothing when no tabs exist', () => {
       seedTabs([])
+      const spy = vi.spyOn(vc, 'handleOpenTabById')
+
+      vc.switchTab(1)
+
+      expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('skips tabs that belong to a hidden group', () => {
+      const tabs = [makeTab('a'), makeTab('b'), makeTab('c')]
+      seedTabs(tabs)
+      seedHiddenGroup(['c'])
+      ;(vc as any).tabController.activeTab = tabs[0]
+      const spy = vi.spyOn(vc, 'handleOpenTabById')
+
+      vc.switchTab(1)
+
+      expect(spy).toHaveBeenCalledWith({ id: 'b' })
+    })
+
+    it('skips hidden group tabs when wrapping backward', () => {
+      const tabs = [makeTab('a'), makeTab('b'), makeTab('c')]
+      seedTabs(tabs)
+      seedHiddenGroup(['b'])
+      ;(vc as any).tabController.activeTab = tabs[0]
+      const spy = vi.spyOn(vc, 'handleOpenTabById')
+
+      vc.switchTab(-1)
+
+      expect(spy).toHaveBeenCalledWith({ id: 'c' })
+    })
+
+    it('keeps visible pinned tabs even if their group is hidden', () => {
+      const tabs = [makeTab('a'), makeTab('b'), makeTab('c', { isPinned: true })]
+      seedTabs(tabs)
+      seedHiddenGroup(['c'])
+      ;(vc as any).tabController.activeTab = tabs[1]
+      const spy = vi.spyOn(vc, 'handleOpenTabById')
+
+      vc.switchTab(1)
+
+      expect(spy).toHaveBeenCalledWith({ id: 'c' })
+    })
+
+    it('does nothing when only hidden group tabs remain besides the active one', () => {
+      const tabs = [makeTab('a'), makeTab('b')]
+      seedTabs(tabs)
+      seedHiddenGroup(['b'])
+      ;(vc as any).tabController.activeTab = tabs[0]
       const spy = vi.spyOn(vc, 'handleOpenTabById')
 
       vc.switchTab(1)

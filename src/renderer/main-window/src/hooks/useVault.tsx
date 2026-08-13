@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 
+import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
+
 import { Tab } from '../interfaces'
-import { useVaultCaptureStore } from '../stores/useVaultCaptureStore'
 
 interface IDetectedCredentialPayload {
   tabId?: string
@@ -36,7 +37,7 @@ export const useVault = (tab?: Tab) => {
       )
       if (existing && existing.password === payload.password) return
 
-      useVaultCaptureStore.getState().show({
+      await window.api.INVOKE(IPC_INVOKE_CHANNEL.VAULT_SHOW_CAPTURE, {
         hostname,
         username,
         password: payload.password,

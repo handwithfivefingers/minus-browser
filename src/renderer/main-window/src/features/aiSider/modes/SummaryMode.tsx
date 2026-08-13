@@ -1,27 +1,25 @@
-import { IconCopy, IconCheck, IconReload, IconFileText } from '@tabler/icons-react'
+import { IconCopy, IconCheck, IconReload, IconFileText, IconPlayerStop } from '@tabler/icons-react'
 import { useState } from 'react'
 
-import { summarizePage } from '../services/summarizer'
+import { useStreamingCompletion } from '../hooks/useStreamingCompletion'
+import { getPageText } from '../services/pageReader'
+import { buildSummaryMessages } from '../services/promptTemplates'
 
 const SummaryMode = () => {
-  const [summary, setSummary] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { content: summary, isLoading, error, start, stop } = useStreamingCompletion()
   const [copied, setCopied] = useState(false)
 
-  const handleSummarize = async () => {
-    setError(null)
-    setSummary('')
-    setIsLoading(true)
-    try {
-      const result = await summarizePage('detailed')
-      setSummary(result)
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to summarize'
-      setError(message)
-    } finally {
-      setIsLoading(false)
-    }
+  const handleSummarize = () => {
+    start(
+      async () => {
+        const pageContent = await getPageText()
+        if (!pageContent) {
+          throw new Error('No page content found. Make sure a tab is open and loaded.')
+        }
+        return buildSummaryMessages(pageContent.slice(0, 30000), 'detailed')
+      },
+      { temperature: 0.3 }
+    )
   }
 
   const handleCopy = async () => {
@@ -54,11 +52,19 @@ const SummaryMode = () => {
         )}
 
         {isLoading && (
-          <div className="flex h-full items-center justify-center">
+          <div className="flex h-full flex-col items-center justify-center gap-3">
             <div className="flex flex-col items-center gap-2">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
               <span className="text-xs text-slate-400">Reading page & generating summary...</span>
             </div>
+            <button
+              type="button"
+              onClick={stop}
+              className="flex cursor-pointer items-center gap-1 rounded-lg bg-slate-200 px-3 py-1 text-[10px] text-slate-600 transition-colors hover:bg-red-100 hover:text-red-600"
+            >
+              <IconPlayerStop size={12} />
+              Stop
+            </button>
           </div>
         )}
 

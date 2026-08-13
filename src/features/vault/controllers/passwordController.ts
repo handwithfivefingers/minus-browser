@@ -1,5 +1,6 @@
 import { app, safeStorage } from 'electron'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
 import { v7 as uuid_v7 } from 'uuid'
@@ -8,15 +9,15 @@ import { appDb } from '~/main/core/stores'
 
 import { IPasswordItem } from '../../../shared/types/password'
 
-const devDataDir = path.resolve(process.cwd(), 'appData')
+const tmpDataDir = path.join(os.tmpdir(), 'minusbrowser-dev')
 const resolveUserDataDir = () => {
   try {
     return app.getPath('userData')
   } catch {
-    return devDataDir
+    return tmpDataDir
   }
 }
-const baseDir = process.env.NODE_ENV === 'development' ? devDataDir : resolveUserDataDir()
+const baseDir = resolveUserDataDir()
 const passwordFilePath = path.join(baseDir, 'passwordStore')
 
 /*
@@ -77,24 +78,15 @@ export class PasswordController {
   }
 
   private readFile(): IPasswordFile | null {
+    if (!safeStorage.isEncryptionAvailable()) return null
     let file: Buffer
     try {
       file = fs.readFileSync(passwordFilePath)
     } catch {
       return null
     }
-    let json = ''
     try {
-      if (safeStorage.isEncryptionAvailable()) {
-        json = safeStorage.decryptString(file)
-      } else {
-        json = file.toString('utf-8')
-      }
-    } catch {
-      // file may have been written in plaintext/base64 when encryption was unavailable
-      json = file.toString('utf-8')
-    }
-    try {
+      const json = safeStorage.decryptString(file)
       const parsed = JSON.parse(json)
       if (!parsed || !Array.isArray(parsed.credentials)) return null
       return parsed as IPasswordFile
@@ -104,30 +96,29 @@ export class PasswordController {
   }
 
   private writeFile(list: IPasswordItem[]) {
+    if (!safeStorage.isEncryptionAvailable()) {
+      console.warn('safeStorage unavailable — password vault is kept in memory only, not persisted to disk')
+      return
+    }
     const json = JSON.stringify({ version: 1, credentials: list })
-    const data = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(json) : Buffer.from(json, 'utf-8')
+    const data = safeStorage.encryptString(json)
     fs.mkdirSync(path.dirname(passwordFilePath), { recursive: true })
     fs.writeFileSync(passwordFilePath, data)
   }
 
   private decryptString(encrypted: string): string {
-    if (!encrypted) return ''
+    if (!encrypted || !safeStorage.isEncryptionAvailable()) return ''
     try {
       const cipher = Buffer.from(encrypted, 'base64')
-      if (safeStorage.isEncryptionAvailable()) {
-        return safeStorage.decryptString(cipher)
-      }
-      return cipher.toString('utf-8')
+      return safeStorage.decryptString(cipher)
     } catch {
       return ''
     }
   }
 
   private encryptString(password: string): string {
-    if (safeStorage.isEncryptionAvailable()) {
-      return safeStorage.encryptString(password).toString('base64')
-    }
-    return Buffer.from(password, 'utf-8').toString('base64')
+    if (!safeStorage.isEncryptionAvailable()) return ''
+    return safeStorage.encryptString(password).toString('base64')
   }
 
   private async migrateFromSqlite() {

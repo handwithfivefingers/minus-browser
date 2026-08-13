@@ -17,6 +17,8 @@ import {
 import clsx from 'clsx'
 import { useCallback, useEffect, useState } from 'react'
 
+import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
+
 import { useAiSidebarStore } from '../../features/aiSider/stores/useAiSidebarStore'
 import { useMinusThemeStore } from '../../stores/useMinusTheme'
 
@@ -73,7 +75,7 @@ const Header = ({
 
   useEffect(() => {
     ;(async () => {
-      const s = await (window.api.INVOKE as any)('@adb/get-stats')
+      const s = await window.api.INVOKE<{ blockedRequests: number }>(IPC_INVOKE_CHANNEL.ADB_GET_STATS)
       setStats(s)
     })()
   }, [])

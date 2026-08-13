@@ -3,7 +3,7 @@ import log from 'electron-log'
 import { cacheSystem } from '~/features/cacheSystem'
 import { tabGroupController } from '~/features/tabGroup'
 import { appDb } from '~/main/core/stores'
-import { IUserInterface, ITab } from '~/shared/types'
+import { IUserInterface } from '~/shared/types'
 
 import { Tab } from '../models/tab'
 
@@ -60,6 +60,7 @@ export class TabController {
   tabs: Map<string, Tab> = new Map()
   eventEmitter: <T>(payload: { channel: string; data: T }) => void
   private _userInterface: IUserInterface | null = null
+  private persistedTabIds = new Set<string>()
 
   private hibernateTimer: ReturnType<typeof setInterval> | null = null
   private hibernateAfterMs: number = 60 * 60 * 1000
@@ -125,6 +126,7 @@ export class TabController {
       this.tabsIndex = tabsIndex
       this.tabs = newTabs
       this.index = idx
+      this.persistedTabIds = new Set(Array.from(newTabs.keys()))
       this.startHibernateTimer()
       return this
     } catch (error) {
@@ -325,10 +327,35 @@ export class TabController {
     }
     cacheSystem.set('tab', persisted as any)
     appDb.transaction(() => {
-      appDb.run('DELETE FROM tabs')
+      const currentIds = new Set(tabs.map((t) => t.id))
+      for (const id of this.persistedTabIds) {
+        if (!currentIds.has(id)) {
+          appDb.run('DELETE FROM tabs WHERE id = ?', [id])
+        }
+      }
+      this.persistedTabIds = currentIds
       for (const tab of tabs || []) {
         appDb.run(
-          'INSERT INTO tabs (id, title, url, is_pinned, is_focused, "index", favicon, timestamp, is_bookmarked, is_hibernated, prevent_hibernate, group_id, audible, is_muted, is_using_camera, is_using_microphone, is_using_screen_share, blocked_notifications, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          `INSERT INTO tabs (id, title, url, is_pinned, is_focused, "index", favicon, timestamp, is_bookmarked, is_hibernated, prevent_hibernate, group_id, audible, is_muted, is_using_camera, is_using_microphone, is_using_screen_share, blocked_notifications, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             title = excluded.title,
+             url = excluded.url,
+             is_pinned = excluded.is_pinned,
+             is_focused = excluded.is_focused,
+             "index" = excluded."index",
+             favicon = excluded.favicon,
+             timestamp = excluded.timestamp,
+             is_bookmarked = excluded.is_bookmarked,
+             is_hibernated = excluded.is_hibernated,
+             prevent_hibernate = excluded.prevent_hibernate,
+             group_id = excluded.group_id,
+             audible = excluded.audible,
+             is_muted = excluded.is_muted,
+             is_using_camera = excluded.is_using_camera,
+             is_using_microphone = excluded.is_using_microphone,
+             is_using_screen_share = excluded.is_using_screen_share,
+             blocked_notifications = excluded.blocked_notifications,
+             error = excluded.error`,
           [
             tab.id,
             tab.title,

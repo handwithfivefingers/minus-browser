@@ -63,7 +63,7 @@ describe('PasswordController', () => {
   })
 
   describe('initialize', () => {
-    it('loads passwords from file', async () => {
+    it('loads passwords from file when encryption is available', async () => {
       const items = [
         {
           id: 'p1',
@@ -75,7 +75,9 @@ describe('PasswordController', () => {
           updatedAt: 200,
         },
       ]
-      mockFs.readFileSync.mockReturnValue(Buffer.from(JSON.stringify({ version: 1, credentials: items })))
+      mockSafeStorage.isEncryptionAvailable.mockReturnValue(true)
+      mockSafeStorage.decryptString.mockReturnValue(JSON.stringify({ version: 1, credentials: items }))
+      mockFs.readFileSync.mockReturnValue(Buffer.from('encrypted-blob'))
       await controller.initialize()
       expect(await controller.list()).toHaveLength(1)
       expect(controller.getById('p1')?.password).toBe('pass1')
@@ -92,7 +94,17 @@ describe('PasswordController', () => {
       expect(controller.getById('p1')?.password).toBe('secret')
     })
 
-    it('falls back to plaintext when decryption fails', async () => {
+    it('returns empty store when encryption is unavailable (no plaintext fallback)', async () => {
+      const items = [
+        { id: 'p1', site: 'example.com', username: 'u', password: 'plain', notes: '', createdAt: 1, updatedAt: 2 },
+      ]
+      mockSafeStorage.isEncryptionAvailable.mockReturnValue(false)
+      mockFs.readFileSync.mockReturnValue(Buffer.from(JSON.stringify({ version: 1, credentials: items })))
+      await controller.initialize()
+      expect(await controller.list()).toEqual([])
+    })
+
+    it('returns empty store when decryption fails', async () => {
       const items = [
         { id: 'p1', site: 'example.com', username: 'u', password: 'plain', notes: '', createdAt: 1, updatedAt: 2 },
       ]
@@ -102,11 +114,12 @@ describe('PasswordController', () => {
         throw new Error('decrypt failed')
       })
       await controller.initialize()
-      expect(controller.getById('p1')?.password).toBe('plain')
+      expect(await controller.list()).toEqual([])
     })
 
     it('migrates from sqlite when no file exists', async () => {
-      const encPassword = Buffer.from('pass1').toString('base64')
+      const encPassword = Buffer.from('enc:pass1').toString('base64')
+      mockSafeStorage.isEncryptionAvailable.mockReturnValue(true)
       mockDb.query.mockReturnValue([
         {
           id: 'p1',
@@ -137,6 +150,7 @@ describe('PasswordController', () => {
 
   describe('add', () => {
     it('adds a password item and persists to file', async () => {
+      mockSafeStorage.isEncryptionAvailable.mockReturnValue(true)
       const item = await controller.add({ site: 'example.com', username: 'user', password: 'secret' })
       expect(item.site).toBe('example.com')
       expect(item.username).toBe('user')
@@ -243,13 +257,11 @@ describe('PasswordController', () => {
       expect(mockSafeStorage.encryptString).toHaveBeenCalledWith(expect.stringContaining('secure.com'))
     })
 
-    it('writes plaintext when safeStorage is unavailable', async () => {
+    it('never writes credentials to disk when safeStorage is unavailable', async () => {
       mockSafeStorage.isEncryptionAvailable.mockReturnValue(false)
       await controller.add({ site: 'plain.com', username: 'u', password: 'visible' })
-      const args = mockFs.writeFileSync.mock.calls[0]
-      const data = args[1] as Buffer
-      const parsed = JSON.parse(data.toString('utf-8'))
-      expect(parsed.credentials[0].password).toBe('visible')
+      expect(mockFs.writeFileSync).not.toHaveBeenCalled()
+      expect(await controller.list()).toHaveLength(1)
     })
   })
 })

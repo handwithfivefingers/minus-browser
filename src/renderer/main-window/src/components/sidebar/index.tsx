@@ -1,35 +1,22 @@
-import { IconComponents, IconHistory, IconHome, IconPlus, IconSettings } from '@tabler/icons-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { IconHome } from '@tabler/icons-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary'
 import { Link, useLocation, useNavigate } from 'react-router'
 
 import { IPC_TAB_GROUP_EMIT, IPC_TAB_GROUP_INVOKE, IPC_TAB_GROUP_RENDERER_EVENT } from '~/shared/constants/ipc/tabGroup'
 
-import { NotificationBell } from '../../features/notification'
 import { Tab } from '../../interfaces/tab'
 import { cn } from '../../libs/cn'
-import { useMinusThemeStore } from '../../stores/useMinusTheme'
 import { useTabGroupStore } from '../../stores/useTabGroupStore'
 import { useTabStore } from '../../stores/useTabStore'
 import { TabItem } from '../tab'
 import { TabGroupContainer } from '../tabGroup'
 
+import { ResizableSidebar } from './ResizableSidebar'
+import { SubMenuItem } from './SubMenuItem'
 /** @ts-ignore */
 import styles from './styles.module.css'
-
-type DragState = {
-  id: string
-  index: number
-  startY: number
-}
-
-interface IResizeProps {
-  children: React.ReactNode
-  initialWidth?: number
-  minWidth?: number
-  maxWidth?: number
-  className?: string
-}
+import { useTabDrag } from './useTabDrag'
 
 const SideMenu = () => {
   const navigate = useNavigate()
@@ -60,16 +47,7 @@ const SideMenu = () => {
     return map
   }, [groups, unpinnedTabs])
 
-  const [draggedTabId, setDraggedTabId] = useState<string | null>(null)
-  const [dropIndicator, setDropIndicator] = useState<{
-    tabId: string
-    position: 'before' | 'after'
-    groupId?: string
-  } | null>(null)
-  // Group creation is handled by the overlay (SHOW_TAB_CONTEXT_MENU)
-  const dropTargetRef = useRef<{ tabId: string; position: 'before' | 'after'; groupId?: string } | null>(null)
-  const dragState = useRef<(DragState & { groupId?: string }) | null>(null)
-  const active = useRef(false)
+  const { draggedTabId, dropIndicator, getDragHandleProps } = useTabDrag(tabs)
 
   const onAddNewTab = async (payload: Partial<Tab>) => {
     const tab = await window.api.INVOKE<Tab>('CREATE_TAB', payload)
@@ -80,11 +58,11 @@ const SideMenu = () => {
 
   useEffect(() => {
     ;(async () => {
-      const groups = await window.api.INVOKE<any>(IPC_TAB_GROUP_INVOKE.GET_TAB_GROUPS)
-      if (groups) setGroups(groups)
+      const groups = await window.api.INVOKE(IPC_TAB_GROUP_INVOKE.GET_TAB_GROUPS)
+      if (groups) setGroups(groups as any)
     })()
     window.api.LISTENER('CREATE_TAB', (p) => {
-      onAddNewTab(p)
+      onAddNewTab(p as Partial<Tab>)
     })
     window.api.LISTENER(IPC_TAB_GROUP_RENDERER_EVENT.TAB_GROUP_UPDATED, (data) => {
       setGroups(data as any)
@@ -132,112 +110,6 @@ const SideMenu = () => {
       y: e.clientY,
     })
   }, [])
-
-  // Unified drag system — one set of global listeners
-  useEffect(() => {
-    const handleMove = (e: MouseEvent | TouchEvent) => {
-      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-      const ds = dragState.current
-      if (!ds) return
-
-      if (!active.current && Math.abs(clientY - ds.startY) > 5) {
-        active.current = true
-        setDraggedTabId(ds.id)
-      }
-      if (!active.current) return
-
-      const el = document.elementFromPoint('touches' in e ? e.touches[0].clientX : e.clientX, clientY)
-      const wrapper = el?.closest<HTMLElement>('[data-dnd-id]')
-      const groupHeader = el?.closest<HTMLElement>('[data-group-id]')
-      if (wrapper) {
-        const targetId = wrapper.dataset.dndId!
-        const targetGroupId = wrapper.dataset.groupId || ds.groupId
-        if (targetId !== ds.id) {
-          const rect = wrapper.getBoundingClientRect()
-          const relY = clientY - rect.top
-          const position: 'before' | 'after' = relY < rect.height / 2 ? 'before' : 'after'
-          const next = { tabId: targetId, position, groupId: targetGroupId }
-          dropTargetRef.current = next
-          setDropIndicator(next)
-        } else {
-          dropTargetRef.current = null
-          setDropIndicator(null)
-        }
-      } else if (groupHeader && ds.groupId && groupHeader.dataset.groupId !== ds.groupId) {
-        // Dragging a tab onto a different group header -> move to that group
-        const next = { tabId: ds.id, position: 'after' as const, groupId: groupHeader.dataset.groupId }
-        dropTargetRef.current = next
-        setDropIndicator(next)
-      } else {
-        dropTargetRef.current = null
-        setDropIndicator(null)
-      }
-    }
-
-    const handleUp = () => {
-      const ds = dragState.current
-      const dt = dropTargetRef.current
-      if (active.current && ds) {
-        if (dt && dt.tabId !== ds.id) {
-          const currentUnpinned = tabs.filter((t) => !t.isPinned)
-          const currentPinned = tabs.filter((t) => t.isPinned)
-
-          // Cross-group move
-          if (dt.groupId && ds.groupId !== dt.groupId) {
-            window.api.INVOKE(IPC_TAB_GROUP_INVOKE.ADD_TAB_TO_GROUP, { groupId: dt.groupId, tabId: ds.id })
-          }
-
-          // Remove from previous group if it was in one
-          if (ds.groupId && (!dt || dt.groupId !== ds.groupId)) {
-            window.api.INVOKE(IPC_TAB_GROUP_INVOKE.REMOVE_TAB_FROM_GROUP, { groupId: ds.groupId, tabId: ds.id })
-          }
-
-          // Reorder within the same context (grouped or ungrouped)
-          const draggedIdx = currentUnpinned.findIndex((t) => t.id === ds.id)
-          const targetIdx = currentUnpinned.findIndex((t) => t.id === dt.tabId)
-          if (draggedIdx !== -1 && targetIdx !== -1) {
-            const newUnpinned = [...currentUnpinned]
-            const [removed] = newUnpinned.splice(draggedIdx, 1)
-            newUnpinned.splice(targetIdx, 0, removed)
-            const orderedIds = [...currentPinned.map((t) => t.id), ...newUnpinned.map((t) => t.id)]
-            window.api.EMIT('REORDER_TABS', { orderedIds })
-          }
-        } else if (!dt && ds.groupId) {
-          // Dragged outside any group -> remove from group
-          window.api.INVOKE(IPC_TAB_GROUP_INVOKE.REMOVE_TAB_FROM_GROUP, { groupId: ds.groupId, tabId: ds.id })
-        }
-      }
-      active.current = false
-      dragState.current = null
-      dropTargetRef.current = null
-      setDraggedTabId(null)
-      setDropIndicator(null)
-    }
-
-    document.addEventListener('mousemove', handleMove)
-    document.addEventListener('mouseup', handleUp)
-    document.addEventListener('touchmove', handleMove, { passive: true })
-    document.addEventListener('touchend', handleUp)
-    return () => {
-      document.removeEventListener('mousemove', handleMove)
-      document.removeEventListener('mouseup', handleUp)
-      document.removeEventListener('touchmove', handleMove)
-      document.removeEventListener('touchend', handleUp)
-    }
-  }, [tabs])
-
-  const getDragHandleProps = useCallback(
-    (tabId: string, index: number, groupId?: string) => ({
-      onMouseDown: (e: React.MouseEvent) => {
-        e.preventDefault()
-        dragState.current = { id: tabId, index, startY: e.clientY, groupId }
-      },
-      onTouchStart: (e: React.TouchEvent) => {
-        dragState.current = { id: tabId, index, startY: e.touches[0].clientY, groupId }
-      },
-    }),
-    []
-  )
 
   return (
     <ErrorBoundary FallbackComponent={(fallbackProps) => <ComponentError {...fallbackProps} />}>
@@ -337,155 +209,6 @@ const SideMenu = () => {
   )
 }
 
-const SubMenuItem = ({ tabs, onAddNewTab }: { tabs: Tab[]; onAddNewTab: (tab: Partial<Tab>) => void }) => {
-  const pathname = useLocation().pathname
-  return (
-    <div className="sticky bottom-0 flex flex-col items-center border-t border-slate-300 py-2 dark:border-slate-700">
-      <button
-        onClick={() => {
-          if (tabs.length > 0) {
-            const activeId = tabs.find((t) => t.isFocused)?.id || tabs[0]?.id
-            // const group = groups.find((g) => g.tabIds.includes(activeId));
-            window.api.EMIT(IPC_TAB_GROUP_EMIT.SHOW_TAB_CONTEXT_MENU, {
-              x: 100,
-              y: 100,
-            })
-          }
-        }}
-        className=" z-1 flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-md px-0.5 py-1 text-slate-500 transition-colors hover:bg-white hover:text-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800"
-        title="Group tabs together — right-click any tab to add it to a group"
-      >
-        <IconComponents size={16} />
-        <span className="text-[10px] font-medium">Groups</span>
-      </button>
-
-      <button
-        onClick={() => onAddNewTab({})}
-        className=" z-1 flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-md px-0.5 py-1 text-slate-500 transition-colors hover:bg-white hover:text-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800"
-      >
-        <IconPlus size={16} />
-        <span className="text-[10px] font-medium">New Tab</span>
-      </button>
-      <NotificationBell />
-      <Link
-        to="/history"
-        className={cn(
-          ' z-1 flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-md px-0.5 py-1 text-slate-500 transition-colors hover:bg-white hover:text-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800',
-          {
-            [`bg-white text-slate-500 shadow-md dark:bg-slate-700 dark:text-slate-300`]: pathname === '/history',
-            // [`text-slate-500 dark:text-slate-500`]: pathname !== "/history",
-          }
-        )}
-      >
-        <IconHistory size={16} />
-        <span className="text-[10px] font-medium">History</span>
-      </Link>
-      <Link
-        to="/setting"
-        className={cn(
-          ' z-1 flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-md px-0.5 py-1 text-slate-500 transition-colors hover:bg-white hover:text-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800',
-          {
-            [`bg-white text-slate-500 shadow-md dark:bg-slate-700 dark:text-slate-300`]: pathname === '/setting',
-            // [`text-slate-500 dark:text-slate-500`]: pathname !== "/setting",
-          }
-        )}
-      >
-        <IconSettings size={16} />
-        <span className="text-[10px] font-medium">Setting</span>
-      </Link>
-    </div>
-  )
-}
-
-const LAYOUT_SIDEBAR_CLASS = {
-  BASIC:
-    'flex-shrink-0 flex flex-col px-1 py-2 bg-slate-100 dark:bg-slate-900 gap-1.5 transition-all h-full border-r border-slate-300 dark:border-slate-700',
-  FLOATING:
-    'flex-shrink-0 flex flex-col px-1 py-2 bg-slate-100 dark:bg-slate-900 gap-1.5 transition-all rounded-lg h-full',
-}
-
-const ResizableSidebar = ({
-  className,
-  children,
-  initialWidth = 250,
-  minWidth = 150,
-  maxWidth = 600,
-}: IResizeProps) => {
-  const [width, setWidth] = useState(initialWidth)
-  const [isDragging, setIsDragging] = useState(false)
-  const sidebarRef = useRef(null)
-  const { layout } = useMinusThemeStore()
-
-  // Start resize when mousedown on the drag handle
-  const startResize = (e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }
-
-  // Handle resize during mousemove
-  useEffect(() => {
-    const handleResize = (e: MouseEvent) => {
-      if (!isDragging) return
-
-      // Calculate new width based on mouse position
-      const newWidth = e.clientX
-
-      // Apply min/max constraints
-      if (newWidth >= minWidth && newWidth <= maxWidth) {
-        setWidth(newWidth)
-      }
-    }
-
-    const stopResize = () => {
-      setIsDragging(false)
-    }
-
-    if (isDragging) {
-      document.addEventListener('mousemove', handleResize)
-      document.addEventListener('mouseup', stopResize)
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleResize)
-      document.removeEventListener('mouseup', stopResize)
-    }
-  }, [isDragging, minWidth, maxWidth])
-
-  return (
-    <div
-      ref={sidebarRef}
-      className={cn('sidebar-container ', LAYOUT_SIDEBAR_CLASS[layout as keyof typeof LAYOUT_SIDEBAR_CLASS], className)}
-      style={{
-        width: `${width}px`,
-        position: 'relative',
-        height: '100%',
-        transition: isDragging ? 'none' : 'width 0.1s ease-out',
-        overflow: 'hidden',
-      }}
-    >
-      <div className="sidebar-content flex h-full flex-col gap-1" style={{ width: '100%' }}>
-        {children}
-      </div>
-
-      {/* Resize handle */}
-      <div
-        className="resize-handle hover:bg-slate-500 dark:hover:bg-slate-400"
-        onMouseDown={startResize}
-        tabIndex={-1}
-        aria-hidden
-        style={{
-          position: 'absolute',
-          right: '0',
-          top: '0',
-          bottom: '0',
-          width: '4px',
-          cursor: 'col-resize',
-          backgroundColor: isDragging ? '#718096' : 'transparent',
-        }}
-      />
-    </div>
-  )
-}
 const ComponentError = ({ error }: FallbackProps) => {
   console.error('Stack', (error as Error)?.stack)
   console.error('Name', (error as Error)?.name)

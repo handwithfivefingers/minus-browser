@@ -11,30 +11,17 @@ const useTabStore = create<TabStore>((set, get) => ({
   updateTab: (tabId: string, tab: Partial<Tab>) => {
     return set((state) => {
       const index = state.tabs.findIndex((item) => item.id === tabId)
-      if (index !== -1) {
-        let target = state.tabs[index]
-        target = {
-          ...target,
-          ...tab,
-        }
-        state.tabs[index] = target
-        if (target.id === state.activeTab?.id) {
-          state.activeTab = target
-        }
-        return { ...state }
-      }
-      return state
+      if (index === -1) return state
+      const tabs = state.tabs.map((item) => (item.id === tabId ? { ...item, ...tab } : item))
+      const activeTab = state.activeTab?.id === tabId ? { ...state.activeTab, ...tab } : state.activeTab
+      return { ...state, tabs, activeTab }
     })
   },
   setActiveTab: (tabId: string) =>
     set((state) => {
-      const index = state.tabs.findIndex((item) => item.id === tabId)
-      if (index !== -1) {
-        const target = state.tabs[index]
-        state.activeTab = target
-        return { ...state }
-      }
-      return state
+      const target = state.tabs.find((item) => item.id === tabId)
+      if (!target) return state
+      return { ...state, activeTab: target }
     }),
   sync: () => {
     try {
