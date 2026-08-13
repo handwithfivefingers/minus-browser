@@ -4,10 +4,10 @@ import {
   IconChevronLeft,
   IconCode,
   IconCodeDots,
+  IconDeviceTv,
   IconKey,
   IconLanguage,
   IconLock,
-  IconPictureInPicture,
   IconReload,
   IconSearch,
   IconShieldCancel,
@@ -20,6 +20,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
 
 import { useAiSidebarStore } from '../../features/aiSider/stores/useAiSidebarStore'
+import { useMediaListStore } from '../../stores/useMediaListStore'
 import { useMinusThemeStore } from '../../stores/useMinusTheme'
 
 // @ts-ignore
@@ -31,7 +32,6 @@ interface IHeader {
   onBackWard: () => void
   onToggleDevTools: () => void
   onReload: () => void
-  onRequestPIP: () => void
   // onFillPassword: () => void;
   onOpenVaultManager: () => void
   onOpenUserscriptManager: () => void
@@ -61,7 +61,6 @@ const Header = ({
   onBackWard,
   onToggleDevTools,
   onReload,
-  onRequestPIP,
   onOpenVaultManager,
   onOpenUserscriptManager,
   onTranslatePage,
@@ -71,6 +70,7 @@ const Header = ({
   onTogglePreventHibernate,
 }: IHeader) => {
   const { layout, extension } = useMinusThemeStore()
+  const mediaTabs = useMediaListStore((s) => s.tabs)
   const [stats, setStats] = useState<{ blockedRequests: number } | null>(null)
 
   useEffect(() => {
@@ -92,11 +92,14 @@ const Header = ({
   const openSpotlight = () => {
     onOpenSpotlight(url || '')
   }
+  const openMediaList = (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    window.api.EMIT('OPEN_MEDIA_LIST', { anchor: { x: rect.left, y: rect.bottom } })
+  }
   const onClose = useCallback(() => {
     window.api.EMIT('CLOSE_APP')
   }, [])
 
-  // if (!id) return null;
   return (
     <div
       className={clsx(LAYOUT_HEADER_CLASS.BASE, LAYOUT_HEADER_CLASS[layout as keyof typeof LAYOUT_HEADER_CLASS])}
@@ -213,13 +216,16 @@ const Header = ({
             // },
           )}
         >
-          <button
-            className="cursor-pointer rounded p-1 transition-all hover:bg-indigo-500 hover:text-white"
-            onClick={onRequestPIP}
-            title="Picture in picture"
-          >
-            <IconPictureInPicture size={16} />
-          </button>
+          {mediaTabs.some((t) => t.videos.length > 0) && (
+            <button
+              type="button"
+              className="cursor-pointer rounded p-1 transition-all hover:bg-indigo-500 hover:text-white"
+              onClick={openMediaList}
+              title="Media"
+            >
+              <IconDeviceTv size={16} />
+            </button>
+          )}
           <button
             className="cursor-pointer rounded p-1 transition-all hover:bg-indigo-500 hover:text-white"
             onClick={onToggleDevTools}

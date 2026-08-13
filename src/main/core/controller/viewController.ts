@@ -5,6 +5,7 @@ import log from 'electron-log'
 import { adblocker } from '~/features/adblocker/plugin'
 import { checkForUpdates, initAutoUpdate, quitAndInstall } from '~/features/autoUpdate/autoUpdate.init'
 import { cacheSystem } from '~/features/cacheSystem'
+import { mediaListController } from '~/features/media/controller'
 import { NotificationService } from '~/features/notification/service'
 import { SearchRoute, searchController as splitSearchController } from '~/features/search'
 import {
@@ -57,6 +58,11 @@ export class ViewController {
 
   constructor(window: BrowserWindow) {
     this.tabController = new TabController((payload) => this.onInvoke(payload))
+    mediaListController.setTabInfoResolver((id) => {
+      const t = this.tabController?.getTabById(id)
+      return t ? { title: t.title, favicon: t.favicon } : undefined
+    })
+    mediaListController.setMainWindow(window)
     this.window = window
     this.initPromise = this.init()
   }
@@ -228,6 +234,7 @@ export class ViewController {
         [IPC_EMIT_CHANNEL.CLOSE_APP]: () => this.onCloseApp(),
         [IPC_EMIT_CHANNEL.REQUEST_PIP]: (data) => this.requestPIP(data),
         [IPC_EMIT_CHANNEL.PIP_EXITED]: (data) => this.handleOpenTabById(data),
+        [IPC_EMIT_CHANNEL.OPEN_MEDIA_LIST]: (data) => this.openMediaList(data),
         // [IPC_EMIT_CHANNEL.TOGGLE_BOOKMARK]: (data) => this.handleToggleBookmark(data),
         // ...spotlightEmitHandlers,
         [IPC_EMIT_CHANNEL.OPEN_TAB_BY_ID]: (data) => this.handleOpenTabById(data),
@@ -488,6 +495,11 @@ export class ViewController {
     const currentTab = this.tabController?.getTabById(tab?.id as string)
     if (!currentTab || !currentTab.isAlive) return
     currentTab.view.setBounds(screen)
+    // Restore focus once real bounds arrive (e.g. after a background-task
+    // switch where the initial show happened with stale/zero bounds).
+    if (currentTab.id === this.tabController?.activeTab?.id && !subWindowService.isOpen) {
+      currentTab.webContents.focus()
+    }
   }
 
   handleHideView(props: { id: string }) {
@@ -525,6 +537,7 @@ export class ViewController {
       }
       const { nextTab } = this.tabController?.closeTab(props.id) || {}
       if (nextTab?.isAlive) this.attachChildView(nextTab?.view)
+      mediaListController.removeTab(props.id)
       this.syncTabsToWindows()
     } catch (error) {
       return new ErrorServices(error)
@@ -557,14 +570,37 @@ export class ViewController {
     }
   }
 
-  async requestPIP({ tab }: { tab: ITab }) {
+  async requestPIP({ tab, videoIndex }: { tab: ITab; videoIndex?: number }) {
     try {
       if (!tab?.id) throw new Error(`Tab id not found`)
-      const currentTab = this.tabController?.getTabById(tab.id)
-      return currentTab?.onRequestPIP()
+      const currentTab = this.tabController?.getTabById(tab.id) as Tab
+      if (!currentTab) throw new Error(`Tab not found`)
+      if (!currentTab.isAlive) throw new Error(`Tab not alive`)
+      const attached = this.isViewAttached(currentTab.view)
+      const visible = currentTab.view.getVisible()
+      const wasActive = currentTab.id === this.tabController?.activeTab?.id
+      if (!attached || !visible) {
+        if (!attached) this.attachChildView(currentTab.view)
+        currentTab.show()
+        currentTab.webContents.focus()
+      }
+      const result = await currentTab.onRequestPIP(videoIndex)
+      if (!result?.ok) {
+        console.warn('[media] requestPIP failed:', result?.reason, 'tab', currentTab.id.slice(0, 8))
+      }
+      if (!attached && !wasActive) {
+        this.detachChildView(currentTab.view)
+      }
+      return result
     } catch (error) {
       return new ErrorServices(error)
     }
+  }
+
+  openMediaList(data?: { anchor?: { x: number; y: number } }) {
+    const activeTabId = this.tabController?.activeTab?.id
+    const tabs = mediaListController.getAggregate(activeTabId)
+    subWindowService.open('/media-list', { activeTabId, tabs, anchor: data?.anchor })
   }
 
   // handleToggleBookmark({ url, id }: { url: string; id: string }) {}
@@ -759,6 +795,36 @@ export class ViewController {
     this.forwardRendererEvent('OPEN_TAB_BY_ID', { id: data.id })
     this.tabController?.setActiveTab(data.id)
     this.syncTabsToWindows()
+    // Focus the newly active tab's webContents directly in the main process.
+    // Tab switches from the main process (Ctrl+Tab, notifications, ...) must not
+    // depend on the renderer round-trip, which is delayed while the window is a
+    // background task - without this, focus-dependent features (PIP, ...) fail.
+    this.ensureActiveTabFocus()
+  }
+
+  private ensureActiveTabFocus() {
+    const tab = this.tabController?.activeTab
+    if (!tab?.isAlive || subWindowService.isOpen) return
+    try {
+      if (!this.isViewAttached(tab.view)) {
+        // Reuse the currently visible tab's bounds so the view can be shown
+        // immediately instead of waiting for the (possibly throttled) renderer.
+        const visible = this.tabController
+          ?.getTabInstances()
+          .find((t) => t.isAlive && t.id !== tab.id && this.isViewAttached(t.view))
+        const bounds = visible?.view.getBounds()
+        if (bounds?.width && bounds?.height) tab.view.setBounds(bounds)
+        this.attachChildView(tab.view)
+      }
+      tab.show()
+      tab.webContents.focus()
+    } catch (error) {
+      log.error('Failed to focus active tab', error)
+    }
+  }
+
+  private isViewAttached(view: WebContentsView): boolean {
+    return this.window.contentView.children.includes(view)
   }
 
   switchTab(direction: 1 | -1) {
@@ -797,6 +863,7 @@ export class ViewController {
   }
 
   attachChildView(view: WebContentsView) {
+    if (this.isViewAttached(view)) return
     eventStore.broadcast('viewChanges', view)
     this.window.contentView.addChildView(view)
     if (subWindowService.isOpen) {

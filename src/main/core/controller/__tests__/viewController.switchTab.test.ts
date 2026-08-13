@@ -91,14 +91,29 @@ function createMockWindow() {
 }
 
 function makeTab(id: string, overrides: Record<string, any> = {}) {
+  const webContents = {
+    focus: vi.fn(),
+    on: vi.fn(),
+    once: vi.fn(),
+    session: {
+      setPermissionRequestHandler: vi.fn(),
+      setPermissionCheckHandler: vi.fn(),
+    },
+  }
   return {
     id,
     isAlive: true,
     isHibernated: false,
     wake: vi.fn(),
+    show: vi.fn(),
     toJSON: vi.fn(() => ({ id })),
-    view: { getVisible: vi.fn(() => true) },
-    webContents: { focus: vi.fn() },
+    view: {
+      webContents,
+      getVisible: vi.fn(() => true),
+      getBounds: vi.fn(() => ({ x: 0, y: 0, width: 800, height: 600 })),
+      setBounds: vi.fn(),
+    },
+    webContents,
     ...overrides,
   }
 }
@@ -274,6 +289,54 @@ describe('ViewController tab switching & focus', () => {
       expect(win.webContents.send).toHaveBeenCalledWith('OPEN_TAB_BY_ID', { id: 'b' })
       expect((vc as any).tabController.activeTab?.id).toBe('b')
       expect((vc as any).tabController.getTabById('b')?.timestamp).toBeDefined()
+    })
+
+    it('focuses the newly active tab webContents immediately', () => {
+      const tabA = makeTab('a')
+      const tabB = makeTab('b')
+      seedTabs([tabA, tabB])
+      win.contentView.children.push(tabA.view)
+
+      vc.handleOpenTabById({ id: 'b' })
+
+      expect(tabB.webContents.focus).toHaveBeenCalled()
+    })
+
+    it('shows and attaches the target view before focusing when it is hidden', () => {
+      const tabA = makeTab('a')
+      const tabB = makeTab('b')
+      tabB.view.getVisible.mockReturnValue(false)
+      seedTabs([tabA, tabB])
+      win.contentView.children.push(tabA.view)
+
+      vc.handleOpenTabById({ id: 'b' })
+
+      expect(tabB.show).toHaveBeenCalled()
+      expect(tabB.view.setBounds).toHaveBeenCalled()
+      expect(win.contentView.addChildView).toHaveBeenCalledWith(tabB.view)
+      expect(tabB.webContents.focus).toHaveBeenCalled()
+    })
+
+    it('does not focus while a sub-window overlay is open', () => {
+      const tabA = makeTab('a')
+      const tabB = makeTab('b')
+      seedTabs([tabA, tabB])
+      win.contentView.children.push(tabA.view)
+      mockSubWindowService.isOpen = true
+
+      vc.handleOpenTabById({ id: 'b' })
+
+      expect(tabB.webContents.focus).not.toHaveBeenCalled()
+      mockSubWindowService.isOpen = false
+    })
+
+    it('skips focus when the target tab is not alive', () => {
+      const tabA = makeTab('a')
+      const tabB = makeTab('b', { isAlive: false })
+      seedTabs([tabA, tabB])
+      win.contentView.children.push(tabA.view)
+
+      expect(() => vc.handleOpenTabById({ id: 'b' })).not.toThrow()
     })
   })
 
