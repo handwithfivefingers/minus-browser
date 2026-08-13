@@ -1,22 +1,3 @@
-// export const isValidDomain = (url: string) => {
-//   // const regex = new RegExp(/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/, "g");
-//   // const isValid = regex.test(url);
-//   // return isValid;
-//   // Remove protocol if present
-//   let domain = url.replace(/^https?:\/\//, "");
-
-//   // Extract domain part (remove port if present)
-//   const domainPart = domain.split(":")[0];
-
-//   // Regex for validating domain names
-//   // Allows: localhost, domain.com, sub.domain.com, etc.
-//   const domainRegex =
-//     /^(?:localhost|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
-
-//   return domainRegex.test(domainPart);
-// };
-
-// Validates both domain names and IP addresses
 export const isValidDomainOrIP = (url: string) => {
   try {
     // Remove protocol if present
@@ -107,35 +88,6 @@ export const isValidDomainOrIPSimple = (url: string): boolean => {
     return false
   }
 }
-
-// Test all cases
-const allTestCases = [
-  // // Domains
-  // "domain.com",
-  // "https://sub.domain.com",
-  // "localhost:3000",
-
-  // IPv4
-  '192.168.1.1',
-  'http://127.0.0.1:8080',
-  '10.0.0.255',
-
-  // IPv6
-  '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
-  '[2001:db8::1]:8080',
-  '::1',
-
-  // Invalid
-  '999.999.999.999',
-  'invalid',
-  '',
-  'domain.c',
-
-  'landing.flodev.net',
-  'landing.flodev.net',
-  'landing.flodev.net/v5',
-  'landing.flodev.net/v4',
-]
 
 // Utility function to determine what type of address it is
 export const getAddressType = (url: string): 'domain' | 'ipv4' | 'ipv6' | 'localhost' | 'invalid' => {

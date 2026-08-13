@@ -1,5 +1,6 @@
 import { net } from 'electron'
 
+import { userScriptController } from '../controllers'
 import { GMRequest } from '../types'
 
 const activeRequests = new Map<string, { abort: () => void }>()
@@ -9,6 +10,44 @@ export function abortRequest(requestId: string) {
   if (req) {
     req.abort()
     activeRequests.delete(requestId)
+  }
+}
+
+function isValidScheme(url: string): boolean {
+  return /^https?:\/\//i.test(url)
+}
+
+function hostMatches(pattern: string, hostname: string): boolean {
+  const normalized = pattern.toLowerCase().replace(/^www\./, '')
+  if (normalized === hostname) return true
+  if (normalized.startsWith('*.')) {
+    return hostname.endsWith(normalized.slice(1))
+  }
+  return false
+}
+
+function isSameOrigin(sourceURL: string, targetURL: string): boolean {
+  try {
+    return new URL(sourceURL).origin === new URL(targetURL).origin
+  } catch {
+    return false
+  }
+}
+
+function isConnectAllowed(scriptId: string, url: string, sourceURL: string): boolean {
+  try {
+    const target = new URL(url)
+    if (target.protocol !== 'https:' && target.protocol !== 'http:') return false
+
+    const script = userScriptController.listScripts().find((s) => s.id === scriptId)
+    const connect = script?.connect ?? []
+    if (connect.includes('*')) return true
+    if (connect.length === 0) return isSameOrigin(sourceURL, url)
+
+    const hostname = target.hostname.toLowerCase().replace(/^www\./, '')
+    return connect.some((pattern) => hostMatches(pattern, hostname))
+  } catch {
+    return false
   }
 }
 
@@ -36,6 +75,16 @@ export async function handleNetwork(
       requestId,
       success: false,
       error: 'URL is required',
+    })
+    return
+  }
+
+  if (!isValidScheme(url) || !isConnectAllowed(scriptId, url, event.senderFrame?.url || '')) {
+    event.sender.send('GM:RESPONSE', {
+      requestId,
+      success: false,
+      error: `Access to "${url}" is denied by the script's @connect allowlist`,
+      denied: true,
     })
     return
   }

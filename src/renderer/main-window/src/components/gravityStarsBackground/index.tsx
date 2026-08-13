@@ -320,7 +320,16 @@ function GravityStarsBackground({
   React.useEffect(() => {
     if (animRef.current) cancelAnimationFrame(animRef.current)
     animRef.current = requestAnimationFrame(animate)
+    const onVisibility = () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current)
+      animRef.current = null
+      if (document.visibilityState === 'visible') {
+        animRef.current = requestAnimationFrame(animate)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
       if (animRef.current) cancelAnimationFrame(animRef.current)
       animRef.current = null
     }

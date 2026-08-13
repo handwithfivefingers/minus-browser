@@ -1,4 +1,7 @@
 import OpenAI from 'openai'
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
+
+import { useAiSettingsStore } from '../stores/useAiSettingsStore'
 
 const PROVIDER_CONFIGS: Record<string, { baseUrl: string }> = {
   groq: { baseUrl: 'https://api.groq.com/openai/v1' },
@@ -6,20 +9,12 @@ const PROVIDER_CONFIGS: Record<string, { baseUrl: string }> = {
 }
 
 function getClient(): OpenAI {
-  let apiKey = ''
-  let baseUrl = ''
-  try {
-    const raw = localStorage.getItem('minus_ai_settings')
-    if (raw) {
-      const settings = JSON.parse(raw)
-      apiKey = settings.apiKey || ''
-      const provider = settings.provider || 'groq'
-      const conf = PROVIDER_CONFIGS[provider]
-      baseUrl = settings.baseUrl || conf?.baseUrl || PROVIDER_CONFIGS.groq.baseUrl
-    }
-  } catch {
-    // ignore
-  }
+  const settings = useAiSettingsStore.getState()
+  let apiKey = settings.apiKey || ''
+  let baseUrl = settings.baseUrl || ''
+  const provider = settings.provider || 'groq'
+  const conf = PROVIDER_CONFIGS[provider]
+  if (!baseUrl) baseUrl = conf?.baseUrl || PROVIDER_CONFIGS.groq.baseUrl
 
   if (!apiKey) {
     // @ts-ignore
@@ -38,9 +33,12 @@ function getClient(): OpenAI {
   })
 }
 
+export type AiMessageContent =
+  string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>
+
 export type AiMessage = {
   role: 'system' | 'user' | 'assistant'
-  content: string
+  content: AiMessageContent
 }
 
 export type AiCompletionOptions = {
@@ -50,16 +48,7 @@ export type AiCompletionOptions = {
 }
 
 function getDefaultModel(): string {
-  try {
-    const raw = localStorage.getItem('minus_ai_settings')
-    if (raw) {
-      const settings = JSON.parse(raw)
-      return settings.defaultModel || 'llama-3.3-70b-versatile'
-    }
-  } catch {
-    // ignore
-  }
-  return 'llama-3.3-70b-versatile'
+  return useAiSettingsStore.getState().defaultModel || 'llama-3.3-70b-versatile'
 }
 
 export type AiModel = {
@@ -73,31 +62,25 @@ export async function fetchModels(): Promise<AiModel[]> {
   return list.data.map((m) => ({ id: m.id, label: m.id }))
 }
 
-export async function chatCompletion(messages: AiMessage[], options: AiCompletionOptions = {}): Promise<string> {
-  const model = options.model || getDefaultModel()
-  const temperature = options.temperature ?? 0.7
-  const maxTokens = options.maxTokens ?? 4096
-  const response = await getClient().chat.completions.create({
-    model,
-    messages,
-    temperature,
-    max_tokens: maxTokens,
-  })
-  return response.choices[0]?.message?.content || ''
+function resolveCompletionOptions(options: AiCompletionOptions): AiCompletionOptions {
+  const settings = useAiSettingsStore.getState()
+  return {
+    model: options.model || getDefaultModel(),
+    temperature: options.temperature ?? settings.temperature ?? 0.7,
+    maxTokens: options.maxTokens ?? settings.maxTokens ?? 4096,
+  }
 }
 
 export async function* chatCompletionStream(
   messages: AiMessage[],
   options: AiCompletionOptions = {}
 ): AsyncGenerator<string> {
-  const model = options.model || getDefaultModel()
-  const temperature = options.temperature ?? 0.7
-  const maxTokens = options.maxTokens ?? 4096
+  const resolved = resolveCompletionOptions(options)
   const stream = await getClient().chat.completions.create({
-    model,
-    messages,
-    temperature,
-    max_tokens: maxTokens,
+    model: resolved.model,
+    messages: messages as ChatCompletionMessageParam[],
+    temperature: resolved.temperature,
+    max_tokens: resolved.maxTokens,
     stream: true,
   })
 

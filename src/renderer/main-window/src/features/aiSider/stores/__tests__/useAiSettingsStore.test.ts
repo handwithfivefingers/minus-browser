@@ -55,6 +55,17 @@ describe('useAiSettingsStore', () => {
     expect(useAiSettingsStore.getState().apiKey).toBe('sk-test')
   })
 
+  it('never persists api key to localStorage', () => {
+    useAiSettingsStore.getState().setDefaultModel('gpt-4o')
+    useAiSettingsStore.getState().setApiKey('sk-test')
+    const raw = localStorage.getItem('minus_ai_settings')
+    expect(raw).toBeTruthy()
+    const parsed = raw ? JSON.parse(raw) : null
+    expect(parsed).not.toBeNull()
+    expect(parsed).not.toHaveProperty('apiKey')
+    expect(parsed.defaultModel).toBe('gpt-4o')
+  })
+
   it('sets base url', () => {
     useAiSettingsStore.getState().setBaseUrl('https://api.openai.com/v1')
     expect(useAiSettingsStore.getState().baseUrl).toBe('https://api.openai.com/v1')
@@ -81,7 +92,8 @@ describe('useAiSettingsStore', () => {
     useAiSettingsStore.getState().setDefaultModel('gpt-4o')
     const raw = localStorage.getItem('minus_ai_settings')
     expect(raw).toBeTruthy()
-    const parsed = JSON.parse(raw!)
+    const parsed = raw ? JSON.parse(raw) : null
+    expect(parsed).not.toBeNull()
     expect(parsed.defaultModel).toBe('gpt-4o')
   })
 })

@@ -4,16 +4,17 @@ import { v7 as uuid_v7 } from 'uuid'
 
 import { cacheSystem } from '~/features/cacheSystem'
 import { CaptureTabPlugin } from '~/features/capture'
+import { mediaListController } from '~/features/media/controller'
 import { SearchTabPlugin } from '~/features/search/plugin'
 import { TabPluginManager } from '~/features/tabPluginManager'
 import { TranslateTabPlugin } from '~/features/translate/plugin'
-import { VaultTabPlugin } from '~/features/vault'
 import { ContextMenuController } from '~/main/core/controller/context'
 import { historyController } from '~/main/core/controller/history'
 import { browserSession } from '~/main/core/services/session'
 import { appDb } from '~/main/core/stores'
 import { AiTabPlugin } from '~/renderer/main-window/src/features/aiSider/plugin'
 import { ITab, IUserInterface } from '~/shared/types'
+import { escapeHtml } from '~/shared/utils'
 
 import { TabPermission } from './permission'
 import { getDefaultViewWebPreferences } from './webPreferences'
@@ -22,12 +23,13 @@ interface IDestroy {
   destroy?: () => void
 }
 
-const preloadScript = () => {
-  const video = document.querySelector('video')
-  if (!video || !document.pictureInPictureEnabled || video.disablePictureInPicture) return
-  video.requestPictureInPicture().catch(() => {
-    //
-  })
+const pipScript = async (index = 0) => {
+  const playable = (v: any) => !v.disablePictureInPicture && !(v.readyState === 0 && !v.currentSrc && !v.src)
+  const videos = Array.from(document.querySelectorAll('video')).filter(playable)
+  const video = videos[index]
+  if (!video) return { ok: false, reason: 'no-video-at-index-' + index }
+  if (!document.pictureInPictureEnabled) return { ok: false, reason: 'pip-disabled' }
+
   document.addEventListener(
     'leavepictureinpicture',
     () => {
@@ -36,6 +38,16 @@ const preloadScript = () => {
     },
     { once: true }
   )
+
+  // requestPictureInPicture() must run while the executeJavaScript is scoped as
+  // a user gesture, so no await may precede it.
+  try {
+    if (document.pictureInPictureElement === video) return { ok: true }
+    await video.requestPictureInPicture()
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, reason: (err && (err as Error)?.message) || String(err) }
+  }
 }
 
 export class Tab extends TabPermission {
@@ -103,6 +115,10 @@ export class Tab extends TabPermission {
     this.requestPermissions(this._webContents)
     this.registerCommonEvent()
     this.registerMediaEvents(this._webContents, this.persistInformationToRenderer.bind(this))
+    this._webContents.ipc.on('MEDIA_LIST_CHANGED', (_event, data) => {
+      const videos = Array.isArray(data?.videos) ? data.videos : []
+      mediaListController.updateTabVideos(this.id, videos)
+    })
     this.isHibernated = false
     this.pluginReady ??= this.registerPlugin()
   }
@@ -123,6 +139,7 @@ export class Tab extends TabPermission {
     }
     this._view = null
     this._webContents = null
+    mediaListController.updateTabVideos(this.id, [])
     this.resetMediaStates()
     this.persistInformationToRenderer({
       audible: false,
@@ -211,18 +228,7 @@ export class Tab extends TabPermission {
           return data as IUserInterface
         }))
       if (extensionManager && 'extension' in extensionManager) {
-        const { vault, translate, userscript } = extensionManager.extension
-        if (vault) {
-          const vaulPlugin = new VaultTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }))
-          this.pluginManager.register(vaulPlugin)
-        }
-        // Script injection is now handled by the userscript preload (registered via session.setPreloads).
-        // The UserScriptTabPlugin is kept for potential future use but disabled to avoid double injection.
-        // if (userscript) {
-        //   this.pluginManager.register(
-        //     new UserScriptTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data })),
-        //   );
-        // }
+        const { translate } = extensionManager.extension
         if (translate) {
           this.pluginManager.register(
             new TranslateTabPlugin((channel: string, data: any) => this.eventEmitter({ channel, data }))
@@ -339,7 +345,10 @@ export class Tab extends TabPermission {
 
   private loadErrorPage(tabError: ITab['error']) {
     if (!this._webContents || !tabError) return
-    const title = this.getErrorTitle(tabError.code)
+    const title = escapeHtml(this.getErrorTitle(tabError.code))
+    const code = escapeHtml(tabError.code)
+    const description = escapeHtml(tabError.description)
+    const url = escapeHtml(tabError.url)
     const html = `<!DOCTYPE html>
       <html lang="en">
       <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -360,12 +369,12 @@ export class Tab extends TabPermission {
       </head>
       <body>
       <div class="container">
-        <div class="icon">${tabError.code.startsWith('HTTP_4') || tabError.code.startsWith('HTTP_5') ? '⚠️' : '🔒'}</div>
+        <div class="icon">${code.startsWith('HTTP_4') || code.startsWith('HTTP_5') ? '⚠️' : '🔒'}</div>
         <h1>${title}</h1>
-        ${tabError.httpResponseCode ? `<div class="code-badge">${tabError.httpResponseCode}</div>` : ''}
-        <p>${tabError.description}</p>
-        <div class="url">${tabError.url}</div>
-        <button onclick="location.href='${tabError.url}'">Retry</button>
+        ${tabError.httpResponseCode ? `<div class="code-badge">${escapeHtml(String(tabError.httpResponseCode))}</div>` : ''}
+        <p>${description}</p>
+        <div class="url">${url}</div>
+        <button onclick="location.href='${url}'">Retry</button>
         <button class="secondary" onclick="location.href='https://google.com'">Go to Home</button>
       </div>
       </body>
@@ -438,14 +447,14 @@ export class Tab extends TabPermission {
     this._view.webContents.setAudioMuted(this.isMuted)
     this.persistInformationToRenderer({ isMuted: this.isMuted })
   }
-  onRequestPIP() {
-    if (!this.isAlive) return
+  onRequestPIP(index?: number): Promise<{ ok: boolean; reason?: string }> {
+    if (!this.isAlive) return Promise.resolve({ ok: false, reason: 'tab-not-alive' })
     if (!this._webContents!.isFocused()) {
       this._webContents!.focus()
     }
-    const script = `(${preloadScript.toString()})()`
-    this._webContents!.executeJavaScript(script).catch((error) => {
-      console.error('requestPIP error', error)
+    const script = `(${pipScript.toString()})(${index ?? 0})`
+    return this._webContents!.executeJavaScript(script, true).catch((error) => {
+      return { ok: false, reason: 'exec-error: ' + error }
     })
   }
   onReload() {

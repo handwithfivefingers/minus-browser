@@ -1,7 +1,8 @@
-import { IconCheck, IconCopy, IconReload, IconSparkles } from '@tabler/icons-react'
+import { IconCheck, IconCopy, IconPlayerStop, IconReload, IconSparkles } from '@tabler/icons-react'
 import { useState } from 'react'
 
-import { generateContent } from '../services/generator'
+import { useStreamingCompletion } from '../hooks/useStreamingCompletion'
+import { buildGenerateMessages } from '../services/promptTemplates'
 import type { GenerateTemplate } from '../services/promptTemplates'
 
 const TEMPLATES: { key: GenerateTemplate; label: string }[] = [
@@ -23,25 +24,13 @@ const PLACEHOLDERS: Record<GenerateTemplate, string> = {
 const GenerateMode = () => {
   const [template, setTemplate] = useState<GenerateTemplate>('email')
   const [input, setInput] = useState('')
-  const [result, setResult] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { content: result, isLoading, error, start, stop } = useStreamingCompletion()
   const [copied, setCopied] = useState(false)
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!input.trim()) return
-    setError(null)
-    setResult('')
-    setIsLoading(true)
-    try {
-      const content = await generateContent(template, input)
-      setResult(content)
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Generation failed'
-      setError(message)
-    } finally {
-      setIsLoading(false)
-    }
+    const text = input
+    start(() => buildGenerateMessages(template, text), { temperature: 0.7 })
   }
 
   const handleCopy = async () => {
@@ -91,14 +80,17 @@ const GenerateMode = () => {
         />
 
         <button
-          onClick={handleGenerate}
-          disabled={!input.trim() || isLoading}
-          className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-indigo-500 py-1.5 text-xs text-white transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+          type="button"
+          onClick={isLoading ? stop : handleGenerate}
+          disabled={!isLoading && !input.trim()}
+          className={`flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs text-white transition-colors disabled:cursor-not-allowed disabled:bg-slate-300 ${
+            isLoading ? 'bg-red-500 hover:bg-red-600' : 'bg-indigo-500 hover:bg-indigo-600'
+          }`}
         >
           {isLoading ? (
             <>
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              Generating...
+              <IconPlayerStop size={14} />
+              Stop
             </>
           ) : (
             <>

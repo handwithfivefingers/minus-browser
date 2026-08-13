@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 
 import { Switch } from '~/renderer/main-window/src/components'
 import { useMinusThemeStore } from '~/renderer/main-window/src/stores/useMinusTheme'
+import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
 
 import { cn } from '../../../libs/cn'
 
@@ -70,29 +71,35 @@ export const Extension = () => {
   const [customFilterText, setCustomFilterText] = useState('')
   useEffect(() => {
     ;(async () => {
-      const list: FilterEntry[] = await (window.api.INVOKE as any)('@adb/get-filter-metadata')
+      const list: FilterEntry[] = await window.api.INVOKE(IPC_INVOKE_CHANNEL.ADB_GET_FILTER_METADATA)
       setFilters(list)
-      const info = await (window.api.INVOKE as any)('@adb/get-cache-info')
+      const info = await window.api.INVOKE<{ size: number; timestamp: number; filterCount: number }>(
+        IPC_INVOKE_CHANNEL.ADB_GET_CACHE_INFO
+      )
       setCacheInfo(info)
-      const s = await (window.api.INVOKE as any)('@adb/get-stats')
+      const s = await window.api.INVOKE<{ blockedRequests: number }>(IPC_INVOKE_CHANNEL.ADB_GET_STATS)
       setStats(s)
-      const custom: string[] = await (window.api.INVOKE as any)('@adb/get-custom-filters')
+      const custom: string[] = await window.api.INVOKE(IPC_INVOKE_CHANNEL.ADB_GET_CUSTOM_FILTERS)
       setCustomFilterText(custom?.join('\n'))
     })()
   }, [])
 
   async function handleClearCache() {
     setIsLoading(true)
-    await (window.api.INVOKE as any)('@adb/clear-cache')
-    const info = await (window.api.INVOKE as any)('@adb/get-cache-info')
+    await window.api.INVOKE(IPC_INVOKE_CHANNEL.ADB_CLEAR_CACHE)
+    const info = await window.api.INVOKE<{ size: number; timestamp: number; filterCount: number }>(
+      IPC_INVOKE_CHANNEL.ADB_GET_CACHE_INFO
+    )
     setCacheInfo(info)
     setIsLoading(false)
   }
 
   async function handleForceUpdate() {
     setIsLoading(true)
-    await (window.api.INVOKE as any)('@adb/clear-cache')
-    const info = await (window.api.INVOKE as any)('@adb/get-cache-info')
+    await window.api.INVOKE(IPC_INVOKE_CHANNEL.ADB_CLEAR_CACHE)
+    const info = await window.api.INVOKE<{ size: number; timestamp: number; filterCount: number }>(
+      IPC_INVOKE_CHANNEL.ADB_GET_CACHE_INFO
+    )
     setCacheInfo(info)
     setIsLoading(false)
   }
@@ -102,7 +109,7 @@ export const Extension = () => {
       .split('\n')
       .map((l) => l.trim())
       .filter((l) => l && !l.startsWith('!'))
-    await (window.api.INVOKE as any)('@adb/set-custom-filters', lines)
+    await window.api.INVOKE(IPC_INVOKE_CHANNEL.ADB_SET_CUSTOM_FILTERS, lines)
   }
 
   function toggleGroup(group: string) {

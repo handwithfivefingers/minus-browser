@@ -11,6 +11,7 @@ export interface MinusThemeAction {
   setHibernateCustomMinutes: (minutes: number) => void
   setAutoDownload: (enabled: boolean) => void
   setNotificationRetentionDays: (days: string) => void
+  setPasswordsNeverSaveDomains: (domains: string[]) => void
   saved: () => void
 }
 export interface IMinusThemeStore extends IUserInterface, MinusThemeAction {}

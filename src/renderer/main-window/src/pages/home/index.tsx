@@ -40,7 +40,7 @@ const TodoHome = () => {
       if (!hourRef.current || !minRef.current) return
       hourRef.current.innerHTML = hours
       minRef.current.innerHTML = minutes
-    })
+    }, 1000)
 
     return () => {
       if (interval) clearInterval(interval)

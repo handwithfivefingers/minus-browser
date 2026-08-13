@@ -1,11 +1,61 @@
-import { safeStorage } from 'electron'
+import { app, safeStorage } from 'electron'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
 import { v7 as uuid_v7 } from 'uuid'
 
-import { cacheSystem } from '~/features/cacheSystem'
 import { appDb } from '~/main/core/stores'
 
 import { IPasswordItem } from '../../../shared/types/password'
+
+const tmpDataDir = path.join(os.tmpdir(), 'minusbrowser-dev')
+const resolveUserDataDir = () => {
+  try {
+    return app.getPath('userData')
+  } catch {
+    return tmpDataDir
+  }
+}
+const baseDir = resolveUserDataDir()
+const passwordFilePath = path.join(baseDir, 'passwordStore')
+
+/*
+file format:
+{
+  version: 1,
+  credentials: [
+    {
+      id,
+      site,
+      username,
+      password,
+      notes,
+      createdAt,
+      updatedAt
+    }
+  ]
+}
+*/
+
+interface IPasswordFile {
+  version: number
+  credentials: IPasswordItem[]
+}
+
+function normalizeDomain(input: string): string {
+  let value = (input || '').toLowerCase().trim()
+  try {
+    if (/^https?:\/\//.test(value)) {
+      value = new URL(value).hostname
+    } else {
+      value = value.split('/')[0].split(':')[0]
+    }
+  } catch {
+    // keep the raw value
+  }
+  return value.replace(/^www\./, '')
+}
 
 export class PasswordController {
   private items: Map<string, IPasswordItem> = new Map()
@@ -14,6 +64,64 @@ export class PasswordController {
   async initialize() {
     if (this._initialized) return
     this._initialized = true
+    try {
+      const file = this.readFile()
+      if (file) {
+        this.items = new Map(file.credentials.map((item) => [item.id, item]))
+      } else {
+        await this.migrateFromSqlite()
+      }
+    } catch (error) {
+      this._initialized = false
+      console.error('failed to init password store', error)
+    }
+  }
+
+  private readFile(): IPasswordFile | null {
+    if (!safeStorage.isEncryptionAvailable()) return null
+    let file: Buffer
+    try {
+      file = fs.readFileSync(passwordFilePath)
+    } catch {
+      return null
+    }
+    try {
+      const json = safeStorage.decryptString(file)
+      const parsed = JSON.parse(json)
+      if (!parsed || !Array.isArray(parsed.credentials)) return null
+      return parsed as IPasswordFile
+    } catch {
+      return null
+    }
+  }
+
+  private writeFile(list: IPasswordItem[]) {
+    if (!safeStorage.isEncryptionAvailable()) {
+      console.warn('safeStorage unavailable — password vault is kept in memory only, not persisted to disk')
+      return
+    }
+    const json = JSON.stringify({ version: 1, credentials: list })
+    const data = safeStorage.encryptString(json)
+    fs.mkdirSync(path.dirname(passwordFilePath), { recursive: true })
+    fs.writeFileSync(passwordFilePath, data)
+  }
+
+  private decryptString(encrypted: string): string {
+    if (!encrypted || !safeStorage.isEncryptionAvailable()) return ''
+    try {
+      const cipher = Buffer.from(encrypted, 'base64')
+      return safeStorage.decryptString(cipher)
+    } catch {
+      return ''
+    }
+  }
+
+  private encryptString(password: string): string {
+    if (!safeStorage.isEncryptionAvailable()) return ''
+    return safeStorage.encryptString(password).toString('base64')
+  }
+
+  private async migrateFromSqlite() {
     try {
       const rows = appDb.query<{
         id: string
@@ -24,69 +132,32 @@ export class PasswordController {
         created_at: number
         updated_at: number
       }>('SELECT * FROM password_vault_items')
-      this.items = new Map(
-        rows.map((r) => [
-          r.id,
-          {
-            id: r.id,
-            site: r.site,
-            username: r.username,
-            password: this.decryptString(r.encrypted_password),
-            notes: r.notes,
-            createdAt: r.created_at,
-            updatedAt: r.updated_at,
-          } as IPasswordItem,
-        ])
-      )
-    } catch (error) {
-      this._initialized = false
-      console.error('failed to init', error)
-    }
-  }
-
-  private decryptString(encrypted: string): string {
-    if (!encrypted) return ''
-    try {
-      const cipher = Buffer.from(encrypted, 'base64')
-      if (safeStorage.isEncryptionAvailable()) {
-        return safeStorage.decryptString(cipher)
+      const items = rows
+        .map((r) => ({
+          id: r.id,
+          site: r.site,
+          username: r.username,
+          password: this.decryptString(r.encrypted_password),
+          notes: r.notes,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+        }))
+        .filter((item) => item.id)
+      if (items.length > 0) {
+        this.items = new Map(items.map((item) => [item.id, item]))
+        this.writeFile(items)
       }
-      return cipher.toString('utf-8')
-    } catch {
-      return ''
+    } catch (error) {
+      console.error('failed to migrate password vault from sqlite', error)
     }
-  }
-
-  private encryptString(password: string): string {
-    if (safeStorage.isEncryptionAvailable()) {
-      return safeStorage.encryptString(password).toString('base64')
-    }
-    return Buffer.from(password, 'utf-8').toString('base64')
   }
 
   private async persist() {
     try {
       const list = [...this.items.values()].sort((a, b) => b.updatedAt - a.updatedAt)
-      appDb.transaction(() => {
-        appDb.run('DELETE FROM password_vault_items')
-        for (const item of list) {
-          appDb.run(
-            'INSERT INTO password_vault_items (id, site, username, encrypted_password, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [
-              item.id,
-              item.site,
-              item.username,
-              this.encryptString(item.password),
-              item.notes || '',
-              item.createdAt,
-              item.updatedAt,
-            ]
-          )
-        }
-      })
-      cacheSystem.set('passwordVault', { vault: { cipherText: '', isEncrypted: false } })
+      this.writeFile(list)
     } catch (error) {
-      console.error('persit vault error', error)
+      console.error('persist password store error', error)
     }
   }
 
@@ -97,6 +168,16 @@ export class PasswordController {
 
   getById(id: string) {
     return this.items.get(id) || null
+  }
+
+  async getByDomain(domain: string): Promise<IPasswordItem[]> {
+    await this.initialize()
+    const normalized = normalizeDomain(domain)
+    if (!normalized) return []
+    return [...this.items.values()].filter((item) => {
+      const site = normalizeDomain(item.site)
+      return site === normalized || site.endsWith(`.${normalized}`) || normalized.endsWith(`.${site}`)
+    })
   }
 
   async add(input: Pick<IPasswordItem, 'site' | 'username' | 'password' | 'notes'>) {
@@ -128,13 +209,36 @@ export class PasswordController {
       await this.persist()
       return next
     } catch (error) {
-      console.error('update Vault Password ', error)
+      console.error('update password store ', error)
     }
   }
 
   async remove(id: string) {
+    if (!this.items.has(id)) return false
     this.items.delete(id)
     await this.persist()
     return true
   }
+
+  async setAll(credentials: Array<Pick<IPasswordItem, 'site' | 'username' | 'password' | 'notes'>>) {
+    const now = Date.now()
+    this.items = new Map(
+      credentials.map((input) => {
+        const item: IPasswordItem = {
+          id: uuid_v7(),
+          site: input.site,
+          username: input.username,
+          password: input.password,
+          notes: input.notes || '',
+          createdAt: now,
+          updatedAt: now,
+        }
+        return [item.id, item]
+      })
+    )
+    await this.persist()
+    return [...this.items.values()]
+  }
 }
+
+export const passwordController = new PasswordController()

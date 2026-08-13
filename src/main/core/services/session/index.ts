@@ -39,8 +39,9 @@ const sessionInitPromise = app.whenReady().then(async () => {
   const userscriptPreload = path.join(__dirname, 'userscript-preload.js')
   const mediaPreload = path.join(__dirname, 'media-preload.js')
   const spoofPreload = path.join(__dirname, 'browser-spoof-preload.js')
+  const vaultPreload = path.join(__dirname, 'vault-preload.js')
   const existing = browserSession.getPreloads()
-  const toAdd = [spoofPreload, userscriptPreload, mediaPreload].filter((p) => !existing.includes(p))
+  const toAdd = [spoofPreload, userscriptPreload, mediaPreload, vaultPreload].filter((p) => !existing.includes(p))
   if (toAdd.length > 0) {
     browserSession.setPreloads([...existing, ...toAdd])
   }

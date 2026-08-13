@@ -4,7 +4,7 @@ import { Outlet, useNavigate, useParams } from 'react-router'
 
 import { IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from '~/shared/constants/ipc'
 import { useWebNotificationStore } from '~/shared/store/useNotificationStore'
-import { IUserInterface } from '~/shared/types'
+import { IUserInterface, MediaTabEntry } from '~/shared/types'
 
 import { AiSidebar, NotificationContainer, SideMenu, UpdateBanner } from '../components'
 import Header from '../components/header'
@@ -14,6 +14,7 @@ import { useTranslation } from '../hooks/useTranslation'
 import { useUserScript } from '../hooks/useUserScript'
 import { useVault } from '../hooks/useVault'
 import { tabServices } from '../services/tab.service'
+import { useMediaListStore } from '../stores/useMediaListStore'
 import { useMinusThemeStore } from '../stores/useMinusTheme'
 import { useTabStore } from '../stores/useTabStore'
 import { setupUpdateListener } from '../stores/useUpdateStore'
@@ -32,22 +33,12 @@ const Layout = () => {
   const vault = useVault(tabEvent?.tab)
   const userScript = useUserScript(tabEvent?.tab)
   useEffect(() => {
-    const timeout = setInterval(async () => {
-      const tabs = await tabServices.getTabs()
-      if (tabs?.length) {
-        setTabs?.(tabs)
-        if (timeout) clearInterval(timeout)
-      }
-    }, 1000)
-
     window.api.LISTENER('GET_TABS', (v) => {
-      if (timeout) clearInterval(timeout)
       setTabs(v)
     })
-
-    return () => {
-      if (timeout) clearInterval(timeout)
-    }
+    Promise.resolve(tabServices.getTabs()).then((v) => {
+      if (v) setTabs(v)
+    })
   }, [])
 
   useEffect(() => {
@@ -70,6 +61,9 @@ const Layout = () => {
       if (data) {
         useWebNotificationStore.getState().addNotification(data)
       }
+    })
+    window.api.LISTENER(IPC_RENDERER_EVENT.MEDIA_LIST_UPDATED, (data?: MediaTabEntry[]) => {
+      if (Array.isArray(data)) useMediaListStore.getState().setTabs(data)
     })
     window.api.LISTENER('NOTIFICATION_STATE_SYNC', (data?: { notifications: any[]; unreadCount: number }) => {
       if (data) {
@@ -115,7 +109,6 @@ const Layout = () => {
           onBackWard={tabEvent?.onBackWard}
           onToggleDevTools={tabEvent?.onToggleDevTools}
           onReload={tabEvent?.onReload}
-          onRequestPIP={tabEvent?.onRequestPIP}
           onOpenVaultManager={vault.onOpenVaultManager}
           onOpenUserscriptManager={userScript?.onOpenUserscriptManager}
           onTranslatePage={translate?.onTranslatePage}

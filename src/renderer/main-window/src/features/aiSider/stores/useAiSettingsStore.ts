@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
+
 const STORAGE_KEY = 'minus_ai_settings'
 
 export type DefaultMode = 'chat' | 'summarize' | 'generate' | 'explain'
@@ -45,7 +47,7 @@ function loadFromStorage(): IAiSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      return { ...DEFAULTS, ...JSON.parse(raw) }
+      return { ...DEFAULTS, ...JSON.parse(raw), apiKey: '' }
     }
   } catch {
     // ignore
@@ -55,7 +57,38 @@ function loadFromStorage(): IAiSettings {
 
 function saveToStorage(state: IAiSettings) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    const { apiKey: _apiKey, ...rest } = state
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rest))
+  } catch {
+    // ignore
+  }
+}
+
+async function loadApiKeyFromMain(): Promise<string> {
+  try {
+    const key = await window.api.INVOKE<string>(IPC_INVOKE_CHANNEL.AI_GET_API_KEY)
+    return key || ''
+  } catch {
+    return ''
+  }
+}
+
+async function saveApiKeyToMain(apiKey: string): Promise<void> {
+  try {
+    await window.api.INVOKE(IPC_INVOKE_CHANNEL.AI_SET_API_KEY, { apiKey })
+  } catch {
+    // ignore
+  }
+}
+
+function syncShowFloatingButton(show: boolean): void {
+  try {
+    const result = window.api.INVOKE(IPC_INVOKE_CHANNEL.AI_SET_FLOATING_BUTTON, { show })
+    if (result instanceof Promise) {
+      result.catch(() => {
+        // ignore
+      })
+    }
   } catch {
     // ignore
   }
@@ -91,6 +124,7 @@ const useAiSettingsStore = create<IAiSettingsStore>((set) => ({
     set((state) => {
       const next = { ...state, showFloatingButton }
       saveToStorage(next)
+      syncShowFloatingButton(showFloatingButton)
       return { showFloatingButton }
     }),
   setProvider: (provider) =>
@@ -99,12 +133,10 @@ const useAiSettingsStore = create<IAiSettingsStore>((set) => ({
       saveToStorage(next)
       return { provider }
     }),
-  setApiKey: (apiKey) =>
-    set((state) => {
-      const next = { ...state, apiKey }
-      saveToStorage(next)
-      return { apiKey }
-    }),
+  setApiKey: (apiKey) => {
+    set({ apiKey })
+    saveApiKeyToMain(apiKey)
+  },
   setBaseUrl: (baseUrl) =>
     set((state) => {
       const next = { ...state, baseUrl }
@@ -118,9 +150,14 @@ const useAiSettingsStore = create<IAiSettingsStore>((set) => ({
       return { language }
     }),
   reset: () => {
-    saveToStorage(DEFAULTS)
+    saveToStorage({ ...DEFAULTS })
     set({ ...DEFAULTS })
+    saveApiKeyToMain('')
   },
 }))
+
+loadApiKeyFromMain().then((apiKey) => {
+  useAiSettingsStore.setState({ apiKey })
+})
 
 export { useAiSettingsStore }

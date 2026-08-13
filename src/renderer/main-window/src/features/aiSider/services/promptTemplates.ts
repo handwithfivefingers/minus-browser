@@ -1,3 +1,5 @@
+import { useAiSettingsStore } from '../stores/useAiSettingsStore'
+
 export const LANGUAGE_MAP: Record<string, string> = {
   english: 'English',
   vietnamese: 'Vietnamese',
@@ -6,18 +8,9 @@ export const LANGUAGE_MAP: Record<string, string> = {
 }
 
 function getLanguageInstruction(): string {
-  try {
-    const raw = localStorage.getItem('minus_ai_settings')
-    if (raw) {
-      const settings = JSON.parse(raw)
-      const lang = settings.language || 'english'
-      const label = LANGUAGE_MAP[lang] || 'English'
-      return `\n\nImportant: Respond in ${label}.`
-    }
-  } catch {
-    // ignore
-  }
-  return ''
+  const lang = useAiSettingsStore.getState().language || 'english'
+  const label = LANGUAGE_MAP[lang] || 'English'
+  return `\n\nImportant: Respond in ${label}.`
 }
 
 export const SUMMARY_PROMPT = `You are a helpful assistant that summarizes web page content.
@@ -43,11 +36,8 @@ Preserve the original meaning and key information.
 Return only the rewritten text.`
 }
 
-export function buildSummaryMessages(pageContent: string, length: 'short' | 'detailed' = 'detailed') {
-  const lengthInstruction =
-    length === 'short'
-      ? 'Keep the summary very brief, no more than 3-4 sentences.'
-      : 'Provide a comprehensive summary with bullet points covering all key sections.'
+export function buildSummaryMessages(pageContent: string) {
+  const lengthInstruction = 'Provide a comprehensive summary with bullet points covering all key sections.'
 
   return [
     { role: 'system' as const, content: SUMMARY_PROMPT + getLanguageInstruction() },

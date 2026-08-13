@@ -67,7 +67,7 @@ const AiSidebar = () => {
     <div
       ref={sidebarRef}
       className={clsx(
-        'flex h-full shrink-0 flex-col overflow-hidden bg-white transition-all duration-200 dark:bg-slate-800',
+        'relative flex h-full shrink-0 flex-col overflow-hidden bg-white transition-all duration-200 dark:bg-slate-800',
         styles.sidebar,
         {
           'w-0 opacity-0': !isOpen,
@@ -77,6 +77,7 @@ const AiSidebar = () => {
       style={{
         width: isOpen ? `${width}px` : '0px',
         minWidth: isOpen ? '300px' : '0px',
+        transition: isDragging ? 'none' : undefined,
       }}
     >
       {/* Resize handle (left edge) */}

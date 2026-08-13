@@ -4,21 +4,14 @@ import { useEffect, useRef, useState } from 'react'
 import { MessageBubble } from '../components/MessageBubble'
 import { ModelSelector } from '../components/ModelSelector'
 import { useAiChat } from '../hooks/useAiChat'
+import { useAiSettingsStore } from '../stores/useAiSettingsStore'
 import { useAiSidebarStore } from '../stores/useAiSidebarStore'
 
 const ChatMode = () => {
   const { messages, isLoading, error, sendMessage, clearMessages, stopGeneration } = useAiChat()
   const [input, setInput] = useState('')
-  const { pendingText, clearPendingText } = useAiSidebarStore()
-  const [model, setModel] = useState(() => {
-    try {
-      const raw = localStorage.getItem('minus_ai_settings')
-      if (raw) return JSON.parse(raw).defaultModel || 'llama-3.3-70b-versatile'
-    } catch {
-      console.log('getDefaultModel error')
-    }
-    return 'llama-3.3-70b-versatile'
-  })
+  const { pendingText, clearPendingText, capturedImage, setCapturedImage } = useAiSidebarStore()
+  const [model, setModel] = useState(() => useAiSettingsStore.getState().defaultModel || 'llama-3.3-70b-versatile')
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -27,8 +20,16 @@ const ChatMode = () => {
     const text = pendingText
     clearPendingText()
     setInput('')
-    sendMessage(text)
+    sendMessage(text, { model })
   }, [pendingText])
+
+  useEffect(() => {
+    if (!capturedImage) return
+    const image = capturedImage
+    setCapturedImage(null)
+    setInput('')
+    sendMessage('Describe this image', { model }, image)
+  }, [capturedImage])
 
   useEffect(() => {
     if (listRef.current) {
@@ -40,7 +41,7 @@ const ChatMode = () => {
     const text = input.trim()
     if (!text || isLoading) return
     setInput('')
-    sendMessage(text)
+    sendMessage(text, { model })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

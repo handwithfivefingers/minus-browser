@@ -58,8 +58,18 @@ const History = () => {
 
   useEffect(() => {
     loadHistory()
-    const interval = setInterval(loadHistory, 3000)
-    return () => clearInterval(interval)
+    let interval = setInterval(loadHistory, 3000)
+    const onVisibility = () => {
+      clearInterval(interval)
+      if (document.visibilityState === 'visible') {
+        interval = setInterval(loadHistory, 3000)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [loadHistory])
 
   useEffect(() => {

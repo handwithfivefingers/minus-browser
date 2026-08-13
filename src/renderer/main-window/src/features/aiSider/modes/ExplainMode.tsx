@@ -1,60 +1,39 @@
-import { IconCheck, IconCopy, IconQuestionMark, IconReload } from '@tabler/icons-react'
+import { IconCheck, IconCopy, IconQuestionMark, IconReload, IconPlayerStop } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 
 import { QuickActions } from '../components/QuickActions'
-import { chatCompletion } from '../services/aiProvider'
+import { useStreamingCompletion } from '../hooks/useStreamingCompletion'
 import { getSelectedText } from '../services/pageReader'
 import { buildExplainMessages } from '../services/promptTemplates'
 import { useAiSidebarStore } from '../stores/useAiSidebarStore'
 
 const ExplainMode = () => {
   const { pendingText, clearPendingText } = useAiSidebarStore()
-  const [explanation, setExplanation] = useState('')
+  const { content: explanation, setContent, isLoading, error, start, stop } = useStreamingCompletion()
   const [selectedText, setSelectedText] = useState(pendingText)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const handleExplainWithText = async (text: string) => {
-    setError(null)
-    setExplanation('')
-    setIsLoading(true)
-    try {
-      setSelectedText(text)
-      const messages = buildExplainMessages(text)
-      const result = await chatCompletion(messages, { temperature: 0.3 })
-      setExplanation(result)
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to explain'
-      setError(message)
-    } finally {
-      setIsLoading(false)
-    }
+  const handleExplainWithText = (text: string) => {
+    setSelectedText(text)
+    start(() => buildExplainMessages(text), { temperature: 0.3 })
   }
 
-  const handleExplain = async () => {
-    setError(null)
-    setExplanation('')
-    setIsLoading(true)
-    try {
-      const text = await getSelectedText()
-      if (!text) {
-        throw new Error('No text selected. Select text on a page and try again.')
-      }
-      setSelectedText(text)
-      const messages = buildExplainMessages(text)
-      const result = await chatCompletion(messages, { temperature: 0.3 })
-      setExplanation(result)
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to explain'
-      setError(message)
-    } finally {
-      setIsLoading(false)
-    }
+  const handleExplain = () => {
+    start(
+      async () => {
+        const text = await getSelectedText()
+        if (!text) {
+          throw new Error('No text selected. Select text on a page and try again.')
+        }
+        setSelectedText(text)
+        return buildExplainMessages(text)
+      },
+      { temperature: 0.3 }
+    )
   }
 
   const handleQuickActionResult = (result: string) => {
-    setExplanation(result)
+    setContent(result)
   }
 
   const handleCopy = async () => {
@@ -93,11 +72,19 @@ const ExplainMode = () => {
         )}
 
         {isLoading && (
-          <div className="flex min-h-[200px] items-center justify-center">
+          <div className="flex min-h-[200px] flex-col items-center justify-center gap-3">
             <div className="flex flex-col items-center gap-2">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
               <span className="text-xs text-slate-400">Reading selection & generating explanation...</span>
             </div>
+            <button
+              type="button"
+              onClick={stop}
+              className="flex cursor-pointer items-center gap-1 rounded-lg bg-slate-200 px-3 py-1 text-[10px] text-slate-600 transition-colors hover:bg-red-100 hover:text-red-600"
+            >
+              <IconPlayerStop size={12} />
+              Stop
+            </button>
           </div>
         )}
 

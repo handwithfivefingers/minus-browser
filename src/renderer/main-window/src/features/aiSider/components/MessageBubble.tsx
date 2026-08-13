@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 
+import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import type { ChatMessage } from '../stores/useAiSidebarStore'
 
 function CodeBlock({
@@ -52,6 +53,7 @@ type CodeProps = ComponentPropsWithoutRef<'code'> & { className?: string }
 const MessageBubble = ({ message }: { message: ChatMessage }) => {
   const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
+  const markdownContent = useDebouncedValue(message.content, 150)
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(message.content)
@@ -75,7 +77,7 @@ const MessageBubble = ({ message }: { message: ChatMessage }) => {
         </div>
       ) : (
         <div className="relative max-w-[92%] rounded-2xl rounded-tl-sm border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-800">
-          {message.content ? (
+          {markdownContent ? (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeHighlight]}
@@ -116,7 +118,7 @@ const MessageBubble = ({ message }: { message: ChatMessage }) => {
                 },
               }}
             >
-              {message.content}
+              {markdownContent}
             </ReactMarkdown>
           ) : (
             <span className="text-slate-400 italic">Thinking...</span>

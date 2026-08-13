@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-export const getDefaultViewWebPreferences = (id: string, session: Electron.Session) => {
+export const getDefaultViewWebPreferences = (id: string, session: Electron.Session): Electron.WebPreferences => {
   return {
     nodeIntegration: false,
     nodeIntegrationInSubFrames: true,
@@ -9,8 +9,8 @@ export const getDefaultViewWebPreferences = (id: string, session: Electron.Sessi
     preload: join(__dirname, 'notification-preload.js'),
     contextIsolation: true,
     sandbox: true,
-    enableRemoteModule: false,
-    allowPopups: false,
+    // enableRemoteModule: false,
+    // allowPopups: false,
     enableWebSQL: false,
     minimumFontSize: 6,
     additionalArguments: [`--notification-tab-id=${id}`],

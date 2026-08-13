@@ -61,10 +61,6 @@ export const useTabEvents = (tabId?: string) => {
     }
   }
 
-  const onRequestPIP = async () => {
-    window.api.EMIT('REQUEST_PIP', { tab })
-  }
-
   const getScreenData = async () => {
     if (!tabId) return
     const tab = await window.api.INVOKE<Tab>('GET_TAB', { id: tabId })
@@ -92,6 +88,5 @@ export const useTabEvents = (tabId?: string) => {
     handleGoHome,
     onBackWard,
     onToggleDevTools,
-    onRequestPIP,
   }
 }

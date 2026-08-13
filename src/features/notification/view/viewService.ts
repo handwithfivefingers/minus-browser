@@ -18,6 +18,7 @@ export class NotificationViewService {
   private toastQueue: WebNotification[] = []
   private toastShowing = false
   private toastTimer: ReturnType<typeof setTimeout> | null = null
+  private resizeHandler: (() => void) | null = null
 
   init(mainWindow: BrowserWindow) {
     this.mainWindow = mainWindow
@@ -40,6 +41,10 @@ export class NotificationViewService {
 
     ipcMain.on('NOTIFICATION_VIEW_CLOSE', () => {
       this.closeList()
+    })
+
+    ipcMain.on('NOTIFICATION_VIEW_TOAST_DISMISSED', () => {
+      this.handleToastDismissedFromView()
     })
 
     ipcMain.on('NOTIFICATION_VIEW_GET_HISTORY', () => {
@@ -133,6 +138,8 @@ export class NotificationViewService {
 
   private async processToastQueue() {
     if (this.toastShowing || this.toastQueue.length === 0 || !this.view || !this.mainWindow) return
+    if (this.isListOpen) return
+
     this.toastShowing = true
 
     const notification = this.toastQueue.shift()!
@@ -148,7 +155,7 @@ export class NotificationViewService {
     }, 4000)
   }
 
-  private hideToast() {
+  private hideCurrentToast() {
     if (!this.view || this.view.webContents.isDestroyed()) return
     this.view.webContents.send('NOTIFICATION_VIEW_HIDE_TOAST')
     this.toastShowing = false
@@ -156,6 +163,23 @@ export class NotificationViewService {
       clearTimeout(this.toastTimer)
       this.toastTimer = null
     }
+  }
+
+  private hideToast() {
+    this.hideCurrentToast()
+
+    setTimeout(() => {
+      if (!this.isListOpen) {
+        this.removeViewFromWindow()
+      }
+      this.processToastQueue()
+    }, 200)
+  }
+
+  private handleToastDismissedFromView() {
+    if (!this.toastShowing) return
+
+    this.hideCurrentToast()
 
     setTimeout(() => {
       if (!this.isListOpen) {
@@ -166,7 +190,7 @@ export class NotificationViewService {
   }
 
   dismissToast() {
-    this.hideToast()
+    this.hideCurrentToast()
     this.toastQueue = []
   }
 
@@ -183,13 +207,8 @@ export class NotificationViewService {
 
   private syncListBounds() {
     if (!this.mainWindow || !this.view) return
-    const { width } = this.mainWindow.getBounds()
-    this.view.setBounds({
-      x: Math.max(12, width - 400),
-      y: 12,
-      width: 390,
-      height: 500,
-    })
+    const { width, height } = this.mainWindow.getBounds()
+    this.view.setBounds({ x: 0, y: 0, width, height })
   }
 
   private addViewToWindow() {
@@ -218,9 +237,12 @@ export class NotificationViewService {
     await this.ensureView()
     if (!this.view) return
 
+    this.hideCurrentToast()
+
     this.syncListBounds()
     this.addViewToWindow()
     this.isListOpen = true
+    this.registerResizeHandler()
     this.sendHistory()
     this.view.webContents.send('NOTIFICATION_VIEW_SHOW_LIST')
   }
@@ -229,10 +251,9 @@ export class NotificationViewService {
     if (!this.isListOpen || !this.mainWindow || !this.view) return
     this.view.webContents.send('NOTIFICATION_VIEW_HIDE_LIST')
     this.isListOpen = false
-
-    if (!this.toastShowing) {
-      this.removeViewFromWindow()
-    }
+    this.unregisterResizeHandler()
+    this.removeViewFromWindow()
+    this.processToastQueue()
   }
 
   toggle() {
@@ -243,6 +264,21 @@ export class NotificationViewService {
     }
   }
 
+  private registerResizeHandler() {
+    if (this.resizeHandler || !this.mainWindow) return
+    this.resizeHandler = () => {
+      if (this.isListOpen) this.syncListBounds()
+    }
+    this.mainWindow.on('resize', this.resizeHandler)
+  }
+
+  private unregisterResizeHandler() {
+    if (this.resizeHandler && this.mainWindow) {
+      this.mainWindow.off('resize', this.resizeHandler)
+    }
+    this.resizeHandler = null
+  }
+
   private sendHistory() {
     if (!this.view || this.view.webContents.isDestroyed()) return
     const notifications = this.getHistoryHandler?.() || []
@@ -250,6 +286,7 @@ export class NotificationViewService {
   }
 
   destroy() {
+    this.unregisterResizeHandler()
     this.dismissToast()
     this.closeList()
     if (this.view) {

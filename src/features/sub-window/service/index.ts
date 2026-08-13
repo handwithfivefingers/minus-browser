@@ -183,6 +183,10 @@ export class SubWindowService {
     this.view.webContents.send(channel, data)
   }
 
+  getWebContents(): Electron.WebContents | null {
+    return this.view && !this.view.webContents.isDestroyed() ? this.view.webContents : null
+  }
+
   destroy() {
     this.close()
     if (this.view) {

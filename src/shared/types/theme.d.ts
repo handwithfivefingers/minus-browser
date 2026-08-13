@@ -20,4 +20,5 @@ export interface IUserInterface {
   hibernateCustomMinutes?: number
   autoDownload?: boolean
   notificationRetentionDays?: string
+  passwordsNeverSaveDomains?: string[]
 }

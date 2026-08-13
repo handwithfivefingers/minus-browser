@@ -1,3 +1,2 @@
-export * from './controllers'
-export * from './plugin'
-export * from './constants'
+export * from './controllers/passwordController'
+export * from './controllers/pageIpc'

@@ -1,4 +1,4 @@
-import type { IPCEmitChannel, IPCInvokeChannel, IPCRendererEventChannel } from './features/browsers/constants/ipc'
+import type { IPCEmitChannel, IPCInvokeChannel, IPCRendererEventChannel } from './shared/constants/ipc'
 
 type LISTENER_CHANNEL =
   | 'LOADING'
