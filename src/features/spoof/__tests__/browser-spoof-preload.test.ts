@@ -27,9 +27,23 @@ describe('browser-spoof-preload', () => {
   })
 
   it('wraps in IIFE', () => {
-    expect(source.trim()).toMatch(/^import \{ webFrame \} from 'electron'/)
+    expect(source.trim()).toMatch(/^import \{ ipcRenderer, webFrame \} from 'electron'/)
     expect(source).toContain('(function() {')
     expect(source).toContain('})();')
+  })
+
+  it('fetches the configured language via sync IPC', () => {
+    expect(source).toContain('ipcRenderer.sendSync(IPC_INVOKE_CHANNEL.LANGUAGE_GET)')
+    expect(source).toContain("return ['vi-VN', 'vi']")
+  })
+
+  it('spoofs navigator.language and navigator.languages', () => {
+    expect(source).toContain('delete Navigator.prototype.language')
+    expect(source).toContain("Object.defineProperty(Navigator.prototype, 'language'")
+    expect(source).toContain('get: () => ${JSON.stringify(languages[0])}')
+    expect(source).toContain('delete Navigator.prototype.languages')
+    expect(source).toContain("Object.defineProperty(Navigator.prototype, 'languages'")
+    expect(source).toContain('get: () => ${JSON.stringify(languages)}')
   })
 
   it('has makeEvent helper', () => {
@@ -69,7 +83,7 @@ describe('browser-spoof-preload', () => {
 
   it('wraps everything in try/catch', () => {
     const tryBlocks = (source.match(/try \{/g) || []).length
-    const catchBlocks = (source.match(/catch\(_\)/g) || []).length
+    const catchBlocks = (source.match(/catch\s*\(_\)/g) || []).length
     expect(tryBlocks).toBe(catchBlocks)
     expect(tryBlocks).toBeGreaterThanOrEqual(2)
   })

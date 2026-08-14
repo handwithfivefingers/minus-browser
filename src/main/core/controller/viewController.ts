@@ -32,6 +32,7 @@ import { historyController, HistoryRoute } from '~/main/core/controller/history'
 import { TodoRoute } from '~/main/core/controller/todo'
 import { IHandleResizeView, IPC, ITab } from '~/main/core/interfaces'
 import { ErrorServices } from '~/main/core/services/error.services'
+import { setLanguagePreference } from '~/main/core/services/languagePreference'
 import { browserSession } from '~/main/core/services/session'
 import { appDb, eventStore } from '~/main/core/stores'
 import { permissionStore } from '~/main/core/stores/permission.store'
@@ -307,6 +308,7 @@ export class ViewController {
 
       await this.loadUserInterface()
       this.tabController?.setUserInterface(this.userInterface!)
+      this.applyLanguage(this.userInterface?.language)
       await adblocker.initializeForSession(browserSession, this.userInterface?.extension?.disabledFilters)
       this.setupDisplayMediaHandler()
       const retentionDays = Number(this.userInterface?.notificationRetentionDays) || 30
@@ -625,6 +627,7 @@ export class ViewController {
       hibernateCustomMinutes: 60,
       autoDownload: true,
       notificationRetentionDays: '30',
+      language: [],
       passwordsNeverSaveDomains: [],
     }
     try {
@@ -906,9 +909,15 @@ export class ViewController {
       this.notificationService.setRetentionDays(Number(data.notificationRetentionDays))
     }
 
+    const prevLanguage = this.userInterface?.language
     const prev = this.userInterface?.extension
     const next = data.extension
     this.userInterface = data
+
+    if (JSON.stringify(prevLanguage || []) !== JSON.stringify(data.language || [])) {
+      this.applyLanguage(data.language)
+      this.reloadAllTabs()
+    }
 
     if (prev && next) {
       adblocker.isCosmeticFilteringEnabled = next.cosmeticFiltering ?? true
@@ -947,6 +956,27 @@ export class ViewController {
           adblocker.startAutoUpdate(interval)
         } else {
           adblocker.stopAutoUpdate()
+        }
+      }
+    }
+  }
+
+  private applyLanguage(language?: string[]) {
+    const resolved = setLanguagePreference(language)
+    try {
+      browserSession.setUserAgent(browserSession.getUserAgent(), resolved.join(','))
+    } catch (error) {
+      log.error('Failed to apply language', error)
+    }
+  }
+
+  private reloadAllTabs() {
+    for (const tab of this.tabController?.getTabInstances() || []) {
+      if (tab.isAlive) {
+        try {
+          tab.onReload()
+        } catch {
+          // ignore reload errors
         }
       }
     }

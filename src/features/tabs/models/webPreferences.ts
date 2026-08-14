@@ -9,24 +9,15 @@ export const getDefaultViewWebPreferences = (id: string, session: Electron.Sessi
     preload: join(__dirname, 'notification-preload.js'),
     contextIsolation: true,
     sandbox: true,
-    // enableRemoteModule: false,
-    // allowPopups: false,
     enableWebSQL: false,
     minimumFontSize: 6,
     additionalArguments: [`--notification-tab-id=${id}`],
     session, // partition: partition || 'persist:webcontent',
-    // match Chrome's default for anti-fingerprinting purposes (Electron defaults to 0)
     autoplayPolicy: 'no-user-gesture-required',
+    // enableRemoteModule: false,
+    // allowPopups: false,
+    // match Chrome's default for anti-fingerprinting purposes (Electron defaults to 0)
     // javascript: !settings.get('filtering')?.contentTypes?.includes('script'),
+    webSecurity: true,
   }
-  // webPreferences: {
-  //   nodeIntegration: false,
-  //   contextIsolation: true,
-  //   session: this.minusSession,
-  //   preload: path.join(__dirname, 'notification-preload.js'),
-  //   sandbox: true,
-  //   minimumFontSize: 6,
-  //   enableWebSQL: false,
-  //   additionalArguments: [`--notification-tab-id=${this.id}`],
-  // },
 }

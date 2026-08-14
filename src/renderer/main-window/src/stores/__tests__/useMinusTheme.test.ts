@@ -20,6 +20,7 @@ describe('useMinusThemeStore', () => {
         adblockAutoUpdateInterval: 360,
       },
       historyRetentionDays: '30',
+      language: [],
       hibernateMode: 'normal',
       hibernateCustomMinutes: 60,
       autoDownload: true,
@@ -66,6 +67,13 @@ describe('useMinusThemeStore', () => {
   it('sets notification retention days', () => {
     useMinusThemeStore.getState().setNotificationRetentionDays('7')
     expect(useMinusThemeStore.getState().notificationRetentionDays).toBe('7')
+  })
+
+  it('sets language', () => {
+    useMinusThemeStore.getState().setLanguage(['vi-VN', 'vi'])
+    expect(useMinusThemeStore.getState().language).toEqual(['vi-VN', 'vi'])
+    useMinusThemeStore.getState().setLanguage([])
+    expect(useMinusThemeStore.getState().language).toEqual([])
   })
 
   it('sets extension settings partially', () => {

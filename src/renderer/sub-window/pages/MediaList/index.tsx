@@ -73,6 +73,39 @@ export function MediaList() {
     [hide]
   )
 
+  const getVideos = useCallback((tab: MediaTabEntry) => {
+    return (
+      <div key={tab.tabId} className="mb-1 rounded bg-slate-600/20">
+        <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-slate-600 dark:text-slate-400">
+          {tab.favicon ? (
+            <img src={tab.favicon} alt="" className="h-3.5 w-3.5 rounded-sm" />
+          ) : (
+            <span className="h-3.5 w-3.5 rounded-sm bg-slate-200 dark:bg-slate-700" />
+          )}
+          <span className="truncate">{tab.title}</span>
+        </div>
+        {tab.videos.map((vid) => {
+          return (
+            <button
+              type="button"
+              key={vid.id}
+              className="group flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+              onClick={() => pip(tab.tabId, vid)}
+              title="Play in Picture-in-Picture"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] text-slate-400">
+                  {formatTime(vid.currentTime)} / {formatTime(vid.duration)}
+                </div>
+              </div>
+              <IconPictureInPicture size={16} className="shrink-0 text-indigo-500" />
+            </button>
+          )
+        })}
+      </div>
+    )
+  }, [])
+
   const left = Math.max(8, Math.min(anchor?.x ?? 16, window.innerWidth - 320))
   const top = Math.max(8, Math.min(anchor?.y ?? 16, window.innerHeight - 360))
 
@@ -98,37 +131,7 @@ export function MediaList() {
           {tabs.length === 0 ? (
             <p className="p-3 text-center text-xs text-slate-400 italic dark:text-slate-500">No media playing</p>
           ) : (
-            tabs.map((tab) => (
-              <div key={tab.tabId} className="mb-1">
-                <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-slate-400 dark:text-slate-500">
-                  {tab.favicon ? (
-                    <img src={tab.favicon} alt="" className="h-3.5 w-3.5 rounded-sm" />
-                  ) : (
-                    <span className="h-3.5 w-3.5 rounded-sm bg-slate-200 dark:bg-slate-700" />
-                  )}
-                  <span className="truncate">{tab.title}</span>
-                </div>
-                {tab.videos.map((video) => (
-                  <button
-                    type="button"
-                    key={video.id}
-                    className="group flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                    onClick={() => pip(tab.tabId, video)}
-                    title="Play in Picture-in-Picture"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-medium text-slate-700 group-hover:text-indigo-600 dark:text-slate-200 dark:group-hover:text-indigo-400">
-                        {video.title}
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        {formatTime(video.currentTime)} / {formatTime(video.duration)}
-                      </div>
-                    </div>
-                    <IconPictureInPicture size={16} className="shrink-0 text-indigo-500" />
-                  </button>
-                ))}
-              </div>
-            ))
+            tabs.map((tab) => getVideos(tab))
           )}
         </div>
       </div>

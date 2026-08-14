@@ -14,4 +14,12 @@ export default defineConfig({
     outDir: '.vite/build',
     emptyOutDir: false,
   },
+  resolve: {
+    alias: [
+      {
+        find: '~',
+        replacement: path.resolve(__dirname, 'src'),
+      },
+    ],
+  },
 })

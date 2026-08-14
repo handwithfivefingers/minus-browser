@@ -8,6 +8,7 @@ import { findbarService } from '../features/findbar/service'
 
 import { CommandController } from './core/controller/commandController'
 import { ViewController } from './core/controller/viewController'
+import { registerLanguagePreferenceIpc } from './core/services/languagePreference'
 import { menuApplication } from './core/services/menu'
 import { browserSession, sessionInitPromise } from './core/services/session'
 import {
@@ -36,6 +37,8 @@ if (process.platform === 'win32') {
 }
 
 Menu.setApplicationMenu(null)
+
+registerLanguagePreferenceIpc()
 
 if (process.env.NODE_ENV !== 'development') {
   if (process.defaultApp) {

@@ -3,6 +3,7 @@ import {
   IconClock,
   IconDatabase,
   IconDeviceFloppy,
+  IconLanguage,
   IconLayoutGrid,
   IconMoon,
   IconRefresh,
@@ -36,18 +37,32 @@ const MODE_OPTIONS: { value: 'light' | 'dark' | 'auto'; label: string; icon: typ
   { value: 'auto', label: 'Auto', icon: IconSun },
 ]
 
+const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'auto', label: 'Auto (system default)' },
+  { value: 'vi-VN,vi', label: 'Vietnamese (vi-VN)' },
+  { value: 'en-US,en', label: 'English (en-US)' },
+  { value: 'ja-JP,ja', label: 'Japanese (ja-JP)' },
+  { value: 'ko-KR,ko', label: 'Korean (ko-KR)' },
+  { value: 'zh-CN,zh', label: 'Chinese (Simplified) (zh-CN)' },
+  { value: 'fr-FR,fr', label: 'French (fr-FR)' },
+  { value: 'de-DE,de', label: 'German (de-DE)' },
+  { value: 'es-ES,es', label: 'Spanish (es-ES)' },
+]
+
 export const Interface = () => {
   const {
     layout,
     // dataSync,
     savedCookies,
     historyRetentionDays,
+    language,
     autoDownload,
     notificationRetentionDays,
     // setDataSyncTime,
     setCookieMode,
     setLayout,
     setHistoryRetentionDays,
+    setLanguage,
     setAutoDownload,
     setNotificationRetentionDays,
     saved,
@@ -87,6 +102,32 @@ export const Interface = () => {
             })}
           </div>
         </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4 flex items-center gap-2">
+          <IconLanguage size={18} className="text-slate-700 dark:text-slate-300" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Language</h2>
+        </div>
+
+        <label className="flex max-w-sm flex-col gap-1.5">
+          <span className="text-sm text-slate-600 dark:text-slate-400">Website language</span>
+          <select
+            value={language?.length ? language.join(',') : 'auto'}
+            onChange={(event) => setLanguage(event.target.value === 'auto' ? [] : event.target.value.split(','))}
+            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+          >
+            {LANGUAGE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-slate-400 dark:text-slate-500">
+            Controls the language websites see via navigator.language and the Accept-Language header. Open tabs are
+            reloaded after saving.
+          </span>
+        </label>
       </div>
 
       <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">

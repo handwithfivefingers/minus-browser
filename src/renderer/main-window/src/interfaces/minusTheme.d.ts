@@ -7,6 +7,7 @@ export interface MinusThemeAction {
   setExtension: (extension: Partial<IUserInterface['extension']>) => void
   setCookieMode: (mode: '0' | '1') => void
   setHistoryRetentionDays: (days: string) => void
+  setLanguage: (language: string[]) => void
   setHibernateMode: (mode: 'fast' | 'normal' | 'slow' | 'custom') => void
   setHibernateCustomMinutes: (minutes: number) => void
   setAutoDownload: (enabled: boolean) => void

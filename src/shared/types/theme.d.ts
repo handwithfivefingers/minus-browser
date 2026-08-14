@@ -16,6 +16,7 @@ export interface IUserInterface {
     adblockAutoUpdateInterval: number
   }
   historyRetentionDays?: string
+  language?: string[]
   hibernateMode?: 'fast' | 'normal' | 'slow' | 'custom'
   hibernateCustomMinutes?: number
   autoDownload?: boolean

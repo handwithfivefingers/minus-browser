@@ -22,6 +22,7 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
     adblockAutoUpdateInterval: 360,
   },
   historyRetentionDays: '30',
+  language: [],
   hibernateMode: 'normal',
   hibernateCustomMinutes: 60,
   autoDownload: true,
@@ -36,14 +37,17 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
   setCookieMode: (mode: '0' | '1') => {
     set({ savedCookies: mode })
   },
-  setDataSyncTime: (intervalTime: string) => {
-    set((state) => ({ ...state, dataSync: { ...state.dataSync, intervalTime } }))
-  },
+  // setDataSyncTime: (intervalTime: string) => {
+  //   set((state) => ({ ...state, dataSync: { ...state.dataSync, intervalTime } }))
+  // },
   setExtension: (extension: Partial<IMinusThemeStore['extension']>) => {
     set((state) => ({ ...state, extension: { ...state.extension, ...extension } }))
   },
   setHistoryRetentionDays: (days: string) => {
     set({ historyRetentionDays: days })
+  },
+  setLanguage: (language: string[]) => {
+    set({ language })
   },
   setHibernateMode: (mode: 'fast' | 'normal' | 'slow' | 'custom') => {
     set({ hibernateMode: mode })
@@ -68,10 +72,11 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
     const params = {
       layout: data.layout,
       mode: data.mode,
-      dataSync: data.dataSync,
+      // dataSync: data.dataSync,
       extension: data.extension,
       savedCookies: data.savedCookies,
       historyRetentionDays: data.historyRetentionDays,
+      language: data.language,
       hibernateMode: data.hibernateMode,
       hibernateCustomMinutes: data.hibernateCustomMinutes,
       autoDownload: data.autoDownload,

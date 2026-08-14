@@ -103,7 +103,7 @@ webFrame.executeJavaScript(`
 
       function signature(list) {
         return list.map(function(v) {
-          return v.id + ':' + v.src + ':' + v.paused + ':' + Math.floor((v.currentTime || 0) / 5);
+          return v.id + ':' + v.src + ':' + v.paused + ':' + Math.floor((v.currentTime || 0) / 1); // Update each second
         }).join('|');
       }
 
