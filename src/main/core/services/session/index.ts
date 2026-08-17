@@ -97,7 +97,7 @@ async function handleVersionChange() {
 
   if (change.electronMajorChanged) {
     console.error(`[Version] Electron major version changed — clearing all storage data`)
-    await browserSession.clearStorageData()
+    // await browserSession.clearStorageData()
     return
   }
 
