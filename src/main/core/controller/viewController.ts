@@ -5,6 +5,8 @@ import log from 'electron-log'
 import { adblocker } from '~/features/adblocker/plugin'
 import { checkForUpdates, initAutoUpdate, quitAndInstall } from '~/features/autoUpdate/autoUpdate.init'
 import { cacheSystem } from '~/features/cacheSystem'
+import { downloadController, downloadInvokeHandlers } from '~/features/download'
+import { downloadPopup } from '~/features/download/popup'
 import { mediaListController } from '~/features/media/controller'
 import { NotificationService } from '~/features/notification/service'
 import { SearchRoute, searchController as splitSearchController } from '~/features/search'
@@ -36,7 +38,7 @@ import { browserSession } from '~/main/core/services/session'
 import { appDb, eventStore } from '~/main/core/stores'
 import { permissionStore } from '~/main/core/stores/permission.store'
 import { isSameURl } from '~/main/core/utils'
-import { IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from '~/shared/constants/ipc'
+import { IPC_DOWNLOAD_EMIT, IPC_EMIT_CHANNEL, IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from '~/shared/constants/ipc'
 import { SUB_WINDOW_INVOKE, SUB_WINDOW_RENDERER_EVENT } from '~/shared/constants/ipc/sub-window'
 import { IPC_TAB_GROUP_INVOKE, IPC_TAB_GROUP_RENDERER_EVENT } from '~/shared/constants/ipc/tabGroup'
 import { IUserInterface, PermissionDecision, PermissionType } from '~/shared/types'
@@ -107,6 +109,7 @@ export class ViewController {
           return { success: true }
         },
         ...adblocker.getInvokeHandlers(),
+        ...downloadInvokeHandlers,
         [IPC_TAB_GROUP_INVOKE.HIDE_GROUP]: async (id: string) => {
           const group = tabGroupController.getGroups().find((g) => g.id === id)
           if (!group) return { success: true }
@@ -242,6 +245,11 @@ export class ViewController {
         ...tabGroupEmitHandlers,
         ...spotlightInvokeHandlers,
         [IPC_EMIT_CHANNEL.SUB_WINDOW_CLOSE]: () => subWindowService.close(),
+        [IPC_DOWNLOAD_EMIT.NAVIGATE_ALL]: () => {
+          downloadPopup.hide()
+          this.window.webContents.send('NAVIGATE_DOWNLOADS')
+        },
+        [IPC_DOWNLOAD_EMIT.POPUP_DISMISS]: () => downloadPopup.dismiss(),
         [SUB_WINDOW_RENDERER_EVENT.RESOLVE]: (data) => subWindowService.resolveRequest(data),
         [IPC_EMIT_CHANNEL.TOGGLE_MUTE_TAB]: (data: { tabId: string }) => {
           const tab = this.tabController?.getTabById(data.tabId)
@@ -287,6 +295,9 @@ export class ViewController {
 
   async init() {
     try {
+      downloadController.init()
+      downloadController.setMainWindow(this.window)
+      downloadPopup.init(this.window)
       setImmediate(() => {
         subWindowService.warmup().catch(() => {
           console.log('subWindowService warmup error')
@@ -307,6 +318,10 @@ export class ViewController {
 
       await this.loadUserInterface()
       this.tabController?.setUserInterface(this.userInterface!)
+      downloadController.setPreferences({
+        downloadDirectory: this.userInterface?.downloadDirectory,
+        askDownloadLocation: this.userInterface?.askDownloadLocation,
+      })
       await adblocker.initializeForSession(browserSession, this.userInterface?.extension?.disabledFilters)
       this.setupDisplayMediaHandler()
       const retentionDays = Number(this.userInterface?.notificationRetentionDays) || 30
@@ -626,6 +641,7 @@ export class ViewController {
       autoDownload: true,
       notificationRetentionDays: '30',
       passwordsNeverSaveDomains: [],
+      askDownloadLocation: false,
     }
     try {
       const userInterface = await cacheSystem.get<IUserInterface>('interface', () => {
@@ -909,6 +925,11 @@ export class ViewController {
     const prev = this.userInterface?.extension
     const next = data.extension
     this.userInterface = data
+
+    downloadController.setPreferences({
+      downloadDirectory: data.downloadDirectory,
+      askDownloadLocation: data.askDownloadLocation,
+    })
 
     if (prev && next) {
       adblocker.isCosmeticFilteringEnabled = next.cosmeticFiltering ?? true

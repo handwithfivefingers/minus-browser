@@ -3,6 +3,8 @@ import {
   IconClock,
   IconDatabase,
   IconDeviceFloppy,
+  IconDownload,
+  IconFolder,
   IconLayoutGrid,
   IconMoon,
   IconRefresh,
@@ -16,6 +18,7 @@ import { useMinusThemeStore } from '~/renderer/main-window/src/stores/useMinusTh
 import { useNotificationStore } from '~/renderer/main-window/src/stores/useNotificationStore'
 import { useUpdateStore } from '~/renderer/main-window/src/stores/useUpdateStore'
 import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
+import { IPC_DOWNLOAD_INVOKE } from '~/shared/constants/ipc/download'
 enum LayoutTemplate {
   BASIC = 'BASIC',
   FLOATING = 'FLOATING',
@@ -44,12 +47,15 @@ export const Interface = () => {
     historyRetentionDays,
     autoDownload,
     notificationRetentionDays,
-    // setDataSyncTime,
+    downloadDirectory,
+    askDownloadLocation,
     setCookieMode,
     setLayout,
     setHistoryRetentionDays,
     setAutoDownload,
     setNotificationRetentionDays,
+    setDownloadDirectory,
+    setAskDownloadLocation,
     saved,
   } = useMinusThemeStore()
   const { mode, setMode } = useTheme()
@@ -202,6 +208,64 @@ export const Interface = () => {
               Notifications older than this many days are automatically removed. Set to 0 to keep forever.
             </span>
           </label>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4 flex items-center gap-2">
+          <IconDownload size={18} className="text-slate-700 dark:text-slate-300" />
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Downloads</h2>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm text-slate-600 dark:text-slate-400">Default download location</span>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={downloadDirectory || 'Downloads folder'}
+                className="h-10 flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm text-slate-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-400"
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  const result = await window.api.INVOKE<{ success: boolean; directory?: string }>(
+                    IPC_DOWNLOAD_INVOKE.SET_DEFAULT_DIR
+                  )
+                  if (result?.success && result.directory) {
+                    setDownloadDirectory(result.directory)
+                  }
+                }}
+                className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-slate-300 px-4 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <IconFolder size={14} />
+                Choose...
+              </button>
+            </div>
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              Files you download are saved here unless you choose a different location.
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-100 pt-3 dark:border-slate-700">
+            <div className="flex flex-col">
+              <span className="text-sm text-slate-600 dark:text-slate-400">
+                Ask where to save each file before downloading
+              </span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">
+                When enabled, a Save As dialog opens for every download.
+              </span>
+            </div>
+            <div className="relative inline-flex cursor-pointer items-center">
+              <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={askDownloadLocation ?? false}
+                onChange={(e) => setAskDownloadLocation(e.target.checked)}
+              />
+              <div className="peer h-5 w-9 rounded-full bg-slate-300 peer-checked:bg-green-500 peer-focus:outline-none after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
+            </div>
+          </div>
         </div>
       </div>
 

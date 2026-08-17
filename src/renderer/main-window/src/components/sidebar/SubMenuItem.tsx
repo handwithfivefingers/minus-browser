@@ -1,4 +1,4 @@
-import { IconComponents, IconHistory, IconPlus, IconSettings } from '@tabler/icons-react'
+import { IconComponents, IconDownload, IconHistory, IconPlus, IconSettings } from '@tabler/icons-react'
 import { Link, useLocation } from 'react-router'
 
 import { IPC_TAB_GROUP_EMIT } from '~/shared/constants/ipc/tabGroup'
@@ -48,6 +48,15 @@ export const SubMenuItem = ({ tabs, onAddNewTab }: SubMenuItemProps) => {
       >
         <IconHistory size={16} />
         <span className="text-[10px] font-medium">History</span>
+      </Link>
+      <Link
+        to="/downloads"
+        className={cn(NAV_ITEM_CLASS, {
+          [`bg-white text-slate-500 shadow-md dark:bg-slate-700 dark:text-slate-300`]: pathname === '/downloads',
+        })}
+      >
+        <IconDownload size={16} />
+        <span className="text-[10px] font-medium">Downloads</span>
       </Link>
       <Link
         to="/setting"

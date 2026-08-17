@@ -169,6 +169,26 @@ const migrations: { version: number; up: (db: DatabaseSync) => void }[] = [
       if (!has('raw_metadata')) db.exec(`ALTER TABLE user_scripts ADD COLUMN raw_metadata TEXT NOT NULL DEFAULT ''`)
     },
   },
+  {
+    version: 6,
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS downloads (
+          id TEXT PRIMARY KEY,
+          filename TEXT NOT NULL DEFAULT '',
+          url TEXT NOT NULL DEFAULT '',
+          save_path TEXT NOT NULL DEFAULT '',
+          mime_type TEXT NOT NULL DEFAULT '',
+          total_bytes INTEGER NOT NULL DEFAULT 0,
+          received_bytes INTEGER NOT NULL DEFAULT 0,
+          state TEXT NOT NULL DEFAULT 'completed',
+          started_at INTEGER NOT NULL DEFAULT 0,
+          ended_at INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS idx_downloads_started_at ON downloads(started_at);
+      `)
+    },
+  },
 ]
 
 export function runMigrations(db: DatabaseSync) {

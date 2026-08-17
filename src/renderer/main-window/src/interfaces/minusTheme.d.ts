@@ -12,6 +12,8 @@ export interface MinusThemeAction {
   setAutoDownload: (enabled: boolean) => void
   setNotificationRetentionDays: (days: string) => void
   setPasswordsNeverSaveDomains: (domains: string[]) => void
+  setDownloadDirectory: (directory: string) => void
+  setAskDownloadLocation: (enabled: boolean) => void
   saved: () => void
 }
 export interface IMinusThemeStore extends IUserInterface, MinusThemeAction {}

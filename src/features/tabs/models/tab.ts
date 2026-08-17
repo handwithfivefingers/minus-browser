@@ -438,7 +438,10 @@ export class Tab extends TabPermission {
 
   createContextMenu() {
     if (!this._webContents) return
-    this._webContents.on('context-menu', new ContextMenuController().initialize)
+    const controller = new ContextMenuController()
+    this._webContents.on('context-menu', (event, params) => {
+      controller.initialize(event, params, this._webContents as Electron.WebContents)
+    })
   }
 
   toggleMute() {

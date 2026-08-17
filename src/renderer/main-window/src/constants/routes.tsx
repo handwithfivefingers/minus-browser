@@ -4,6 +4,7 @@ const CustomApp = lazy(() => import('../pages/customApp'))
 const Home = lazy(() => import('../pages/home'))
 const Setting = lazy(() => import('../pages/setting'))
 const History = lazy(() => import('../pages/history'))
+const Downloads = lazy(() => import('../pages/downloads'))
 const APP_ROUTES = [
   {
     path: '/',
@@ -34,6 +35,14 @@ const APP_ROUTES = [
         element: (
           <Suspense fallback={'Loading...'}>
             <History />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'downloads',
+        element: (
+          <Suspense fallback={'Loading...'}>
+            <Downloads />
           </Suspense>
         ),
       },

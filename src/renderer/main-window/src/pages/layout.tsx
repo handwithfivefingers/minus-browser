@@ -20,8 +20,8 @@ import { useTabStore } from '../stores/useTabStore'
 import { setupUpdateListener } from '../stores/useUpdateStore'
 
 const LAYOUT_CLASS = {
-  BASIC: 'flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950',
-  FLOATING: 'flex h-screen overflow-hidden bg-slate-100 dark:bg-slate-950 p-1 gap-1',
+  BASIC: 'flex min-h-0 flex-1 overflow-hidden bg-slate-100 dark:bg-slate-950',
+  FLOATING: 'flex min-h-0 flex-1 overflow-hidden bg-slate-100 dark:bg-slate-950 p-1 gap-1',
 }
 const Layout = () => {
   const layout = useMinusThemeStore().layout || 'FLOATING'
@@ -53,6 +53,9 @@ const Layout = () => {
     })
     window.api.LISTENER('NAVIGATE_SETTINGS', () => {
       navigate('/setting')
+    })
+    window.api.LISTENER('NAVIGATE_DOWNLOADS', () => {
+      navigate('/downloads')
     })
     window.api.LISTENER('TOGGLE_AI_SIDEBAR', () => {
       useAiSidebarStore.getState().toggle()

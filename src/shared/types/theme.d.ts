@@ -21,4 +21,8 @@ export interface IUserInterface {
   autoDownload?: boolean
   notificationRetentionDays?: string
   passwordsNeverSaveDomains?: string[]
+  /** Default folder downloads are saved into (absolute path) */
+  downloadDirectory?: string
+  /** Ask where to save each file before downloading (like Chrome) */
+  askDownloadLocation?: boolean
 }

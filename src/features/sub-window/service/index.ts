@@ -6,6 +6,22 @@ import { SUB_WINDOW_EMIT } from '~/shared/constants/ipc/sub-window'
 
 const preloadPath = path.join(__dirname, '/preload.js')
 
+/** URL of the sub-window renderer app; pass a hash route (e.g. `/downloads`)
+ *  to load a specific overlay directly (used by non-modal popups). */
+export function getSubWindowURL(route?: string): string {
+  try {
+    /**@ts-ignore */
+    if (SUB_WINDOW_VITE_DEV_SERVER_URL) {
+      /**@ts-ignore */
+      return route ? `${SUB_WINDOW_VITE_DEV_SERVER_URL}#${route}` : SUB_WINDOW_VITE_DEV_SERVER_URL
+    }
+  } catch {
+    // ignore
+  }
+  const filePath = path.join(__dirname, '../renderer/sub_window/index.html')
+  return route ? `${pathToFileURL(filePath).toString()}#${route}` : pathToFileURL(filePath).toString()
+}
+
 interface PendingRequest {
   resolve: (data: any) => void
   reject: (err: Error) => void
@@ -41,17 +57,7 @@ export class SubWindowService {
   }
 
   private getURL() {
-    try {
-      /**@ts-ignore */
-      if (SUB_WINDOW_VITE_DEV_SERVER_URL) {
-        /**@ts-ignore */
-        return SUB_WINDOW_VITE_DEV_SERVER_URL
-      }
-    } catch {
-      // ignore
-    }
-    const filePath = path.join(__dirname, '../renderer/sub_window/index.html')
-    return pathToFileURL(filePath).toString()
+    return getSubWindowURL()
   }
 
   private syncViewBounds() {

@@ -1,4 +1,5 @@
 export * from './debounce'
+export * from './download'
 export * from './isSameUrl'
 export * from './isSafeUrl'
 export * from './parser'

@@ -1,3 +1,4 @@
+import { IPC_DOWNLOAD_INVOKE, IPC_DOWNLOAD_EMIT, IPC_DOWNLOAD_RENDERER_EVENT } from './ipc/download'
 import { IPC_TAB_GROUP_EMIT, IPC_TAB_GROUP_INVOKE } from './ipc/tabGroup'
 
 export const IPC_INVOKE_CHANNEL = {
@@ -140,7 +141,13 @@ export const IPC_RENDERER_EVENT = {
 export type IPCInvokeChannel =
   | (typeof IPC_INVOKE_CHANNEL)[keyof typeof IPC_INVOKE_CHANNEL]
   | (typeof IPC_TAB_GROUP_INVOKE)[keyof typeof IPC_TAB_GROUP_INVOKE]
+  | (typeof IPC_DOWNLOAD_INVOKE)[keyof typeof IPC_DOWNLOAD_INVOKE]
 export type IPCEmitChannel =
   | (typeof IPC_EMIT_CHANNEL)[keyof typeof IPC_EMIT_CHANNEL]
   | (typeof IPC_TAB_GROUP_EMIT)[keyof typeof IPC_TAB_GROUP_EMIT]
-export type IPCRendererEventChannel = (typeof IPC_RENDERER_EVENT)[keyof typeof IPC_RENDERER_EVENT]
+  | (typeof IPC_DOWNLOAD_EMIT)[keyof typeof IPC_DOWNLOAD_EMIT]
+export type IPCRendererEventChannel =
+  | (typeof IPC_RENDERER_EVENT)[keyof typeof IPC_RENDERER_EVENT]
+  | (typeof IPC_DOWNLOAD_RENDERER_EVENT)[keyof typeof IPC_DOWNLOAD_RENDERER_EVENT]
+
+export { IPC_DOWNLOAD_INVOKE, IPC_DOWNLOAD_EMIT, IPC_DOWNLOAD_RENDERER_EVENT } from './ipc/download'

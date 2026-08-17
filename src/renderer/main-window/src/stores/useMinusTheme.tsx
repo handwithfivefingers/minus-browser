@@ -27,6 +27,8 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
   autoDownload: true,
   notificationRetentionDays: '30',
   passwordsNeverSaveDomains: [],
+  askDownloadLocation: false,
+  downloadDirectory: '',
   setLayout: (layout: 'BASIC' | 'FLOATING') => {
     set({ layout })
   },
@@ -60,6 +62,12 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
   setPasswordsNeverSaveDomains: (domains: string[]) => {
     set({ passwordsNeverSaveDomains: domains })
   },
+  setDownloadDirectory: (directory: string) => {
+    set({ downloadDirectory: directory })
+  },
+  setAskDownloadLocation: (enabled: boolean) => {
+    set({ askDownloadLocation: enabled })
+  },
   initialize: (data: Partial<IMinusThemeStore>) => {
     return set(data)
   },
@@ -77,6 +85,8 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
       autoDownload: data.autoDownload,
       notificationRetentionDays: data.notificationRetentionDays,
       passwordsNeverSaveDomains: data.passwordsNeverSaveDomains || [],
+      askDownloadLocation: data.askDownloadLocation,
+      downloadDirectory: data.downloadDirectory,
     }
     window?.api?.INVOKE(IPC_INVOKE_CHANNEL.INTERFACE_SAVE, params)
   },
