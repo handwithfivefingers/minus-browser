@@ -184,16 +184,19 @@ async function migrateSinglePath(
     const currentMajor = getCurrentElectronVersion().split('.')[0]
     const oldMajor = oldElectronVer?.split('.')[0]
 
-    if (oldMajor && oldMajor === currentMajor) {
-      const dest = path.join(currentUserData, 'Partitions')
-      await copyRecursive(oldPartitions, dest)
-      partitionsMigrated = true
-      migrated = true
-    } else {
+    if (oldMajor && oldMajor !== currentMajor) {
       console.error(
-        `[Migration] Skipping Partitions/ from ${oldPath} — Electron major version changed (${oldMajor ?? 'unknown'} → ${currentMajor})`
+        `[Migration] Copying Partitions/ across Electron major versions (${oldMajor} → ${currentMajor}) — Chromium migrates the cookie store natively`
       )
     }
+
+    // Copy the partition regardless of Electron version. Chromium migrates the
+    // cookie SQLite schema on load, so skipping the copy (as before) silently
+    // dropped every cookie for users upgrading Electron and the userData path.
+    const dest = path.join(currentUserData, 'Partitions')
+    await copyRecursive(oldPartitions, dest)
+    partitionsMigrated = true
+    migrated = true
   } catch {
     console.error(`[Migration] Skipping Partitions/ from ${oldPath} — not found`)
   }
@@ -239,13 +242,16 @@ export async function migrateUserData(): Promise<boolean> {
 
 export async function needsLegacyCookieMigration(currentUserData: string): Promise<boolean> {
   const sessionJson = path.join(currentUserData, 'session.json')
-  // Electron maps persist:minus-browser → Partitions/minus-browser on disk
-  const partitionDir = path.join(currentUserData, 'Partitions', 'minus-browser')
+  // Electron maps persist:minus-browser → Partitions/minus-browser on disk.
+  // Check for the native cookie DB file, not the partition directory: the
+  // directory is created eagerly by session.fromPartition()/clearStorageData()
+  // before this runs, so checking it would silently skip the legacy import.
+  const cookieDb = path.join(currentUserData, 'Partitions', 'minus-browser', 'Cookies')
 
   try {
     await fs.access(sessionJson)
     try {
-      await fs.access(partitionDir)
+      await fs.access(cookieDb)
       return false
     } catch {
       return true

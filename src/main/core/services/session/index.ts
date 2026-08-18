@@ -46,8 +46,10 @@ const sessionInitPromise = app.whenReady().then(async () => {
     browserSession.setPreloads([...existing, ...toAdd])
   }
 
-  await migrateLegacyCookies()
+  // Version-change handling must run before the legacy cookie import:
+  // otherwise a storage wipe on upgrade would erase cookies we just restored.
   await handleVersionChange()
+  await migrateLegacyCookies()
   await writeVersionInfo(app.getPath('userData'))
 
   forwardCookieChanges()
@@ -96,8 +98,14 @@ async function handleVersionChange() {
   const change = await detectVersionChange(userData)
 
   if (change.electronMajorChanged) {
-    console.error(`[Version] Electron major version changed — clearing all storage data`)
-    await browserSession.clearStorageData()
+    // Chromium migrates the native cookie SQLite store across versions, so we
+    // must NOT wipe it here — clearing all storage destroys every cookie on
+    // every Electron upgrade. Clear only the volatile / corrupt-prone storage
+    // buckets and let the native cookie store survive the migration.
+    console.error(`[Version] Electron major version changed — clearing non-cookie storage data`)
+    await browserSession.clearStorageData({
+      storages: ['filesystem', 'indexdb', 'localstorage', 'shadercache', 'serviceworkers', 'cachestorage'],
+    })
     return
   }
 
@@ -113,7 +121,16 @@ async function handleVersionChange() {
 
 function forwardCookieChanges() {
   browserSession.cookies.on('changed', (_event, cookie, cause, removed) => {
-    if (cause === 'explicit' || cause === 'overwrite') {
+    // Electron ≤42 used `explicit`/`overwrite`; Electron 43+ replaced
+    // `overwrite` with `inserted-no-change-overwrite` /
+    // `inserted-no-value-change-overwrite` and added `inserted`.
+    const isSetOrUpdate =
+      cause === 'explicit' ||
+      cause === 'overwrite' ||
+      cause === 'inserted' ||
+      cause === 'inserted-no-change-overwrite' ||
+      cause === 'inserted-no-value-change-overwrite'
+    if (isSetOrUpdate) {
       const win = BrowserWindow.getAllWindows()[0]
       win?.webContents.send('COOKIE_CHANGED', { cookie, removed })
     }
