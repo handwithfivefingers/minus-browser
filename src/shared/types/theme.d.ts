@@ -25,4 +25,6 @@ export interface IUserInterface {
   downloadDirectory?: string
   /** Ask where to save each file before downloading (like Chrome) */
   askDownloadLocation?: boolean
+  /** Block pop-ups (window.open) unless the site is allowed (like Chrome) */
+  blockPopups?: boolean
 }

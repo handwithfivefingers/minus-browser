@@ -522,6 +522,7 @@ export class Tab extends TabPermission {
       isUsingMicrophone: this.isUsingMicrophone,
       isUsingScreenShare: this.isUsingScreenShare,
       blockedNotifications: this.blockedNotifications,
+      blockedPopups: this.blockedPopups,
       error: this.error,
     }
   }

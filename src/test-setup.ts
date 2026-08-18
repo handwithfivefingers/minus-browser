@@ -116,7 +116,7 @@ if (typeof window !== 'undefined' && window.Object === Object) {
     value: {
       INVOKE: vi.fn(),
       EMIT: vi.fn(),
-      LISTENER: vi.fn(),
+      LISTENER: vi.fn(() => vi.fn()),
     },
     writable: true,
     configurable: true,

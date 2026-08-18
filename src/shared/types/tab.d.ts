@@ -26,6 +26,7 @@ export interface ITab {
   isUsingMicrophone?: boolean
   isUsingScreenShare?: boolean
   blockedNotifications?: number
+  blockedPopups?: number
   error?: TabError | null
 }
 

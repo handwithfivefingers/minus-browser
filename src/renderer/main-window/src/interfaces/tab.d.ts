@@ -33,6 +33,7 @@ export class Tab {
   isUsingMicrophone = false
   isUsingScreenShare = false
   blockedNotifications = 0
+  blockedPopups = 0
   isLoading = false
   preventHibernate = false
   groupId?: string

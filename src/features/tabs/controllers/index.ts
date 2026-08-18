@@ -26,6 +26,7 @@ interface ITabDBRow {
   is_using_microphone: number
   is_using_screen_share: number
   blocked_notifications: string | null
+  blocked_popups: string | null
   error: string | null
 }
 
@@ -49,6 +50,7 @@ function deserializeTab(row: ITabDBRow): Record<string, any> {
     isUsingMicrophone: !!row.is_using_microphone,
     isUsingScreenShare: !!row.is_using_screen_share,
     blockedNotifications: row.blocked_notifications ? JSON.parse(row.blocked_notifications) : undefined,
+    blockedPopups: row.blocked_popups ? JSON.parse(row.blocked_popups) : 0,
     error: row.error ? JSON.parse(row.error) : null,
   }
 }
@@ -336,7 +338,7 @@ export class TabController {
       this.persistedTabIds = currentIds
       for (const tab of tabs || []) {
         appDb.run(
-          `INSERT INTO tabs (id, title, url, is_pinned, is_focused, "index", favicon, timestamp, is_bookmarked, is_hibernated, prevent_hibernate, group_id, audible, is_muted, is_using_camera, is_using_microphone, is_using_screen_share, blocked_notifications, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO tabs (id, title, url, is_pinned, is_focused, "index", favicon, timestamp, is_bookmarked, is_hibernated, prevent_hibernate, group_id, audible, is_muted, is_using_camera, is_using_microphone, is_using_screen_share, blocked_notifications, blocked_popups, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              title = excluded.title,
              url = excluded.url,
@@ -355,6 +357,7 @@ export class TabController {
              is_using_microphone = excluded.is_using_microphone,
              is_using_screen_share = excluded.is_using_screen_share,
              blocked_notifications = excluded.blocked_notifications,
+             blocked_popups = excluded.blocked_popups,
              error = excluded.error`,
           [
             tab.id,
@@ -375,6 +378,7 @@ export class TabController {
             tab.isUsingMicrophone ? 1 : 0,
             tab.isUsingScreenShare ? 1 : 0,
             tab.blockedNotifications ? JSON.stringify(tab.blockedNotifications) : null,
+            tab.blockedPopups ? JSON.stringify(tab.blockedPopups) : JSON.stringify(0),
             tab.error ? JSON.stringify(tab.error) : null,
           ]
         )

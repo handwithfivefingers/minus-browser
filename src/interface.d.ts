@@ -21,10 +21,10 @@ type LISTENER_CHANNEL =
 export interface IElectronAPI {
   INVOKE: <T>(channel: IPCInvokeChannel, data?: any) => Promise<T> | T
   EMIT: <T>(channel: IPCEmitChannel, data?: any) => Promise<T> | T
-  LISTENER: <C extends LISTENER_CHANNEL, T>(
+  LISTENER: <C extends LISTENER_CHANNEL>(
     channel: `${C}:${string}` | `${C}` | IPCRendererEventChannel | string,
     func: (...args: any[]) => void
-  ) => Promise<T> | T
+  ) => (() => void) | void
 }
 
 declare global {

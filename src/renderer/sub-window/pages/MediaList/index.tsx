@@ -43,9 +43,12 @@ export function MediaList() {
         // ignore parse errors
       }
     }
-    window.api.LISTENER(IPC_RENDERER_EVENT.MEDIA_LIST_UPDATED, (data?: MediaTabEntry[]) => {
+    const unsubscribeUpdates = window.api.LISTENER(IPC_RENDERER_EVENT.MEDIA_LIST_UPDATED, (data?: MediaTabEntry[]) => {
       if (Array.isArray(data)) setTabs(data)
     })
+    return () => {
+      unsubscribeUpdates?.()
+    }
   }, [])
 
   useEffect(() => {

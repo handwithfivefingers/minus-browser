@@ -102,14 +102,14 @@ const App = () => {
 
   return (
     <div
-      className="h-[80vh]overflow-hidden grid w-200 rounded text-slate-800 dark:text-white"
+      className="grid h-[80vh] w-200 overflow-hidden rounded text-slate-800 dark:text-white"
       style={{
         gridTemplateColumns: '300px 1fr',
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="flex flex-col gap-2 overflow-auto border-r border-slate-200 p-3 dark:border-slate-700">
-        <div className="flex items-center justify-between">
+      <div className="flex h-full flex-col gap-2 overflow-hidden  p-3">
+        <div className="flex shrink-0 items-center justify-between">
           <button
             type="button"
             className="h-7 cursor-pointer rounded-lg border border-slate-600 bg-slate-900 px-2.5 text-xs text-white transition-colors hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600"
@@ -123,7 +123,7 @@ const App = () => {
           <div className="py-1 text-xs text-slate-400 dark:text-slate-500">No credentials yet.</div>
         )}
 
-        <div className="flex flex-col gap-1.5">
+        <div className="scrollbar flex h-full flex-1 flex-col gap-1.5 overflow-auto py-2 pr-3">
           {items.map((item) => (
             <button
               type="button"

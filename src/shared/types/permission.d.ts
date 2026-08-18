@@ -18,6 +18,7 @@ export type PermissionType =
   | 'serial'
   | 'usb'
   | 'hid'
+  | 'popups'
   | 'storage-access'
   | 'top-level-storage-access'
   | 'mediaKeySystem'

@@ -28,6 +28,7 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
   notificationRetentionDays: '30',
   passwordsNeverSaveDomains: [],
   askDownloadLocation: false,
+  blockPopups: true,
   downloadDirectory: '',
   setLayout: (layout: 'BASIC' | 'FLOATING') => {
     set({ layout })
@@ -68,6 +69,9 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
   setAskDownloadLocation: (enabled: boolean) => {
     set({ askDownloadLocation: enabled })
   },
+  setBlockPopups: (enabled: boolean) => {
+    set({ blockPopups: enabled })
+  },
   initialize: (data: Partial<IMinusThemeStore>) => {
     return set(data)
   },
@@ -86,6 +90,7 @@ const useMinusThemeStore = create<IMinusThemeStore>((set, get) => ({
       notificationRetentionDays: data.notificationRetentionDays,
       passwordsNeverSaveDomains: data.passwordsNeverSaveDomains || [],
       askDownloadLocation: data.askDownloadLocation,
+      blockPopups: data.blockPopups,
       downloadDirectory: data.downloadDirectory,
     }
     window?.api?.INVOKE(IPC_INVOKE_CHANNEL.INTERFACE_SAVE, params)

@@ -64,15 +64,15 @@ export const SpotlightComponent = () => {
     inputRef.current?.focus()
     inputRef.current?.select()
 
-    window.api.LISTENER('GET_TABS', (payload?: Tab[]) => {
+    const unsubscribeTabs = window.api.LISTENER('GET_TABS', (payload?: Tab[]) => {
       setTabs(payload || [])
     })
 
-    window.api.LISTENER('GET_HISTORY', (payload?: IHistoryEntry[]) => {
+    const unsubscribeHistory = window.api.LISTENER('GET_HISTORY', (payload?: IHistoryEntry[]) => {
       setHistory(payload || [])
     })
 
-    window.api.LISTENER(SUB_WINDOW_EMIT.PAYLOAD, (payload: any) => {
+    const unsubscribePayload = window.api.LISTENER(SUB_WINDOW_EMIT.PAYLOAD, (payload: any) => {
       if (payload) {
         setQuery(payload?.query || '')
         setActiveTabId(payload?.activeTabId)
@@ -86,7 +86,14 @@ export const SpotlightComponent = () => {
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    return () => {
+      // Overlays remount on every open — release these IPC listeners so they
+      // don't accumulate (and fire stale setState on unmounted components).
+      unsubscribeTabs?.()
+      unsubscribeHistory?.()
+      unsubscribePayload?.()
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [])
 
   useEffect(() => {

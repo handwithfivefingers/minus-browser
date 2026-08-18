@@ -189,6 +189,15 @@ const migrations: { version: number; up: (db: DatabaseSync) => void }[] = [
       `)
     },
   },
+  {
+    version: 7,
+    up: (db) => {
+      const columns = db.prepare('PRAGMA table_info(tabs)').all() as { name: string }[]
+      if (!columns.some((c) => c.name === 'blocked_popups')) {
+        db.exec(`ALTER TABLE tabs ADD COLUMN blocked_popups TEXT NOT NULL DEFAULT '0'`)
+      }
+    },
+  },
 ]
 
 export function runMigrations(db: DatabaseSync) {

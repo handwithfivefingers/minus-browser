@@ -116,12 +116,13 @@ export class NotificationViewService {
 
   ensureOnTop() {
     if (!this.mainWindow || !this.view || !this.isViewAttached) return
+    // Raise the already-attached view to the topmost position. No
+    // removeChildView() needed — Electron reorders an attached view.
     try {
-      this.mainWindow.contentView.removeChildView(this.view)
+      this.mainWindow.contentView.addChildView(this.view)
     } catch {
       // ignore
     }
-    this.mainWindow.contentView.addChildView(this.view)
   }
 
   /** Show a toast notification (auto-dismiss, queued) */
@@ -214,10 +215,10 @@ export class NotificationViewService {
   private addViewToWindow() {
     if (!this.mainWindow || !this.view) return
     try {
+      // Raise to top and show. Never detach: repeated add/remove cycles break
+      // Electron 43's compositor for this view (and stress sibling views).
       this.mainWindow.contentView.addChildView(this.view)
-      // Ensure notification view is always on top (zIndex=3)
-      this.mainWindow.contentView.removeChildView(this.view)
-      this.mainWindow.contentView.addChildView(this.view)
+      this.view.setVisible(true)
     } catch {
       // ignore
     }
@@ -226,7 +227,10 @@ export class NotificationViewService {
   private removeViewFromWindow() {
     if (!this.mainWindow || !this.view) return
     try {
-      this.mainWindow.contentView.removeChildView(this.view)
+      // Hide instead of removing; sink to the bottom so visible views above
+      // are hit-tested first. The view stays attached (see addViewToWindow).
+      this.view.setVisible(false)
+      this.mainWindow.contentView.addChildView(this.view, 0)
     } catch {
       // ignore
     }
@@ -290,6 +294,12 @@ export class NotificationViewService {
     this.dismissToast()
     this.closeList()
     if (this.view) {
+      // closeList() keeps the view attached (invisible), so remove it on teardown.
+      try {
+        this.mainWindow?.contentView.removeChildView(this.view)
+      } catch {
+        // ignore
+      }
       try {
         this.view.webContents.close()
       } catch {

@@ -36,6 +36,7 @@ const permissionLabels: Record<string, string> = {
   serial: 'Serial Port',
   usb: 'USB',
   hid: 'HID',
+  popups: 'Pop-ups',
 }
 
 export function getPermissionLabel(permission: PermissionType): string {

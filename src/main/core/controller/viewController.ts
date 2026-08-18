@@ -22,6 +22,7 @@ import { captureInvokeHandlers } from '~/features/sub-window/ipc/capture-hanlers
 import { subWindowService } from '~/features/sub-window/service'
 import { tabGroupController } from '~/features/tabGroup'
 import { TabController } from '~/features/tabs/controllers'
+import { WindowOpenRequest } from '~/features/tabs/models/permission'
 import { Tab } from '~/features/tabs/models/tab'
 import { translateController } from '~/features/translate/controllers'
 import { registerGMAPIHandlers } from '~/features/userscript/gm-api'
@@ -448,6 +449,7 @@ export class ViewController {
       const tabInstance = this.tabController?.getTabById(newTab.id)
       if (tabInstance?.isAlive) {
         adblocker.watch(tabInstance.webContents)
+        this.wirePopupHandler(tabInstance)
       }
       this.forwardRendererEvent('OPEN_TAB_BY_ID', { id: newTab.id })
     }
@@ -642,6 +644,7 @@ export class ViewController {
       notificationRetentionDays: '30',
       passwordsNeverSaveDomains: [],
       askDownloadLocation: false,
+      blockPopups: true,
     }
     try {
       const userInterface = await cacheSystem.get<IUserInterface>('interface', () => {
@@ -710,7 +713,7 @@ export class ViewController {
         appDb.run('DELETE FROM tabs')
         for (const tab of tabs || []) {
           appDb.run(
-            'INSERT OR REPLACE INTO tabs (id, title, url, is_pinned, is_focused, "index", favicon, timestamp, is_bookmarked, is_hibernated, prevent_hibernate, group_id, audible, is_muted, is_using_camera, is_using_microphone, is_using_screen_share, blocked_notifications, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT OR REPLACE INTO tabs (id, title, url, is_pinned, is_focused, "index", favicon, timestamp, is_bookmarked, is_hibernated, prevent_hibernate, group_id, audible, is_muted, is_using_camera, is_using_microphone, is_using_screen_share, blocked_notifications, blocked_popups, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
               tab.id,
               tab.title,
@@ -730,6 +733,7 @@ export class ViewController {
               tab.isUsingMicrophone ? 1 : 0,
               tab.isUsingScreenShare ? 1 : 0,
               tab.blockedNotifications ? JSON.stringify(tab.blockedNotifications) : null,
+              tab.blockedPopups ? JSON.stringify(tab.blockedPopups) : JSON.stringify(0),
               tab.error ? JSON.stringify(tab.error) : null,
             ]
           )
@@ -885,6 +889,9 @@ export class ViewController {
     if (subWindowService.isOpen) {
       subWindowService.ensureOnTop()
     }
+    // Install the popup-blocker policy for the attached tab (idempotent).
+    const tab = this.findTabByWebContents(view.webContents)
+    if (tab) this.wirePopupHandler(tab)
     // Notification layer (zIndex=3) always on top of everything
     this.setupPermissionHandler(view)
     this.notificationService.ensureOnTop()
@@ -1173,6 +1180,88 @@ export class ViewController {
       tab.blockedNotifications += 1
       tab.persistInformationToRenderer({ blockedNotifications: tab.blockedNotifications })
     }
+  }
+
+  /** Route window.open requests through the popup-blocker policy. */
+  private wirePopupHandler(tab: Tab) {
+    tab.onWindowOpen = (request) => this.handleWindowOpen(tab, request)
+  }
+
+  private openPopupAsTab(url: string) {
+    this.createTab({ url }).catch((err) => log.error('[popup] failed to open popup as tab', err))
+  }
+
+  /** Applies the Chrome-style popup policy: global toggle → site permission →
+   *  prompt (ask). Allowed popups are opened as regular tabs; blocked ones are
+   *  counted on the tab. */
+  private handleWindowOpen(tab: Tab, request: WindowOpenRequest) {
+    if (!tab || !request?.url) return
+    if (!isSafeUrl(request.url)) return
+
+    const blockPopups = this.userInterface?.blockPopups !== false
+    const openerOrigin = this.getPopupOrigin(tab)
+
+    // Popup blocking disabled, or no origin to attribute the request to.
+    if (!blockPopups || !openerOrigin) {
+      this.openPopupAsTab(request.url)
+      return
+    }
+
+    const decision = permissionStore.getSitePermission(openerOrigin, 'popups')
+    if (decision === 'grant') {
+      this.openPopupAsTab(request.url)
+      return
+    }
+    if (decision === 'deny') {
+      this.trackBlockedPopup(tab)
+      return
+    }
+
+    // No remembered decision → ask the user.
+    this.promptPopup(tab, openerOrigin, request.url).catch((err) => {
+      log.error('[popup] popup request prompt failed', err)
+      this.trackBlockedPopup(tab)
+    })
+  }
+
+  /** Origin of the page that initiated the popup (the one to attribute the
+   *  permission to). */
+  private getPopupOrigin(tab: Tab): string | null {
+    try {
+      const currentUrl = tab.webContents?.getURL() || tab.url
+      return new URL(currentUrl).origin
+    } catch {
+      return null
+    }
+  }
+
+  private async promptPopup(tab: Tab, openerOrigin: string, url: string) {
+    let result: { decision?: 'allow' | 'block'; remember?: boolean } | null = null
+    try {
+      result = await subWindowService.openWithResult('/popup', { origin: openerOrigin, url })
+    } catch {
+      // Closed or timed out without a decision → treat as blocked.
+      this.trackBlockedPopup(tab)
+      return
+    }
+
+    const decision = result?.decision === 'allow' ? 'allow' : 'block'
+    if (result?.remember) {
+      permissionStore.setSitePermission(openerOrigin, 'popups', decision === 'allow' ? 'grant' : 'deny')
+    }
+
+    if (decision === 'allow') {
+      this.openPopupAsTab(url)
+    } else {
+      this.trackBlockedPopup(tab)
+    }
+  }
+
+  private trackBlockedPopup(tab: Tab) {
+    tab.blockedPopups += 1
+    tab.persistInformationToRenderer({ blockedPopups: tab.blockedPopups })
+    // Ensure non-active tabs' count also reaches the sidebar.
+    this.window.webContents.send('GET_TABS', this.getTabs())
   }
 
   showNotification({ title, description }: { title: string; description: string }) {

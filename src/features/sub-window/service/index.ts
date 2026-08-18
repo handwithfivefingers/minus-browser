@@ -39,6 +39,8 @@ export class SubWindowService {
   private readyPromise: Promise<void> | null = null
   private pendingRequests = new Map<string, PendingRequest>()
   private lastOpenTime = 0
+  /** Overlay route currently shown in the reused view (null while closed). */
+  private currentRoute: string | null = null
 
   init(mainWindow: BrowserWindow) {
     this.mainWindow = mainWindow
@@ -92,20 +94,54 @@ export class SubWindowService {
     })
     // this.view.webContents.openDevTools()
     this.view.setBackgroundColor('#00000000')
-    await this.view.webContents.loadURL(this.getURL()).catch(() => {
+    const webContents = this.view.webContents
+    // If the sub-window renderer fails to load (dev server restart, bad build
+    // output, ...) forget the view so the next open() rebuilds it. Otherwise
+    // NAVIGATE messages are sent into a page that never booted and the overlay
+    // silently never shows.
+    webContents.on('did-fail-load', (_event, errorCode, _errorDescription, _validatedURL, isMainFrame) => {
+      // Ignore ERR_ABORTED (-3): fires on any canceled navigation, which is
+      // benign. Real failures invalidate the view so the next open() rebuilds.
+      if (isMainFrame && errorCode !== -3) this.invalidateView()
+    })
+    await webContents.loadURL(this.getURL()).catch(() => {
       // ignore
     })
     // this.view.webContents.reloadIgnoringCache();
   }
 
-  ensureOnTop() {
-    if (!this.isOpen || !this.mainWindow || !this.view) return
+  /** Drop the current (broken/loaded-into-the-void) view so the next open()
+   *  creates a fresh one. Safe to call even while an open() is in flight. */
+  private invalidateView() {
+    const view = this.view
+    this.view = null
+    this.readyPromise = null
+    this.currentRoute = null
+    if (this.isOpen && this.mainWindow && view) {
+      try {
+        this.mainWindow.contentView.removeChildView(view)
+      } catch {
+        // ignore
+      }
+      this.isOpen = false
+      this.onDidClose?.()
+    }
     try {
-      this.mainWindow.contentView.removeChildView(this.view)
+      view?.webContents.close()
     } catch {
       // ignore
     }
-    this.mainWindow.contentView.addChildView(this.view)
+  }
+
+  ensureOnTop() {
+    if (!this.isOpen || !this.mainWindow || !this.view) return
+    // Raise the already-attached view to the topmost position. No
+    // removeChildView() needed — Electron reorders an attached view.
+    try {
+      this.mainWindow.contentView.addChildView(this.view)
+    } catch {
+      // ignore
+    }
   }
 
   async open(route: string, payload?: any): Promise<any> {
@@ -114,19 +150,42 @@ export class SubWindowService {
     if (!this.view) return
     if (this.view.webContents.isDestroyed()) return
 
-    this.syncViewBounds()
-
     if (payload) {
       this.view.webContents.send(SUB_WINDOW_EMIT.PAYLOAD, payload)
     }
-    this.view.webContents.send(SUB_WINDOW_EMIT.NAVIGATE, { route })
 
+    // Don't re-add the view / re-register resize handlers when the overlay for
+    // this route is already up (e.g. duplicate Cmd+K or double-click on the
+    // address bar). The renderer still gets NAVIGATE so it can remount and pick
+    // up the fresh payload.
+    const alreadyOpen = this.isOpen && this.currentRoute === route
+
+    this.syncViewBounds()
+    this.view.webContents.send(SUB_WINDOW_EMIT.NAVIGATE, { route })
+    this.currentRoute = route
+
+    if (alreadyOpen) {
+      this.ensureOnTop()
+      return true
+    }
+
+    // Re-raise the view (reorders if already attached, e.g. after a previous
+    // close() that kept it attached) and make it visible. The view is NEVER
+    // detached from the window: Electron 43's compositor stops painting a
+    // WebContentsView after enough removeChildView/addChildView cycles
+    // interleaved with other views (tabs, toasts, popups), even though
+    // webContents stays alive (devtools keeps showing the page). Keeping it
+    // attached and toggling setVisible() avoids that code path entirely.
     this.mainWindow.contentView.addChildView(this.view)
+    this.view.setVisible(true)
     this.view.webContents.focus()
     this.isOpen = true
     this.lastOpenTime = Date.now()
     this.onDidOpen?.()
 
+    if (this.resizeHandler) {
+      this.mainWindow.off('resize', this.resizeHandler)
+    }
     this.resizeHandler = () => this.syncViewBounds()
     this.mainWindow.on('resize', this.resizeHandler)
     // Turn Off Close on Blur
@@ -156,6 +215,7 @@ export class SubWindowService {
     // from triggering a BrowserWindow blur that closes immediately)
     // if (Date.now() - this.lastOpenTime < 300) return
     this.isOpen = false
+    this.currentRoute = null
     this.onDidClose?.()
 
     for (const [, pending] of this.pendingRequests) {
@@ -178,7 +238,11 @@ export class SubWindowService {
     }
 
     try {
-      this.mainWindow.contentView.removeChildView(this.view)
+      // Hide instead of removing. The view stays attached (see open()) so the
+      // compositor never sees a detach/reattach cycle; sink it to the bottom so
+      // visible sibling views (tabs, toasts) are hit-tested first.
+      this.view.setVisible(false)
+      this.mainWindow.contentView.addChildView(this.view, 0)
     } catch {
       // ignore
     }
@@ -196,6 +260,12 @@ export class SubWindowService {
   destroy() {
     this.close()
     if (this.view) {
+      // close() keeps the view attached (invisible), so remove it on real teardown.
+      try {
+        this.mainWindow?.contentView.removeChildView(this.view)
+      } catch {
+        // ignore
+      }
       this.view.webContents.close()
       this.view = null
     }

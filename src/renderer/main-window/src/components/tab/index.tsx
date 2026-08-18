@@ -6,6 +6,7 @@ import {
   IconScreenShare,
   IconVolume,
   IconVolumeOff,
+  IconWindow,
   IconX,
 } from '@tabler/icons-react'
 import { memo, useCallback } from 'react'
@@ -142,6 +143,18 @@ const TabItem = memo(
                     <span className="text-[8px] leading-none font-bold text-orange-500">
                       {tab?.blockedNotifications}
                     </span>
+                  )}
+                </div>
+              )}
+
+              {(tab?.blockedPopups ?? 0) > 0 && (
+                <div
+                  className="absolute -top-1.5 -right-1.5 flex items-center gap-0.5"
+                  title={`${tab?.blockedPopups} pop-up${tab?.blockedPopups !== 1 ? 's' : ''} blocked`}
+                >
+                  <IconWindow className="fill-orange-500 text-orange-500" size={9} />
+                  {(tab?.blockedPopups ?? 0) > 1 && (
+                    <span className="text-[8px] leading-none font-bold text-orange-500">{tab?.blockedPopups}</span>
                   )}
                 </div>
               )}

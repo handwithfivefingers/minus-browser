@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld('api', {
     const ipcEvent = new IPCEvent({ channel, data })
     return ipcRenderer.send('send', ipcEvent)
   },
-  LISTENER: (channel: ListenChannelEvent, callback?: any) =>
-    ipcRenderer.on(channel, (_event, value) => callback(value)),
+  LISTENER: (channel: ListenChannelEvent, callback?: any) => {
+    const handler = (_event: Electron.IpcRendererEvent, value: any) => callback(value)
+    ipcRenderer.on(channel, handler)
+    // Return an unsubscribe function so repeatedly-mounted views (e.g. the
+    // sub-window overlays) can clean up instead of leaking ipcRenderer.on
+    // listeners on every mount.
+    return () => ipcRenderer.off(channel, handler)
+  },
 })
