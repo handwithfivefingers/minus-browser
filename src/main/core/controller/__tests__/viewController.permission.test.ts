@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { WebContentsView } from 'electron'
+
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { mockDb } = vi.hoisted(() => ({
@@ -23,6 +25,7 @@ const mockSubWindowService = vi.hoisted(() => ({
   isOpen: false,
   ensureOnTop: vi.fn(),
   resolveRequest: vi.fn(),
+  close: vi.fn(),
   init: vi.fn(),
   warmup: vi.fn(() => Promise.resolve()),
 }))
@@ -45,8 +48,6 @@ vi.mock('~/main/core/stores/permission.store', async (importOriginal) => {
     },
   }
 })
-
-import { WebContentsView } from 'electron'
 
 import { permissionStore } from '~/main/core/stores/permission.store'
 
@@ -590,6 +591,7 @@ describe('ViewController permission logic', () => {
   describe('popup blocking policy', () => {
     function makeTab(overrides: Record<string, any> = {}) {
       return {
+        id: 'tab-1',
         url: 'https://example.com/page',
         blockedPopups: 0,
         webContents: { getURL: vi.fn(() => 'https://example.com/page') },
@@ -600,89 +602,163 @@ describe('ViewController permission logic', () => {
 
     const request = (url: string) => ({ url, frameName: '', disposition: 'new-window' })
 
-    it('opens popup as tab when blocking is disabled globally', () => {
+    it('allows a real popup window when blocking is disabled globally', () => {
       ;(vc as any).userInterface = { blockPopups: false }
       const tab = makeTab()
-      const openSpy = vi.spyOn(vc as any, 'openPopupAsTab')
-      ;(vc as any).handleWindowOpen(tab, request('https://login.example.com'))
-      expect(openSpy).toHaveBeenCalledWith('https://login.example.com')
+      const result = (vc as any).handleWindowOpen(tab, request('https://login.example.com'))
+      expect(result).toEqual({ action: 'allow', overrideBrowserWindowOptions: expect.any(Object) })
       expect(permissionStore.getSitePermission).not.toHaveBeenCalled()
     })
 
-    it('opens popup as tab when the site is granted', () => {
+    it('allows a real popup window when the site is granted', () => {
       ;(vc as any).userInterface = { blockPopups: true }
       vi.mocked(permissionStore.getSitePermission).mockReturnValue('grant')
       const tab = makeTab()
-      const openSpy = vi.spyOn(vc as any, 'openPopupAsTab')
-      ;(vc as any).handleWindowOpen(tab, request('https://login.example.com'))
-      expect(openSpy).toHaveBeenCalledWith('https://login.example.com')
+      const result = (vc as any).handleWindowOpen(tab, request('https://login.example.com'))
+      expect(result.action).toBe('allow')
       expect(permissionStore.getSitePermission).toHaveBeenCalledWith('https://example.com', 'popups')
     })
 
-    it('blocks popup silently when the site is denied', () => {
+    it('denies the popup window when the site is denied', () => {
       ;(vc as any).userInterface = { blockPopups: true }
       vi.mocked(permissionStore.getSitePermission).mockReturnValue('deny')
       const tab = makeTab()
       const trackSpy = vi.spyOn(vc as any, 'trackBlockedPopup')
-      ;(vc as any).handleWindowOpen(tab, request('https://login.example.com'))
+      const result = (vc as any).handleWindowOpen(tab, request('https://login.example.com'))
+      expect(result).toEqual({ action: 'deny' })
       expect(trackSpy).toHaveBeenCalledWith(tab)
     })
 
-    it('asks the user when no popup decision is stored', () => {
+    it('allows the popup and asks the user when no popup decision is stored', () => {
       ;(vc as any).userInterface = { blockPopups: true }
       vi.mocked(permissionStore.getSitePermission).mockReturnValue('prompt')
       const tab = makeTab()
-      const promptSpy = vi.spyOn(vc as any, 'promptPopup').mockResolvedValue(undefined)
-      ;(vc as any).handleWindowOpen(tab, request('https://login.example.com'))
-      expect(promptSpy).toHaveBeenCalledWith(tab, 'https://example.com', 'https://login.example.com')
+      const askSpy = vi.spyOn(vc as any, 'askPopupRetroactively').mockResolvedValue(undefined)
+      const result = (vc as any).handleWindowOpen(tab, request('https://login.example.com'))
+      expect(askSpy).toHaveBeenCalledWith(tab, 'https://example.com', 'https://login.example.com')
+      // window.open() must still resolve to a real window so OAuth flows work.
+      expect(result.action).toBe('allow')
     })
 
-    it('ignores empty/unsafe popup urls', () => {
+    it('denies unsafe (non-http / non-about:blank) popup urls', () => {
       ;(vc as any).userInterface = { blockPopups: true }
       const tab = makeTab()
-      const promptSpy = vi.spyOn(vc as any, 'promptPopup')
-      ;(vc as any).handleWindowOpen(tab, request(''))
-      expect(promptSpy).not.toHaveBeenCalled()
+      const askSpy = vi.spyOn(vc as any, 'askPopupRetroactively')
+      const result = (vc as any).handleWindowOpen(tab, request('javascript:alert(1)'))
+      expect(result).toEqual({ action: 'deny' })
+      expect(askSpy).not.toHaveBeenCalled()
     })
 
-    describe('promptPopup', () => {
-      it('opens the popup as a tab when allowed', async () => {
-        mockSubWindowService.openWithResult.mockResolvedValue({ decision: 'allow', remember: false })
-        const tab = makeTab()
-        const openSpy = vi.spyOn(vc as any, 'openPopupAsTab')
-        await (vc as any).promptPopup(tab, 'https://example.com', 'https://login.example.com')
-        expect(openSpy).toHaveBeenCalledWith('https://login.example.com')
+    it('allows about:blank bootstrap popups used by OAuth sign-in', () => {
+      ;(vc as any).userInterface = { blockPopups: true }
+      vi.mocked(permissionStore.getSitePermission).mockReturnValue('prompt')
+      const tab = makeTab()
+      const askSpy = vi.spyOn(vc as any, 'askPopupRetroactively').mockResolvedValue(undefined)
+      const result = (vc as any).handleWindowOpen(tab, request('about:blank'))
+      expect(result.action).toBe('allow')
+      expect(askSpy).toHaveBeenCalledWith(tab, 'https://example.com', 'about:blank')
+    })
+
+    describe('askPopupRetroactively', () => {
+      function makeTabWithWindowEvents(overrides: Record<string, any> = {}) {
+        const wcListeners: Record<string, Cb[]> = {}
+        const wc = {
+          id: 1,
+          getURL: vi.fn(() => 'https://example.com/page'),
+          once: vi.fn((event: string, cb: Cb) => {
+            if (!wcListeners[event]) wcListeners[event] = []
+            wcListeners[event].push(cb)
+          }),
+          ...overrides,
+        }
+        return {
+          tab: {
+            id: 'tab-1',
+            url: 'https://example.com/page',
+            blockedPopups: 0,
+            webContents: wc,
+            persistInformationToRenderer: vi.fn(),
+          },
+          wcListeners,
+        }
+      }
+
+      function makePopupWindow(overrides: Record<string, any> = {}) {
+        return {
+          isDestroyed: vi.fn(() => false),
+          close: vi.fn(),
+          once: vi.fn(),
+          ...overrides,
+        }
+      }
+
+      it('closes the created popup and tracks the block when the user blocks', async () => {
+        mockSubWindowService.openWithResult.mockResolvedValue({ decision: 'block', remember: false })
+        const { tab, wcListeners } = makeTabWithWindowEvents()
+        const popup = makePopupWindow()
+        const trackSpy = vi.spyOn(vc as any, 'trackBlockedPopup')
+
+        const promise = (vc as any).askPopupRetroactively(tab, 'https://example.com', 'https://login.example.com')
+        const onCreated = wcListeners['did-create-window'][0]
+        onCreated(popup, { url: 'https://login.example.com' })
+
+        await promise
+        expect(popup.close).toHaveBeenCalled()
+        expect(trackSpy).toHaveBeenCalledWith(tab)
       })
 
-      it('persists grant when the user always allows', async () => {
+      it('keeps the popup when the user allows and persists grant when remembered', async () => {
         mockSubWindowService.openWithResult.mockResolvedValue({ decision: 'allow', remember: true })
-        const tab = makeTab()
-        vi.spyOn(vc as any, 'openPopupAsTab')
-        await (vc as any).promptPopup(tab, 'https://example.com', 'https://login.example.com')
+        const { tab, wcListeners } = makeTabWithWindowEvents()
+        const popup = makePopupWindow()
+        const trackSpy = vi.spyOn(vc as any, 'trackBlockedPopup')
+
+        const promise = (vc as any).askPopupRetroactively(tab, 'https://example.com', 'https://login.example.com')
+        const onCreated = wcListeners['did-create-window'][0]
+        onCreated(popup, { url: 'https://login.example.com' })
+
+        await promise
+        expect(popup.close).not.toHaveBeenCalled()
+        expect(trackSpy).not.toHaveBeenCalled()
         expect(permissionStore.setSitePermission).toHaveBeenCalledWith('https://example.com', 'popups', 'grant')
       })
 
       it('persists deny when the user always blocks', async () => {
         mockSubWindowService.openWithResult.mockResolvedValue({ decision: 'block', remember: true })
-        const tab = makeTab()
-        await (vc as any).promptPopup(tab, 'https://example.com', 'https://login.example.com')
+        const { tab } = makeTabWithWindowEvents()
+        const trackSpy = vi.spyOn(vc as any, 'trackBlockedPopup')
+        const promise = (vc as any).askPopupRetroactively(tab, 'https://example.com', 'https://login.example.com')
+        await promise
         expect(permissionStore.setSitePermission).toHaveBeenCalledWith('https://example.com', 'popups', 'deny')
+        expect(trackSpy).toHaveBeenCalled()
       })
 
-      it('tracks the blocked popup when the user blocks', async () => {
-        mockSubWindowService.openWithResult.mockResolvedValue({ decision: 'block', remember: false })
-        const tab = makeTab()
-        const trackSpy = vi.spyOn(vc as any, 'trackBlockedPopup')
-        await (vc as any).promptPopup(tab, 'https://example.com', 'https://login.example.com')
-        expect(trackSpy).toHaveBeenCalledWith(tab)
-      })
-
-      it('tracks the blocked popup when the prompt closes without a decision', async () => {
+      it('does not penalise the site when the prompt closes without a decision', async () => {
         mockSubWindowService.openWithResult.mockRejectedValue(new Error('closed'))
-        const tab = makeTab()
+        const { tab } = makeTabWithWindowEvents()
         const trackSpy = vi.spyOn(vc as any, 'trackBlockedPopup')
-        await (vc as any).promptPopup(tab, 'https://example.com', 'https://login.example.com')
-        expect(trackSpy).toHaveBeenCalledWith(tab)
+        const promise = (vc as any).askPopupRetroactively(tab, 'https://example.com', 'https://login.example.com')
+        await promise
+        expect(trackSpy).not.toHaveBeenCalled()
+      })
+
+      it('dismisses the pending prompt when the popup window closes on its own', async () => {
+        mockSubWindowService.openWithResult.mockResolvedValue({ decision: 'allow', remember: false })
+        const { tab, wcListeners } = makeTabWithWindowEvents()
+        const closedHandlers: Cb[] = []
+        const popup = makePopupWindow({
+          once: vi.fn((event: string, cb: Cb) => {
+            if (event === 'closed') closedHandlers.push(cb)
+          }),
+        })
+
+        const promise = (vc as any).askPopupRetroactively(tab, 'https://example.com', 'https://login.example.com')
+        const onCreated = wcListeners['did-create-window'][0]
+        onCreated(popup, { url: 'https://login.example.com' })
+
+        closedHandlers.forEach((cb) => cb())
+        expect(mockSubWindowService.close).toHaveBeenCalled()
+        await promise
       })
     })
 

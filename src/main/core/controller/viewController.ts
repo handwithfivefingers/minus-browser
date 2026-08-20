@@ -22,7 +22,7 @@ import { captureInvokeHandlers } from '~/features/sub-window/ipc/capture-hanlers
 import { subWindowService } from '~/features/sub-window/service'
 import { tabGroupController } from '~/features/tabGroup'
 import { TabController } from '~/features/tabs/controllers'
-import { WindowOpenRequest } from '~/features/tabs/models/permission'
+import { isBlankPopup, WindowOpenRequest, WindowOpenResolution } from '~/features/tabs/models/permission'
 import { Tab } from '~/features/tabs/models/tab'
 import { translateController } from '~/features/translate/controllers'
 import { registerGMAPIHandlers } from '~/features/userscript/gm-api'
@@ -54,6 +54,9 @@ export class ViewController {
   tabController: TabController | undefined
   searchController = splitSearchController
   lastCaptureImage: Electron.NativeImage | null = null
+  /** Popups that were allowed (undecided) and are pending a "Block" answer —
+   *  keyed by `${tabId}:${url}`, closes the created popup window on block. */
+  private pendingPopupPrompts = new Map<string, () => void>()
   private invokeHandlers: Record<string, (data?: any) => any> | undefined
   private listenerHandlers: Record<string, (data?: any) => void> | undefined
   private initPromise: Promise<void>
@@ -1187,41 +1190,57 @@ export class ViewController {
     tab.onWindowOpen = (request) => this.handleWindowOpen(tab, request)
   }
 
-  private openPopupAsTab(url: string) {
-    this.createTab({ url }).catch((err) => log.error('[popup] failed to open popup as tab', err))
+  /**
+   * Shared options for popups that are allowed as real windows. They must use
+   * the browser partition so cookies (e.g. an existing Google session) carry
+   * over and, crucially, they keep the opener relationship — OAuth flows rely
+   * on window.opener.postMessage() to hand the auth token back to the page.
+   */
+  private readonly popupWindowOptions: Electron.BrowserWindowConstructorOptions = {
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      session: browserSession,
+    },
+  }
+
+  private allowPopup(): WindowOpenResolution {
+    return { action: 'allow', overrideBrowserWindowOptions: this.popupWindowOptions }
   }
 
   /** Applies the Chrome-style popup policy: global toggle → site permission →
-   *  prompt (ask). Allowed popups are opened as regular tabs; blocked ones are
-   *  counted on the tab. */
-  private handleWindowOpen(tab: Tab, request: WindowOpenRequest) {
-    if (!tab || !request?.url) return
-    if (!isSafeUrl(request.url)) return
+   *  prompt (ask). Allowed popups open as REAL popup windows — converting them
+   *  into tabs severs window.opener and breaks sign-in flows (Google, Apple,
+   *  GitHub, ...); blocked ones are counted on the tab. */
+  private handleWindowOpen(tab: Tab, request: WindowOpenRequest): WindowOpenResolution {
+    if (!tab || !request?.url) return { action: 'deny' }
+    // OAuth providers bootstrap popups with about:blank — allow those too.
+    if (!isSafeUrl(request.url) && !isBlankPopup(request.url)) return { action: 'deny' }
 
     const blockPopups = this.userInterface?.blockPopups !== false
     const openerOrigin = this.getPopupOrigin(tab)
 
     // Popup blocking disabled, or no origin to attribute the request to.
     if (!blockPopups || !openerOrigin) {
-      this.openPopupAsTab(request.url)
-      return
+      return this.allowPopup()
     }
 
     const decision = permissionStore.getSitePermission(openerOrigin, 'popups')
     if (decision === 'grant') {
-      this.openPopupAsTab(request.url)
-      return
+      return this.allowPopup()
     }
     if (decision === 'deny') {
       this.trackBlockedPopup(tab)
-      return
+      return { action: 'deny' }
     }
 
-    // No remembered decision → ask the user.
-    this.promptPopup(tab, openerOrigin, request.url).catch((err) => {
-      log.error('[popup] popup request prompt failed', err)
-      this.trackBlockedPopup(tab)
-    })
+    // No remembered decision → still allow the window (so sign-in popups open
+    // correctly and the opener relationship survives) and ask the user in the
+    // background. If they choose "Block", the popup is closed again.
+    this.askPopupRetroactively(tab, openerOrigin, request.url)
+    return this.allowPopup()
   }
 
   /** Origin of the page that initiated the popup (the one to attribute the
@@ -1235,26 +1254,56 @@ export class ViewController {
     }
   }
 
-  private async promptPopup(tab: Tab, openerOrigin: string, url: string) {
-    let result: { decision?: 'allow' | 'block'; remember?: boolean } | null = null
-    try {
-      result = await subWindowService.openWithResult('/popup', { origin: openerOrigin, url })
-    } catch {
-      // Closed or timed out without a decision → treat as blocked.
-      this.trackBlockedPopup(tab)
-      return
-    }
+  /**
+   * Asks the user about a popup that has already been allowed to open. Keeps a
+   * reference to the created popup window (via `did-create-window`) so a
+   * "Block" decision closes it, and so an on-its-own close (OAuth success)
+   * dismisses the pending prompt without penalising the site.
+   */
+  private askPopupRetroactively(tab: Tab, openerOrigin: string, url: string) {
+    let popupWindow: BrowserWindow | null = null
+    const key = `${tab.id}:${url}`
+    const cleanup = () => this.pendingPopupPrompts.delete(key)
 
-    const decision = result?.decision === 'allow' ? 'allow' : 'block'
-    if (result?.remember) {
-      permissionStore.setSitePermission(openerOrigin, 'popups', decision === 'allow' ? 'grant' : 'deny')
+    const onCreatedWindow = (created: BrowserWindow, details: { url?: string }) => {
+      // Ignore windows that already started navigating somewhere else; blank
+      // bootstrap popups carry about:blank until the page assigns a target.
+      const createdUrl = details?.url ?? ''
+      if (createdUrl && !isSafeUrl(createdUrl) && !isBlankPopup(createdUrl)) return
+      popupWindow = created
+      created.once('closed', () => {
+        if (popupWindow === created) popupWindow = null
+        // Popup finished on its own (e.g. OAuth callback closed it) — the
+        // pending prompt is moot; dismiss it without counting a block.
+        cleanup()
+        subWindowService.close()
+      })
     }
+    tab.webContents.once('did-create-window', onCreatedWindow)
+    this.pendingPopupPrompts.set(key, () => {
+      cleanup()
+      if (popupWindow && !popupWindow.isDestroyed()) popupWindow.close()
+    })
 
-    if (decision === 'allow') {
-      this.openPopupAsTab(url)
-    } else {
-      this.trackBlockedPopup(tab)
-    }
+    return subWindowService
+      .openWithResult('/popup', { origin: openerOrigin, url })
+      .then((result: { decision?: 'allow' | 'block'; remember?: boolean } | null) => {
+        const decision = result?.decision === 'allow' ? 'allow' : 'block'
+        if (result?.remember) {
+          permissionStore.setSitePermission(openerOrigin, 'popups', decision === 'allow' ? 'grant' : 'deny')
+        }
+        if (decision === 'block') {
+          const closePopup = this.pendingPopupPrompts.get(key)
+          closePopup?.()
+          this.trackBlockedPopup(tab)
+        }
+        cleanup()
+      })
+      .catch(() => {
+        // Prompt dismissed (overlay closed / timed out / popup already done).
+        // The popup was already allowed; don't penalise the site for that.
+        cleanup()
+      })
   }
 
   private trackBlockedPopup(tab: Tab) {
