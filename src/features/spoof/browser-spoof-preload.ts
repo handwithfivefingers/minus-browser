@@ -1,13 +1,11 @@
-/* eslint-disable no-useless-escape */
 import { webFrame } from 'electron'
-
 webFrame.executeJavaScript(`
 (function() {
   // Twitch/Kasada (protected_login 5025) — Kasada detects fake globals as bot. Clean up like Min (no spoof).
   // Delete our Electron globals so Kasada's fingerprint doesn't see __mediaAPI etc.
   try {
     var h2 = location.hostname || '';
-    if (/(^|\\.)twitch\.tv$|ttvnw\.net|twitchcdn\.net|passport\.twitch\.tv|kasada|kpsdk|amazon-adsystem|k\.twitch|s\.amazon/i.test(h2)) {
+    if (/(^|\\.)twitch.tv$|ttvnw.net|twitchcdn.net|passport.twitch.tv|kasada|kpsdk|amazon-adsystem|k.twitch|s.amazon/i.test(h2)) {
       try { delete window.__mediaAPI; } catch(_) {}
       try { delete window.__notificationAPI; } catch(_) {}
       try { delete window.__userscript_bridge__; } catch(_) {}
@@ -20,7 +18,7 @@ webFrame.executeJavaScript(`
   // Kasada's kpsdk detects fake window.chrome / fake plugins / altered webdriver as bot
   try {
     var h = location.hostname || '';
-    if (/(^|\\.)twitch\.tv$|ttvnw\.net|twitchcdn\.net|passport\.twitch\.tv|kasada|kpsdk|amazon-adsystem|k\.twitch|s\.amazon|amazon-adsystem|k\\.twitch|s\\.amazon/i.test(h)) return;
+    if (/(^|\\.)twitch.tv$|ttvnw.net|twitchcdn.net|passport.twitch.tv|kasada|kpsdk|amazon-adsystem|k.twitch|s.amazon|amazon-adsystem|k\\.twitch|s\\.amazon/i.test(h)) return;
   } catch(_) {}
 
   try {
