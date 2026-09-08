@@ -9,6 +9,10 @@ contextBridge.exposeInMainWorld('__mediaAPI', {
 webFrame.executeJavaScript(`
   (function() {
     try {
+      var h = location.hostname || '';
+      if (/(^|\\.)twitch\\.tv$|ttvnw\\.net|twitchcdn\\.net|passport\\.twitch\\.tv|kpsdk|amazon-adsystem|k\\.twitch|s\\.amazon/i.test(h)) return;
+    } catch(_) {}
+    try {
       if (window.__mediaTrackingInjected) return;
       if (!navigator.mediaDevices) return;
       window.__mediaTrackingInjected = true;

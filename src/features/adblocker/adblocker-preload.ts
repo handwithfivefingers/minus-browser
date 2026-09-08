@@ -6,37 +6,46 @@ function injectCosmeticFilters(data?: any): Promise<void> {
   return ipcRenderer.invoke('@adb/inject-cosmetic-filters', window.location.href, data)
 }
 
-if (window === window.top && !window.location.href.startsWith('devtools://')) {
-  let domMonitor: DOMMonitor | null = null
+try {
+  const _ah = window.location.hostname || ''
+  if (/(^|\.)twitch\.tv$|ttvnw\.net|twitchcdn\.net|passport\.twitch\.tv|kasada|kpsdk/i.test(_ah)) {
+    // Kasada detects adblock CSS/JS injection — skip entirely on Twitch/Kasada
+  } else if (window === window.top && !window.location.href.startsWith('devtools://')) {
+    let domMonitor: DOMMonitor | null = null
 
-  const unload = () => {
-    if (domMonitor) {
-      domMonitor.stop()
-      domMonitor = null
+    const unload = () => {
+      if (domMonitor) {
+        domMonitor.stop()
+        domMonitor = null
+      }
     }
+
+    ipcRenderer.invoke('@adb/is-cosmetic-filtering-enabled').then((enabled) => {
+      if (!enabled) return
+
+      injectCosmeticFilters()
+
+      window.addEventListener(
+        'DOMContentLoaded',
+        () => {
+          domMonitor = new DOMMonitor((update) => {
+            if (update.type === 'features') {
+              injectCosmeticFilters(update)
+            }
+          })
+
+          domMonitor.queryAll(window)
+
+          ipcRenderer
+            .invoke('@adb/is-mutation-observer-enabled')
+            .then((enabled) => enabled && domMonitor?.start(window))
+        },
+        { once: true, passive: true }
+      )
+
+      window.addEventListener('unload', unload, { once: true, passive: true })
+    })
   }
-
-  ipcRenderer.invoke('@adb/is-cosmetic-filtering-enabled').then((enabled) => {
-    if (!enabled) return
-
-    injectCosmeticFilters()
-
-    window.addEventListener(
-      'DOMContentLoaded',
-      () => {
-        domMonitor = new DOMMonitor((update) => {
-          if (update.type === 'features') {
-            injectCosmeticFilters(update)
-          }
-        })
-
-        domMonitor.queryAll(window)
-
-        ipcRenderer.invoke('@adb/is-mutation-observer-enabled').then((enabled) => enabled && domMonitor?.start(window))
-      },
-      { once: true, passive: true }
-    )
-
-    window.addEventListener('unload', unload, { once: true, passive: true })
-  })
+} catch (_) {
+  // ignore hostname check errors (about:blank etc.)
 }

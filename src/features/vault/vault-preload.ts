@@ -27,6 +27,15 @@ if (!isHttpPage) {
   // never run on internal pages (min://, chrome-error, about:blank, ...)
   throw new Error('password autofill is not available on internal pages')
 }
+// Kasada (Twitch 5025) detects DOM tampering — skip vault on Twitch/Kasada
+try {
+  const _vh = window.location.hostname || ''
+  if (/(^|\.)twitch\.tv$|ttvnw\.net|twitchcdn\.net|passport\.twitch\.tv|kasada|kpsdk/i.test(_vh)) {
+    throw new Error('vault disabled on twitch/kasada')
+  }
+} catch (_) {
+  if (_.message === 'vault disabled on twitch/kasada') throw _
+}
 
 const getKeyIcon = () => {
   const keyIcon =

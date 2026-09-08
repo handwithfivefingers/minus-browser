@@ -507,6 +507,15 @@ export class AdBlocker {
         return callback({})
       }
 
+      // Never block Kasada/Twitch integrity (protected_login fails with 5025 if kpsdk is blocked) — KP_UIDZ cookies are on s.amazon-adsystem.com and k.twitch.com
+      if (
+        /twitch\.tv|ttvnw\.net|jtvnw\.net|twitchcdn\.net|passport\.twitch\.tv|kasada|kpsdk|amazon-adsystem|k\.twitch\.com|s\.amazon/i.test(
+          details.url
+        )
+      ) {
+        return callback({})
+      }
+
       const { redirect, match } = this.engine.match(request)
 
       if (redirect) {
@@ -530,6 +539,15 @@ export class AdBlocker {
       const responseHeaders = details.responseHeaders || {}
 
       if (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') {
+        // Skip CSP injection for Twitch — its player uses blobs/workers that adblock CSP can break, causing blank player mistaken for "unsupported browser"
+        // Broadened to match Min's no-CSP approach for all Twitch-related hosts + Kasada (KP_UIDZ on s.amazon-adsystem.com)
+        if (
+          /twitch\.tv|ttvnw\.net|jtvnw\.net|twitchcdn\.net|gql\.twitch\.tv|passport\.twitch\.tv|kasada|kpsdk|amazon-adsystem|k\.twitch\.com|s\.amazon/i.test(
+            details.url
+          )
+        ) {
+          return callback({})
+        }
         const request = Request.fromRawDetails({
           url: details.url,
           sourceUrl: details.referrer || '',

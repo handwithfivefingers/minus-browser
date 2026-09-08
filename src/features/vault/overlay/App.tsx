@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import React, { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, useEffect } from 'react'
 
 import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
 import { SUB_WINDOW_RENDERER_EVENT } from '~/shared/constants/ipc/sub-window'
@@ -16,10 +16,10 @@ const App = () => {
   const [items, setItems] = useState<VaultItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
-  const [openState, setOpenState] = React.useState<boolean>(false)
+  const [openState, setOpenState] = useState<boolean>(false)
   const originalItemsRef = useRef<VaultItem[]>([])
 
-  React.useEffect(() => {
+  useEffect(() => {
     const raw = sessionStorage.getItem('subWindowPayload')
     sessionStorage.removeItem('subWindowPayload')
     if (raw) {
@@ -64,7 +64,7 @@ const App = () => {
     window.api.EMIT(SUB_WINDOW_RENDERER_EVENT.CLOSE)
   }
 
-  React.useEffect(() => {
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && openState) {
         handleCancel()

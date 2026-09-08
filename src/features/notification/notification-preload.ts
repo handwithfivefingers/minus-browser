@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('__notificationAPI', {
 
 webFrame.executeJavaScript(`
   (function() {
+    try { var h = location.hostname || ''; if (/(^|\\.)twitch\\.tv$|ttvnw\\.net|twitchcdn\\.net|passport\\.twitch\\.tv|kpsdk|amazon-adsystem|k\\.twitch|s\\.amazon/i.test(h)) return; } catch(_) {}
     const api = window.__notificationAPI;
     if (!api) return;
 
@@ -67,6 +68,13 @@ webFrame.executeJavaScript(`
       var lastSignature = '';
       var timer = null;
 
+      var elementIdMap = new WeakMap();
+      var elementCounter = 0;
+      function stableId(v) {
+        if (!elementIdMap.has(v)) elementIdMap.set(v, ++elementCounter);
+        return elementIdMap.get(v);
+      }
+
       function playable(v) {
         if (!v || !v.tagName || v.tagName.toLowerCase() !== 'video') return false;
         if (v.disablePictureInPicture) return false;
@@ -87,23 +95,33 @@ webFrame.executeJavaScript(`
 
       function build() {
         var all = Array.prototype.slice.call(document.querySelectorAll('video'));
-        return all.filter(playable).map(function(v, i) {
+        var seen = new Set();
+        var result = [];
+        for (var i = 0; i < all.length; i++) {
+          var v = all[i];
+          if (!playable(v)) continue;
+          var src = v.currentSrc || v.src || '';
+          // Collapse genuine duplicate nodes (same source within a document).
+          var key = src || ('__el_' + stableId(v));
+          if (seen.has(key)) continue;
+          seen.add(key);
           var duration = v.duration;
-          return {
-            id: i,
+          result.push({
+            id: result.length,
             title: guessTitle(v),
-            src: v.currentSrc || v.src || '',
+            src: src,
             currentTime: Math.round(v.currentTime || 0),
             duration: isFinite(duration) ? Math.round(duration) : 0,
             paused: v.paused,
             poster: v.poster || '',
-          };
-        });
+          });
+        }
+        return result;
       }
 
       function signature(list) {
         return list.map(function(v) {
-          return v.id + ':' + v.src + ':' + v.paused + ':' + Math.floor((v.currentTime || 0) / 5);
+          return v.id + ':' + v.src + ':' + v.paused + ':' + Math.floor((v.currentTime || 0) / 1);
         }).join('|');
       }
 
@@ -140,7 +158,7 @@ webFrame.executeJavaScript(`
 
       // Polling is the source of truth; also catches videos whose src is set
       // via property assignment (no attribute mutation to observe).
-      setInterval(send, 2000);
+      setInterval(send, 1000);
       send();
 
       // Fast path: re-scan right after a video starts or loads metadata.

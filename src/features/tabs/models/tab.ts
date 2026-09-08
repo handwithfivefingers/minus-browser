@@ -1,4 +1,4 @@
-import { BrowserWindow, WebContentsAudioStateChangedEventParams, WebContentsView } from 'electron'
+import { app, BrowserWindow, WebContentsAudioStateChangedEventParams, WebContentsView } from 'electron'
 
 import { v7 as uuid_v7 } from 'uuid'
 
@@ -110,6 +110,12 @@ export class Tab extends TabPermission {
       webPreferences: getDefaultViewWebPreferences(this.id, this.minusSession),
     })
     this._webContents = this._view.webContents
+    // Apply spoofed UA at WebContents level so twitch sees modern Chrome (like minimal-browser's <webview useragent="Chrome/237...">)
+    try {
+      if (app?.userAgentFallback) this._webContents.setUserAgent(app.userAgentFallback)
+    } catch (_) {
+      // ignore
+    }
     this._view.setMaxListeners(30)
     this.createContextMenu()
     this.requestPermissions(this._webContents)

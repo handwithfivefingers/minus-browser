@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
 import { SUB_WINDOW_RENDERER_EVENT } from '~/shared/constants/ipc/sub-window'
 import { IPC_TAB_GROUP_EMIT, IPC_TAB_GROUP_INVOKE } from '~/shared/constants/ipc/tabGroup'
 
@@ -187,6 +188,10 @@ export function TabContext() {
           }}
           onForceReload={() => {
             window.api.INVOKE('FORCE_CLEAR_CACHE_HARD_RELOAD', { tabId })
+            hide()
+          }}
+          onInspectElement={() => {
+            window.api.INVOKE(IPC_INVOKE_CHANNEL.INSPECT_ELEMENT, { tabId })
             hide()
           }}
         />

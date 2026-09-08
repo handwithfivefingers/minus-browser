@@ -209,6 +209,13 @@ export class ViewController {
           }
           return { success: true }
         },
+        [IPC_INVOKE_CHANNEL.INSPECT_ELEMENT]: async (data?: { tabId?: string }) => {
+          const tab = data?.tabId ? this.tabController?.getTabById(data.tabId) : this.tabController?.activeTab
+          if (tab?.isAlive) {
+            tab.view.webContents?.openDevTools()
+          }
+          return { success: true }
+        },
         [IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE]: (data) => {
           this.window.webContents.send(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, data)
         },
@@ -1070,12 +1077,34 @@ export class ViewController {
         'fullscreen',
         'midi',
         'midiSysex',
+        'mediaKeySystem', // Widevine for Twitch VODs — like Min (no handler, defaults to allow)
       ]
       if (autoGrantPermissions.includes(permissionType)) {
         return request(true)
       }
 
+      // Kasada (Twitch protected_login) needs storage-access for third-party cookies (kpsdk) — auto-grant for Twitch like Chrome does with 3PC enabled
+      // KP_UIDZ cookies are set on s.amazon-adsystem.com and k.twitch.com (seen in user's cookie list) — allow for any Kasada-related host when embedded in Twitch
+      const kasadaRe =
+        /twitch\.tv|ttvnw\.net|jtvnw\.net|twitchcdn\.net|passport\.twitch\.tv|kasada|kpsdk|amazon-adsystem|amazon\.com|k\.twitch\.com|s\.amazon/i
+      const isKasadaContext =
+        (details.requestingUrl && kasadaRe.test(details.requestingUrl)) ||
+        ((details as any).embeddingOrigin && kasadaRe.test((details as any).embeddingOrigin)) ||
+        (details.requestingUrl && details.requestingUrl.includes('twitch.tv'))
+      if (['storage-access', 'top-level-storage-access'].includes(permissionType)) {
+        if (isKasadaContext) {
+          return request(true)
+        }
+        // For other sites, fall through to prompt/deny logic below (storage-access is now in supportedPermissions)
+      }
+
+      // Allow subframe media/storage for Twitch (player.twitch.tv embeds, Kasada iframe) — Min has no isMainFrame check
       if (!details.isMainFrame) {
+        if (isKasadaContext) {
+          if (['media', 'storage-access', 'top-level-storage-access'].includes(permissionType)) {
+            return request(true)
+          }
+        }
         return request(false)
       }
 
@@ -1088,7 +1117,14 @@ export class ViewController {
         return request(false)
       }
 
-      const supportedPermissions = ['media', 'notifications', 'pointerLock']
+      const supportedPermissions = [
+        'media',
+        'notifications',
+        'pointerLock',
+        'mediaKeySystem',
+        'storage-access',
+        'top-level-storage-access',
+      ]
       if (!supportedPermissions.includes(permissionType)) {
         return request(false)
       }
@@ -1146,6 +1182,14 @@ export class ViewController {
     session.setPermissionCheckHandler((wc, permission, requestingOrigin, details) => {
       if (permission === 'clipboard-sanitized-write') {
         return true
+      }
+
+      // Kasada KP_UIDZ cookies are on s.amazon-adsystem.com and k.twitch.com (seen in user's cookie list) — allow those too
+      if (['storage-access', 'top-level-storage-access'].includes(permission)) {
+        const kasadaCheckRe = /twitch\.tv|kasada|kpsdk|amazon-adsystem|amazon\.com|k\.twitch\.com|s\.amazon/i
+        if (kasadaCheckRe.test(requestingOrigin || '') || kasadaCheckRe.test(details.embeddingOrigin || '')) {
+          return true
+        }
       }
 
       if (!details.isMainFrame && requestingOrigin !== details.embeddingOrigin) {

@@ -1,8 +1,6 @@
 import type { ForgeConfig } from '@electron-forge/shared-types'
 import { MakerSquirrel } from '@electron-forge/maker-squirrel'
 import { MakerZIP } from '@electron-forge/maker-zip'
-// import { MakerDeb } from "@electron-forge/maker-deb";
-// import { MakerRpm } from "@electron-forge/maker-rpm";
 import { MakerDMG } from '@electron-forge/maker-dmg'
 import { VitePlugin } from '@electron-forge/plugin-vite'
 import { FusesPlugin } from '@electron-forge/plugin-fuses'
@@ -11,6 +9,7 @@ import { appBundleId } from './package.json'
 
 const { PLATFORM } = (import.meta as any).env
 const platform = PLATFORM === 'WIN' ? 'win32' : PLATFORM === 'MAC' ? 'darwin' : process.platform
+const lastBuild = new Date().toISOString()
 
 const makers = []
 if (platform === 'win32') {
@@ -33,6 +32,9 @@ if (platform === 'darwin') {
     new MakerZIP({}, ['darwin'])
   )
 }
+
+;(import.meta as any).env.VITE_LAST_BUILD_DATE = lastBuild
+console.log('lastBuild', lastBuild)
 
 const config: ForgeConfig = {
   makers: makers,

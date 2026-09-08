@@ -14,6 +14,7 @@ interface ContextMenuProps {
   onOpenGroup: (groupId: string) => void
   onShowCreateGroup: () => void
   onForceReload: () => void
+  onInspectElement: () => void
 }
 
 export const ContextMenu = ({
@@ -28,6 +29,7 @@ export const ContextMenu = ({
   onOpenGroup,
   onShowCreateGroup,
   onForceReload,
+  onInspectElement,
 }: ContextMenuProps) => {
   const renderGroupRow = (group: IGroup, onClick: () => void) => (
     <button
@@ -175,6 +177,33 @@ export const ContextMenu = ({
           )}
 
           {groups.map((group) => renderGroupRow(group, () => onOpenGroup(group.id)))}
+        </>
+      )}
+
+      {tabId && (
+        <>
+          <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+
+          <button
+            type="button"
+            onClick={onInspectElement}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-400"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-label="Inspect"
+            >
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+            </svg>
+            Inspect Element
+          </button>
         </>
       )}
     </div>

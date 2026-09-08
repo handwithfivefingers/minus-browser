@@ -19,6 +19,8 @@ import { createMainWindow, loadAppURL, setupLogging, setupWindowCrashHandlers } 
 import { initializeUserAgent, setupUserAgent } from './core/window/userAgent'
 
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled')
+// Mirror Min: prevent throttling of hidden views (Twitch background playback) — https://github.com/electron/electron/issues/17942
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows', 'true')
 
 Object.assign(console, log.functions)
 

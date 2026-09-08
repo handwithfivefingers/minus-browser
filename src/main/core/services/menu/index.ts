@@ -33,7 +33,7 @@ class MenuApplication {
                 type: 'info',
                 title: `Giới thiệu ${app.name}`,
                 message: `${app.name} v${app.getVersion()}`,
-                detail: `Electron: v${process.versions.electron}\nChromium: v${process.versions.chrome}\nNode.js: v${process.versions.node}`,
+                detail: `Electron: v${process.versions.electron}\nChromium: v${process.versions.chrome}\nNode.js: v${process.versions.node}\nLast build: ${process.env.LAST_BUILD_DATE}`,
                 buttons: ['Đóng'],
               })
             },

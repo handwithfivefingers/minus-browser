@@ -3,11 +3,11 @@
   "productName": "MinusBrowser",
   "appBundleId": "com.minusbrowser.localdev",
   "appId": "com.minusbrowser.localdev",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "Lightweight Browser, cross platform, built with Electron and Vite",
   "main": ".vite/build/main.js",
   "scripts": {
-    "start": "cross-env NODE_OPTIONS=\"--no-deprecation\" --unhandled-rejections=strict electron-forge start -- --force",
+    "start": "cross-env NODE_OPTIONS=\"--no-deprecation\" ELECTRON_ENABLE_LOGGING=1 --unhandled-rejections=strict electron-forge start -- --force",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "build:mac": "cross-env NODE_OPTIONS=\"--no-deprecation\" --unhandled-rejections=strict PLATFORM=MAC electron-forge make",
