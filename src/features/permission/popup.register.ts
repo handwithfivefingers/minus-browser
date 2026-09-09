@@ -1,6 +1,8 @@
+import { lazy } from 'react'
+
 import { register } from '~/renderer/sub-window/registry'
 
-import PopupPrompt from './popup/App'
+const PopupPrompt = lazy(() => import('./popup/App'))
 
 register({
   path: '/popup',

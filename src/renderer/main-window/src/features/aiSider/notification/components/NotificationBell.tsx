@@ -18,7 +18,7 @@ export const NotificationBell = () => {
       {unreadCount > 0 ? <IconBellFilled size={16} /> : <IconBell size={16} />}
       <span className="text-[10px] font-medium">Alerts</span>
       {unreadCount > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 px-0.5 text-[8px] font-bold text-white">
+        <span className="absolute top-0.5 right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 px-0.5 text-[8px] font-bold text-white">
           {unreadCount > 99 ? '99+' : unreadCount}
         </span>
       )}

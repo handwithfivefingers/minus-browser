@@ -5,6 +5,7 @@ import { FormProvider, useForm } from 'react-hook-form'
 import { userScriptResolve, UserScriptSchema } from '~/features/userscript/overlay/schema/userscript'
 import { generateMetadataBlock, parseUserScriptMetadata } from '~/features/userscript/parser'
 import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
+import { useNotificationStore } from '~/renderer/main-window/src/stores/useNotificationStore'
 
 import { Modal } from './userscript/Modal'
 import { UserScriptForm } from './userscript/UserScriptForm'
@@ -21,8 +22,9 @@ const FORM_DEFAULT: Partial<UserScriptSchema> = {
 const UserScriptSection = () => {
   const [scripts, setScripts] = useState<UserScriptSchema[]>([])
   const [modalOpen, setModalOpen] = useState(false)
+  const { notify } = useNotificationStore()
   const form = useForm<UserScriptSchema>({
-    defaultValues: FORM_DEFAULT,
+    defaultValues: FORM_DEFAULT as UserScriptSchema,
     resolver: userScriptResolve,
   })
 
@@ -36,18 +38,23 @@ const UserScriptSection = () => {
   }, [])
 
   const openCreateModal = () => {
-    form.setValues(FORM_DEFAULT)
+    form.reset(FORM_DEFAULT as UserScriptSchema)
     setModalOpen(true)
   }
 
   const openEditModal = (script: UserScriptSchema) => {
-    form.setValues(script)
+    form.reset(script)
     setModalOpen(true)
   }
 
   const onImportScript = async () => {
-    await window.api.INVOKE(IPC_INVOKE_CHANNEL.IMPORT_USERSCRIPT)
-    loadScripts()
+    try {
+      await window.api.INVOKE(IPC_INVOKE_CHANNEL.IMPORT_USERSCRIPT)
+      notify({ title: 'Script imported', type: 'success' })
+      await loadScripts()
+    } catch (e) {
+      notify({ title: 'Import failed', message: String(e), type: 'error' })
+    }
   }
 
   const onImportFromURL = async () => {
@@ -56,6 +63,10 @@ const UserScriptSection = () => {
     try {
       const res = await fetch(url)
       const source = await res.text()
+      if (!source?.trim()) {
+        notify({ title: 'Import failed', message: 'Empty script source', type: 'error' })
+        return
+      }
       const meta = parseUserScriptMetadata(source)
       await window.api.INVOKE(IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT, {
         source,
@@ -64,9 +75,11 @@ const UserScriptSection = () => {
         runAt: meta?.runAt || 'document-end',
         enabled: false,
       })
-      loadScripts()
+      notify({ title: 'Script imported from URL', type: 'success' })
+      await loadScripts()
     } catch (e) {
       console.error('Import failed', e)
+      notify({ title: 'Import failed', message: String(e), type: 'error' })
     }
   }
 
@@ -86,28 +99,47 @@ const UserScriptSection = () => {
   }
 
   const onDeleteScript = async (id: string) => {
-    await window.api.INVOKE(IPC_INVOKE_CHANNEL.DELETE_USERSCRIPT, { id })
-    loadScripts()
+    try {
+      await window.api.INVOKE(IPC_INVOKE_CHANNEL.DELETE_USERSCRIPT, { id })
+      notify({ title: 'Script deleted', type: 'success' })
+      await loadScripts()
+    } catch (e) {
+      notify({ title: 'Delete failed', message: String(e), type: 'error' })
+    }
   }
 
   const onToggleScript = async (id: string, enabled: boolean) => {
-    await window.api.INVOKE(IPC_INVOKE_CHANNEL.TOGGLE_USERSCRIPT, { id, enabled })
-    loadScripts()
+    try {
+      await window.api.INVOKE(IPC_INVOKE_CHANNEL.TOGGLE_USERSCRIPT, { id, enabled })
+      notify({ title: enabled ? 'Script enabled' : 'Script disabled', type: 'success' })
+      await loadScripts()
+    } catch (e) {
+      notify({ title: 'Toggle failed', message: String(e), type: 'error' })
+    }
   }
 
   const onSaveScript = async (values: UserScriptSchema) => {
-    const normalized = {
-      ...values,
-      name: values.name.trim() || 'New Script',
-      matches: values.matches?.map((m) => m.trim()).filter(Boolean),
-      excludes: values.excludes?.map((m) => m.trim()).filter(Boolean),
-      includes: values.includes?.map((m) => m.trim()).filter(Boolean),
-      connect: values.connect?.filter(Boolean),
+    try {
+      if (!values.source?.trim()) {
+        notify({ title: 'Validation failed', message: 'Script source is required', type: 'error' })
+        return
+      }
+      const normalized = {
+        ...values,
+        name: values.name.trim() || 'New Script',
+        matches: values.matches?.map((m) => m.trim()).filter(Boolean),
+        excludes: values.excludes?.map((m) => m.trim()).filter(Boolean),
+        includes: values.includes?.map((m) => m.trim()).filter(Boolean),
+        connect: values.connect?.filter(Boolean),
+      }
+      if (!normalized.matches?.length) normalized.matches = ['*']
+      await window.api.INVOKE(IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT, normalized)
+      notify({ title: values.id ? 'Script updated' : 'Script created', type: 'success' })
+      setModalOpen(false)
+      await loadScripts()
+    } catch (e) {
+      notify({ title: 'Save failed', message: String(e), type: 'error' })
     }
-    if (!normalized.matches?.length) normalized.matches = ['*']
-    await window.api.INVOKE(IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT, normalized)
-    setModalOpen(false)
-    loadScripts()
   }
 
   return (

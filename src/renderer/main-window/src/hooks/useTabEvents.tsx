@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { ITab } from '~/shared/types'
 
@@ -71,10 +71,14 @@ export const useTabEvents = (tabId?: string) => {
     if (!tabId) return
     setActiveTab(tabId)
     getScreenData()
-    tabServices.subscribeTab<ITab>(tabId, (tab) => {
+    const offTab = tabServices.subscribeTab<ITab>(tabId, (tab) => {
       updateTab(tabId, tab)
     })
-    window.api.LISTENER(`LOADING:${tabId}`, onTabNavigate)
+    const offLoading = window.api.LISTENER(`LOADING:${tabId}`, onTabNavigate)
+    return () => {
+      offTab()
+      offLoading()
+    }
   }, [tabId])
 
   return {

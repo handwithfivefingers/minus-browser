@@ -1,6 +1,8 @@
+import { lazy } from 'react'
+
 import { register } from '~/renderer/sub-window/registry'
 
-import PermissionOverlay from './overlay/App'
+const PermissionOverlay = lazy(() => import('./overlay/App'))
 
 register({
   path: '/permission',

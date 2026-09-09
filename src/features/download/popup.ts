@@ -30,6 +30,8 @@ export class DownloadPopupService {
   /** Set when the user dismisses the popup manually; means "don't re-show"
    *  until this batch of downloads has fully finished. */
   private dismissed = false
+  private hadActiveLastNotify = false
+  private lastItemCount = 0
 
   init(mainWindow: BrowserWindow) {
     this.mainWindow = mainWindow
@@ -108,7 +110,17 @@ export class DownloadPopupService {
   notify(items: DownloadItem[]) {
     if (!this.mainWindow || !this.initialized) return
     const hasActive = items.some((d) => d.state === 'progressing' || d.state === 'interrupted')
-    if (!hasActive) this.dismissed = false
+    const prevHadNoActive = !this.hadActiveLastNotify
+    this.lastItemCount = items.length
+    if (prevHadNoActive && hasActive) this.dismissed = false
+    this.hadActiveLastNotify = hasActive
+    if (hasActive && !this.dismissed) {
+      // new active batch cancels any pending auto-hide
+      if (this.hideTimer) {
+        clearTimeout(this.hideTimer)
+        this.hideTimer = null
+      }
+    }
     if (this.dismissed) return
 
     if (hasActive) {
@@ -152,12 +164,18 @@ export class DownloadPopupService {
 
   private syncBounds() {
     if (!this.mainWindow || !this.view) return
-    const { width } = this.mainWindow.getBounds()
+    const { width, height: windowHeight } = this.mainWindow.getBounds()
+    const maxHeight = Math.floor(windowHeight * 0.7)
+    // Estimate content height: header (~44) + each item (~64) + padding
+    const estimatedContentHeight = Math.max(POPUP_HEIGHT, 44 + this.lastItemCount * 64 + 16)
+    const height = Math.min(estimatedContentHeight + 16, maxHeight)
+    const popupWidth = Math.min(POPUP_MAX_WIDTH, width - POPUP_MARGIN * 2)
+    const x = Math.max(POPUP_MARGIN, width - popupWidth - POPUP_MARGIN)
     this.view.setBounds({
-      x: Math.max(12, width - 380),
-      y: 12,
-      width: 380,
-      height: this.mainWindow.getBounds().height,
+      x,
+      y: POPUP_MARGIN,
+      width: popupWidth,
+      height,
     })
   }
 

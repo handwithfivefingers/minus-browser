@@ -6,7 +6,7 @@ const { mockDb } = vi.hoisted(() => ({
     query: vi.fn(),
     get: vi.fn(),
     run: vi.fn(),
-    transaction: vi.fn(),
+    transaction: vi.fn((fn: () => unknown) => fn()),
   },
 }))
 
@@ -64,11 +64,11 @@ describe('History', () => {
   })
 
   it('addEntry updates existing entry when URL found', () => {
-    mockDb.get.mockReturnValue({ id: 'existing-id', visit_count: 5 })
+    mockDb.get.mockReturnValue({ id: 'existing-id', timestamp: Date.now(), visit_count: 5 })
     history.addEntry('https://example.com', 'Example', 'favicon.ico')
     expect(mockDb.run).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE history_entries'),
-      expect.arrayContaining([expect.any(Number), 'Example', 'favicon.ico', 'https://example.com'])
+      expect.arrayContaining([expect.any(Number), 'Example', 'favicon.ico', 'existing-id'])
     )
   })
 
@@ -98,18 +98,20 @@ describe('History', () => {
   })
 
   it('updateEntryMetadata updates title when provided', () => {
+    mockDb.get.mockReturnValue({ id: 'existing-id' })
     history.updateEntryMetadata('https://example.com', 'New Title')
-    expect(mockDb.run).toHaveBeenCalledWith('UPDATE history_entries SET title = ? WHERE url = ?', [
+    expect(mockDb.run).toHaveBeenCalledWith('UPDATE history_entries SET title = ? WHERE id = ?', [
       'New Title',
-      'https://example.com',
+      'existing-id',
     ])
   })
 
   it('updateEntryMetadata updates favicon when provided', () => {
+    mockDb.get.mockReturnValue({ id: 'existing-id' })
     history.updateEntryMetadata('https://example.com', undefined, 'new-icon.ico')
-    expect(mockDb.run).toHaveBeenCalledWith('UPDATE history_entries SET favicon = ? WHERE url = ?', [
+    expect(mockDb.run).toHaveBeenCalledWith('UPDATE history_entries SET favicon = ? WHERE id = ?', [
       'new-icon.ico',
-      'https://example.com',
+      'existing-id',
     ])
   })
 

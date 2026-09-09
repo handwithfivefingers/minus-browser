@@ -22,7 +22,7 @@ const useUpdateStore = create<IUpdateStore>((set) => ({
 }))
 
 export function setupUpdateListener() {
-  window.api.LISTENER(IPC_RENDERER_EVENT.UPDATE_STATUS, (payload: UpdateStatusEvent) => {
+  return window.api.LISTENER(IPC_RENDERER_EVENT.UPDATE_STATUS, (payload: UpdateStatusEvent) => {
     useUpdateStore.getState().setStatus(payload)
   })
 }

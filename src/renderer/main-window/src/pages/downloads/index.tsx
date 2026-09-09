@@ -1,11 +1,17 @@
 import {
   IconDownload,
   IconEye,
+  IconFile,
+  IconFileText,
+  IconFileZip,
   IconFolder,
+  IconMusic,
+  IconPhoto,
   IconPlayerPause,
   IconPlayerPlay,
   IconTrash,
   IconTrashX,
+  IconVideo,
   IconX,
 } from '@tabler/icons-react'
 import clsx from 'clsx'
@@ -15,21 +21,26 @@ import { IPC_DOWNLOAD_INVOKE } from '~/shared/constants/ipc/download'
 import { useDownloadStore } from '~/shared/store/useDownloadStore'
 import { DownloadItem } from '~/shared/types/download'
 import { formatBytes } from '~/shared/utils/download'
+
 import { downloadService } from '../../services/download.service'
 
 const Downloads = () => {
   const downloads = useDownloadStore((s) => s.downloads)
 
   useEffect(() => {
-    downloadService.updatedItems().then((item) => {
-      useDownloadStore.getState().upsert(item)
+    const unsubUpdated = downloadService.updatedItems((item) => {
+      useDownloadStore.getState().upsert(item as DownloadItem)
     })
-    downloadService.subscribeItems().then((data) => {
-      if (Array.isArray(data)) useDownloadStore.getState().setDownloads(data)
+    const unsubList = downloadService.subscribeItems((data) => {
+      if (Array.isArray(data)) useDownloadStore.getState().setDownloads(data as DownloadItem[])
     })
     downloadService.getAll().then((data) => {
       if (Array.isArray(data)) useDownloadStore.getState().setDownloads(data)
     })
+    return () => {
+      if (typeof unsubUpdated === 'function') unsubUpdated()
+      if (typeof unsubList === 'function') unsubList()
+    }
   }, [])
 
   const clearAll = async () => {
@@ -74,6 +85,23 @@ const Downloads = () => {
   )
 }
 
+function getFileTypeMeta(item: DownloadItem) {
+  const name = item.filename.toLowerCase()
+  const mime = (item.mimeType || '').toLowerCase()
+  const ext = name.split('.').pop() || ''
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'heic'].includes(ext) || mime.startsWith('image/'))
+    return { Icon: IconPhoto, bg: 'bg-pink-50 dark:bg-pink-900/30', fg: 'text-pink-500 dark:text-pink-400' }
+  if (['mp4', 'mkv', 'mov', 'avi', 'webm'].includes(ext) || mime.startsWith('video/'))
+    return { Icon: IconVideo, bg: 'bg-violet-50 dark:bg-violet-900/30', fg: 'text-violet-500 dark:text-violet-400' }
+  if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(ext) || mime.startsWith('audio/'))
+    return { Icon: IconMusic, bg: 'bg-emerald-50 dark:bg-emerald-900/30', fg: 'text-emerald-500 dark:text-emerald-400' }
+  if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext))
+    return { Icon: IconFileZip, bg: 'bg-amber-50 dark:bg-amber-900/30', fg: 'text-amber-500 dark:text-amber-400' }
+  if (['pdf', 'doc', 'docx', 'txt', 'md'].includes(ext) || mime === 'application/pdf')
+    return { Icon: IconFileText, bg: 'bg-blue-50 dark:bg-blue-900/30', fg: 'text-blue-500 dark:text-blue-400' }
+  return { Icon: IconFile, bg: 'bg-slate-100 dark:bg-slate-700', fg: 'text-slate-500 dark:text-slate-400' }
+}
+
 function DownloadRow({ item }: { item: DownloadItem }) {
   const action = (invoke: (typeof IPC_DOWNLOAD_INVOKE)[keyof typeof IPC_DOWNLOAD_INVOKE]) =>
     window.api.INVOKE(invoke, { id: item.id })
@@ -83,17 +111,14 @@ function DownloadRow({ item }: { item: DownloadItem }) {
     useDownloadStore.getState().remove(item.id)
   }
 
-  const barClass =
-    item.state === 'interrupted'
-      ? 'bg-amber-500'
-      : item.state === 'completed'
-        ? 'bg-green-500'
-        : item.paused
-          ? 'bg-slate-400'
-          : 'bg-indigo-500'
+  const fileMeta = getFileTypeMeta(item)
+  const FileIcon = fileMeta.Icon
 
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+      <div className={clsx('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', fileMeta.bg, fileMeta.fg)}>
+        <FileIcon size={20} />
+      </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium text-slate-800 dark:text-slate-200" title={item.filename}>
@@ -119,22 +144,6 @@ function DownloadRow({ item }: { item: DownloadItem }) {
               {item.paused ? 'Paused' : 'Downloading'}
             </span>
           )}
-
-          {item.totalBytes > 0 ? (
-            <>
-              <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                <div
-                  className={clsx('h-full rounded-full transition-all duration-150', barClass)}
-                  style={{ width: `${Math.max(2, item.progress)}%` }}
-                />
-              </div>
-              <span className="text-[9px] leading-none text-slate-400 tabular-nums">{item.progress}%</span>
-            </>
-          ) : (
-            <span className="w-full text-center text-[9px] leading-none text-slate-400 tabular-nums">
-              {formatBytes(item.receivedBytes)}
-            </span>
-          )}
         </div>
 
         <p className="truncate text-xs text-slate-400 dark:text-slate-500" title={item.url}>
@@ -157,6 +166,11 @@ function DownloadRow({ item }: { item: DownloadItem }) {
                 {item.progress}% · {formatBytes(item.receivedBytes)} / {formatBytes(item.totalBytes)}
               </span>
             </>
+          )}
+          {active && item.totalBytes === 0 && (
+            <span className="text-xs text-slate-500 tabular-nums dark:text-slate-400">
+              {formatBytes(item.receivedBytes)} downloaded
+            </span>
           )}
           {!active && item.state === 'completed' && (
             <span className="text-xs text-slate-400 tabular-nums">{formatBytes(item.totalBytes)}</span>

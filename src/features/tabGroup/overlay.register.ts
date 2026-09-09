@@ -1,6 +1,8 @@
+import { lazy } from 'react'
+
 import { register } from '~/renderer/sub-window/registry'
 
-import { App as TabGroupPage } from './overlay/App'
+const TabGroupPage = lazy(() => import('./overlay/App').then((m) => ({ default: m.App })))
 
 register({
   path: '/tabgroup',

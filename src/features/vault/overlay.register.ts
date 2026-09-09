@@ -1,7 +1,9 @@
+import { lazy } from 'react'
+
 import { register } from '~/renderer/sub-window/registry'
 
-import VaultPage from './overlay/App'
-import CaptureBar from './overlay/CaptureBar'
+const VaultPage = lazy(() => import('./overlay/App'))
+const CaptureBar = lazy(() => import('./overlay/CaptureBar'))
 
 register({
   path: '/vault',

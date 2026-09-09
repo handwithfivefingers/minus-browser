@@ -10,6 +10,9 @@ import { parse } from 'tldts-experimental'
 const baseDir = `https://raw.githubusercontent.com/brave/adblock-lists-mirror/lists/lists/metadata.json`
 const CACHE_TTL_MS = 86_400_000 // 24 hours
 const DEFAULT_AUTO_UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000 // 6 hours
+// Precompiled to avoid re-creating RegExp on every request
+const KASADA_TWITCH_RE =
+  /twitch\.tv|ttvnw\.net|jtvnw\.net|twitchcdn\.net|gql\.twitch\.tv|passport\.twitch\.tv|kasada|kpsdk|amazon-adsystem|k\.twitch\.com|s\.amazon/i
 
 function filterNameFromUrl(url: string): string {
   const p = url.replace('https://raw.githubusercontent.com/', '').replace('https://', '')
@@ -508,11 +511,7 @@ export class AdBlocker {
       }
 
       // Never block Kasada/Twitch integrity (protected_login fails with 5025 if kpsdk is blocked) — KP_UIDZ cookies are on s.amazon-adsystem.com and k.twitch.com
-      if (
-        /twitch\.tv|ttvnw\.net|jtvnw\.net|twitchcdn\.net|passport\.twitch\.tv|kasada|kpsdk|amazon-adsystem|k\.twitch\.com|s\.amazon/i.test(
-          details.url
-        )
-      ) {
+      if (KASADA_TWITCH_RE.test(details.url)) {
         return callback({})
       }
 
@@ -541,11 +540,7 @@ export class AdBlocker {
       if (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') {
         // Skip CSP injection for Twitch — its player uses blobs/workers that adblock CSP can break, causing blank player mistaken for "unsupported browser"
         // Broadened to match Min's no-CSP approach for all Twitch-related hosts + Kasada (KP_UIDZ on s.amazon-adsystem.com)
-        if (
-          /twitch\.tv|ttvnw\.net|jtvnw\.net|twitchcdn\.net|gql\.twitch\.tv|passport\.twitch\.tv|kasada|kpsdk|amazon-adsystem|k\.twitch\.com|s\.amazon/i.test(
-            details.url
-          )
-        ) {
+        if (KASADA_TWITCH_RE.test(details.url)) {
           return callback({})
         }
         const request = Request.fromRawDetails({

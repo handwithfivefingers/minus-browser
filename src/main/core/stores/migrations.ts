@@ -198,6 +198,15 @@ const migrations: { version: number; up: (db: DatabaseSync) => void }[] = [
       }
     },
   },
+  {
+    version: 8,
+    up: (db) => {
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_history_url ON history_entries(url);
+        CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history_entries(timestamp);
+      `)
+    },
+  },
 ]
 
 export function runMigrations(db: DatabaseSync) {

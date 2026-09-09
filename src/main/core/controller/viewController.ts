@@ -45,6 +45,9 @@ import { IPC_TAB_GROUP_INVOKE, IPC_TAB_GROUP_RENDERER_EVENT } from '~/shared/con
 import { IUserInterface, PermissionDecision, PermissionType } from '~/shared/types'
 import { isSafeUrl } from '~/shared/utils'
 
+const KASADA_RE =
+  /twitch\.tv|ttvnw\.net|jtvnw\.net|twitchcdn\.net|passport\.twitch\.tv|kasada|kpsdk|amazon-adsystem|amazon\.com|k\.twitch\.com|s\.amazon/i
+
 export type EmitToRenderer = (channel: string, data?: unknown) => void
 export class ViewController {
   window: BrowserWindow
@@ -242,6 +245,7 @@ export class ViewController {
         [IPC_EMIT_CHANNEL.VIEW_RESPONSIVE]: (data) => this.handleResizeView(data),
         [IPC_EMIT_CHANNEL.HIDE_VIEW]: (data) => this.handleHideView(data),
         [IPC_EMIT_CHANNEL.ON_BACKWARD]: (data) => this.onGoBack(data),
+        [IPC_EMIT_CHANNEL.FORWARD_TAB]: (data) => this.onGoForward(data),
         [IPC_EMIT_CHANNEL.ON_CLOSE_TAB]: (data) => this.onCloseTab(data),
         [IPC_EMIT_CHANNEL.TOGGLE_DEV_TOOLS]: (data) => this.handleToggleDevTools(data),
         [IPC_EMIT_CHANNEL.ON_RELOAD]: (data) => this.handleReloadTab(data),
@@ -298,10 +302,15 @@ export class ViewController {
     this.window.webContents.send(channel, data)
   }
 
+  private syncTabsDebounceTimer: ReturnType<typeof setTimeout> | null = null
   syncTabsToWindows() {
-    const tabs = this.getTabs() || []
-    this.window.webContents.send('GET_TABS', tabs)
-    this.window.webContents.send(IPC_TAB_GROUP_RENDERER_EVENT.TAB_GROUP_UPDATED, tabGroupController.getGroups())
+    if (this.syncTabsDebounceTimer) clearTimeout(this.syncTabsDebounceTimer)
+    this.syncTabsDebounceTimer = setTimeout(() => {
+      this.syncTabsDebounceTimer = null
+      const tabs = this.getTabs() || []
+      this.window.webContents.send('GET_TABS', tabs)
+      this.window.webContents.send(IPC_TAB_GROUP_RENDERER_EVENT.TAB_GROUP_UPDATED, tabGroupController.getGroups())
+    }, 100)
   }
 
   async init() {
@@ -324,6 +333,7 @@ export class ViewController {
       ])
       tabGroupController.onChanged = () => this.syncTabsToWindows()
       this.window.on('focus', () => this.focusActiveTab())
+      this.setupNavigationGestures()
       ipcMain.handle('invoke', (event, args: IPC) => this.onInvoke(args, event))
       ipcMain.on('send', (event, args: IPC) => this.onListener(args, event))
 
@@ -551,6 +561,49 @@ export class ViewController {
       }
     } catch (error) {
       return new ErrorServices(error)
+    }
+  }
+
+  onGoForward(props: { data: ITab }) {
+    try {
+      if (!props?.data?.id) throw new Error('Tab not found')
+      const currentTab = this.tabController?.getTabById(props?.data?.id)
+      if (!currentTab) throw new Error('Tab not found')
+      if (currentTab.webContents?.navigationHistory.canGoForward()) {
+        currentTab.webContents?.navigationHistory.goForward()
+      }
+    } catch (error) {
+      return new ErrorServices(error)
+    }
+  }
+
+  private setupNavigationGestures() {
+    // macOS swipe gesture: right -> back, left -> forward
+    try {
+      ;(this.window as any).on('swipe', (_event: Electron.Event, direction: string) => {
+        const activeTab = this.tabController?.activeTab
+        if (!activeTab) return
+        if (direction === 'right') this.onGoBack({ data: activeTab as unknown as ITab })
+        else if (direction === 'left') this.onGoForward({ data: activeTab as unknown as ITab })
+      })
+    } catch (_e) {
+      // swipe not supported on this platform
+    }
+    // Windows/Linux mouse back/forward buttons and trackpad edge
+    try {
+      ;(this.window as any).on('app-command', (e: Electron.Event, cmd: string) => {
+        if (cmd === 'browser-backward') {
+          e.preventDefault()
+          const activeTab = this.tabController?.activeTab
+          if (activeTab) this.onGoBack({ data: activeTab as unknown as ITab })
+        } else if (cmd === 'browser-forward') {
+          e.preventDefault()
+          const activeTab = this.tabController?.activeTab
+          if (activeTab) this.onGoForward({ data: activeTab as unknown as ITab })
+        }
+      })
+    } catch (_e) {
+      // app-command not supported
     }
   }
 
@@ -1085,11 +1138,9 @@ export class ViewController {
 
       // Kasada (Twitch protected_login) needs storage-access for third-party cookies (kpsdk) — auto-grant for Twitch like Chrome does with 3PC enabled
       // KP_UIDZ cookies are set on s.amazon-adsystem.com and k.twitch.com (seen in user's cookie list) — allow for any Kasada-related host when embedded in Twitch
-      const kasadaRe =
-        /twitch\.tv|ttvnw\.net|jtvnw\.net|twitchcdn\.net|passport\.twitch\.tv|kasada|kpsdk|amazon-adsystem|amazon\.com|k\.twitch\.com|s\.amazon/i
       const isKasadaContext =
-        (details.requestingUrl && kasadaRe.test(details.requestingUrl)) ||
-        ((details as any).embeddingOrigin && kasadaRe.test((details as any).embeddingOrigin)) ||
+        (details.requestingUrl && KASADA_RE.test(details.requestingUrl)) ||
+        ((details as any).embeddingOrigin && KASADA_RE.test((details as any).embeddingOrigin)) ||
         (details.requestingUrl && details.requestingUrl.includes('twitch.tv'))
       if (['storage-access', 'top-level-storage-access'].includes(permissionType)) {
         if (isKasadaContext) {
@@ -1257,11 +1308,24 @@ export class ViewController {
   /** Applies the Chrome-style popup policy: global toggle → site permission →
    *  prompt (ask). Allowed popups open as REAL popup windows — converting them
    *  into tabs severs window.opener and breaks sign-in flows (Google, Apple,
-   *  GitHub, ...); blocked ones are counted on the tab. */
+   *  GitHub, ...); blocked ones are counted on the tab.
+   *  Tab-like dispositions (background-tab/foreground-tab) and _blank links
+   *  without popup features are always opened as tabs and never enter the popup
+   *  flow, mirroring Chrome behavior. */
   private handleWindowOpen(tab: Tab, request: WindowOpenRequest): WindowOpenResolution {
     if (!tab || !request?.url) return { action: 'deny' }
     // OAuth providers bootstrap popups with about:blank — allow those too.
     if (!isSafeUrl(request.url) && !isBlankPopup(request.url)) return { action: 'deny' }
+
+    // Tab navigations must not be treated as popups — open as a new tab.
+    if (request.disposition === 'background-tab' || request.disposition === 'foreground-tab') {
+      void this.createTab({ url: request.url })
+      return { action: 'deny' }
+    }
+    if (request.disposition === 'new-window' && request.frameName === '_blank' && !request.features) {
+      void this.createTab({ url: request.url })
+      return { action: 'deny' }
+    }
 
     const blockPopups = this.userInterface?.blockPopups !== false
     const openerOrigin = this.getPopupOrigin(tab)

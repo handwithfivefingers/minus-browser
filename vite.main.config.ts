@@ -17,8 +17,11 @@ export default defineConfig({
   plugins: [
     {
       name: 'restart',
+      apply: 'serve' as const,
       closeBundle() {
-        process.stdin.emit('data', 'rs')
+        if (process.env.NODE_ENV === 'development') {
+          process.stdin.emit('data', 'rs')
+        }
       },
     },
   ],

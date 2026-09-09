@@ -87,7 +87,7 @@ export class ContextMenuController {
     if (params.linkURL) {
       template.unshift(
         {
-          label: 'Open Link in New Window',
+          label: 'Open Link in New Tab',
           click: () => {
             const window = BrowserWindow.getFocusedWindow()
             window?.webContents?.send('CREATE_TAB', { url: params.linkURL })

@@ -58,11 +58,15 @@ const History = () => {
 
   useEffect(() => {
     loadHistory()
-    let interval = setInterval(loadHistory, 3000)
+    // Poll every 30s instead of 3s to reduce IPC/DB load; also refresh on tab becoming visible
+    let interval = setInterval(loadHistory, 30000)
     const onVisibility = () => {
-      clearInterval(interval)
       if (document.visibilityState === 'visible') {
-        interval = setInterval(loadHistory, 3000)
+        loadHistory()
+        clearInterval(interval)
+        interval = setInterval(loadHistory, 30000)
+      } else {
+        clearInterval(interval)
       }
     }
     document.addEventListener('visibilitychange', onVisibility)

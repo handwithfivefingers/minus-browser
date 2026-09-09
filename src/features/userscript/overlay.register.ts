@@ -1,6 +1,8 @@
+import { lazy } from 'react'
+
 import { register } from '~/renderer/sub-window/registry'
 
-import UserscriptPage from './overlay/App'
+const UserscriptPage = lazy(() => import('./overlay/App'))
 
 register({
   path: '/userscript',

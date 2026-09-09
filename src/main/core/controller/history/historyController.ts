@@ -6,6 +6,7 @@ import { IHistoryEntry } from './types'
 
 const CLEANUP_INTERVAL_MS = 3600000
 const DEFAULT_RETENTION_DAYS = 30
+const DEDUP_WINDOW_MS = 5 * 60 * 1000
 
 export class History {
   private cleanupTimer: ReturnType<typeof setInterval> | null = null
@@ -46,21 +47,23 @@ export class History {
 
   addEntry(url: string, title: string, favicon: string): void {
     const now = Date.now()
-    const existing = appDb.get<{ id: string; visit_count: number }>(
-      'SELECT id, visit_count FROM history_entries WHERE url = ?',
-      [url]
-    )
-    if (existing) {
-      appDb.run(
-        'UPDATE history_entries SET visit_count = visit_count + 1, timestamp = ?, title = ?, favicon = ? WHERE url = ?',
-        [now, title || '', favicon || '', url]
+    appDb.transaction(() => {
+      const latest = appDb.get<{ id: string; timestamp: number; visit_count: number }>(
+        'SELECT id, timestamp, visit_count FROM history_entries WHERE url = ? ORDER BY timestamp DESC LIMIT 1',
+        [url]
       )
-    } else {
-      appDb.run(
-        'INSERT INTO history_entries (id, url, title, favicon, timestamp, visit_count) VALUES (?, ?, ?, ?, ?, ?)',
-        [uuid_v7(), url, title || url, favicon || '', now, 1]
-      )
-    }
+      if (latest && now - latest.timestamp < DEDUP_WINDOW_MS) {
+        appDb.run(
+          'UPDATE history_entries SET visit_count = visit_count + 1, timestamp = ?, title = ?, favicon = ? WHERE id = ?',
+          [now, title || '', favicon || '', latest.id]
+        )
+      } else {
+        appDb.run(
+          'INSERT INTO history_entries (id, url, title, favicon, timestamp, visit_count) VALUES (?, ?, ?, ?, ?, ?)',
+          [uuid_v7(), url, title || url, favicon || '', now, 1]
+        )
+      }
+    })
     this.invalidateCache()
   }
 
@@ -89,11 +92,16 @@ export class History {
   }
 
   updateEntryMetadata(url: string, title?: string, favicon?: string): void {
+    const latest = appDb.get<{ id: string }>(
+      'SELECT id FROM history_entries WHERE url = ? ORDER BY timestamp DESC LIMIT 1',
+      [url]
+    )
+    if (!latest) return
     if (title) {
-      appDb.run('UPDATE history_entries SET title = ? WHERE url = ?', [title, url])
+      appDb.run('UPDATE history_entries SET title = ? WHERE id = ?', [title, latest.id])
     }
     if (favicon) {
-      appDb.run('UPDATE history_entries SET favicon = ? WHERE url = ?', [favicon, url])
+      appDb.run('UPDATE history_entries SET favicon = ? WHERE id = ?', [favicon, latest.id])
     }
     this.invalidateCache()
   }

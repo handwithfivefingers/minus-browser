@@ -2,15 +2,11 @@ import { IPC_DOWNLOAD_INVOKE, IPC_DOWNLOAD_RENDERER_EVENT } from '~/shared/const
 import { DownloadItem } from '~/shared/types/download'
 
 export const downloadService = {
-  updatedItems: () => {
-    return new Promise<DownloadItem>((resolve) =>
-      window.api.LISTENER(IPC_DOWNLOAD_RENDERER_EVENT.ITEM_UPDATED, (item: DownloadItem) => resolve(item))
-    )
+  updatedItems: (callback: (item: DownloadItem) => void) => {
+    return window.api.LISTENER(IPC_DOWNLOAD_RENDERER_EVENT.ITEM_UPDATED, callback as (...args: unknown[]) => void)
   },
-  subscribeItems: () => {
-    return new Promise<DownloadItem[]>((resolve) =>
-      window.api.LISTENER(IPC_DOWNLOAD_RENDERER_EVENT.LIST_CHANGED, (items: DownloadItem[]) => resolve(items))
-    )
+  subscribeItems: (callback: (items: DownloadItem[]) => void) => {
+    return window.api.LISTENER(IPC_DOWNLOAD_RENDERER_EVENT.LIST_CHANGED, callback as (...args: unknown[]) => void)
   },
   getAll: async (): Promise<DownloadItem[]> => {
     return window.api.INVOKE<DownloadItem[]>(IPC_DOWNLOAD_INVOKE.GET_ALL)

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from 'react'
+import { Suspense, lazy, useEffect, useLayoutEffect } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { Outlet, useNavigate, useParams } from 'react-router'
 
@@ -6,8 +6,14 @@ import { IPC_INVOKE_CHANNEL, IPC_RENDERER_EVENT } from '~/shared/constants/ipc'
 import { useWebNotificationStore } from '~/shared/store/useNotificationStore'
 import { IUserInterface, MediaTabEntry } from '~/shared/types'
 
-import { AiSidebar, NotificationContainer, SideMenu, UpdateBanner } from '../components'
+import { NotificationContainer, SideMenu, UpdateBanner } from '../components'
 import Header from '../components/header'
+
+// Lazy-load AiSidebar: pulls openai, prismjs, react-markdown (~hundreds of KB)
+// so main layout chunks stay lean and initial paint is not blocked.
+const AiSidebar = lazy(() =>
+  import('../features/aiSider/components').then((m) => ({ default: m.AiSidebar }))
+)
 import { useAiSidebarStore } from '../features/aiSider/stores/useAiSidebarStore'
 import { useTabEvents } from '../hooks/useTabEvents'
 import { useTranslation } from '../hooks/useTranslation'
@@ -33,71 +39,81 @@ const Layout = () => {
   const vault = useVault(tabEvent?.tab)
   const userScript = useUserScript(tabEvent?.tab)
   useEffect(() => {
-    window.api.LISTENER('GET_TABS', (v) => {
+    const off = window.api.LISTENER('GET_TABS', (v) => {
       setTabs(v)
     })
     Promise.resolve(tabServices.getTabs()).then((v) => {
       if (v) setTabs(v)
     })
+    return () => off()
   }, [])
 
   useEffect(() => {
-    setupUpdateListener()
-    window.api.LISTENER('OPEN_TAB_BY_ID', (payload?: { id?: string }) => {
-      if (payload?.id) {
-        navigate(`/${payload.id}`)
-      }
-    })
-    window.api.LISTENER('NAVIGATE_HISTORY', () => {
-      navigate('/history')
-    })
-    window.api.LISTENER('NAVIGATE_SETTINGS', () => {
-      navigate('/setting')
-    })
-    window.api.LISTENER('NAVIGATE_DOWNLOADS', () => {
-      navigate('/downloads')
-    })
-    window.api.LISTENER('TOGGLE_AI_SIDEBAR', () => {
-      useAiSidebarStore.getState().toggle()
-    })
-    window.api.LISTENER('NOTIFICATION_POPUP', (data?: any) => {
-      if (data) {
-        useWebNotificationStore.getState().addNotification(data)
-      }
-    })
-    window.api.LISTENER(IPC_RENDERER_EVENT.MEDIA_LIST_UPDATED, (data?: MediaTabEntry[]) => {
-      if (Array.isArray(data)) useMediaListStore.getState().setTabs(data)
-    })
-    window.api.LISTENER('NOTIFICATION_STATE_SYNC', (data?: { notifications: any[]; unreadCount: number }) => {
-      if (data) {
-        useWebNotificationStore.setState({
-          notifications: data.notifications,
-          unreadCount: data.unreadCount,
-        })
-      }
-    })
+    const offUpdate = setupUpdateListener()
+    const unsubs = [
+      window.api.LISTENER('OPEN_TAB_BY_ID', (payload?: { id?: string }) => {
+        if (payload?.id) {
+          navigate(`/${payload.id}`)
+        }
+      }),
+      window.api.LISTENER('NAVIGATE_HISTORY', () => {
+        navigate('/history')
+      }),
+      window.api.LISTENER('NAVIGATE_SETTINGS', () => {
+        navigate('/setting')
+      }),
+      window.api.LISTENER('NAVIGATE_DOWNLOADS', () => {
+        navigate('/downloads')
+      }),
+      window.api.LISTENER('TOGGLE_AI_SIDEBAR', () => {
+        useAiSidebarStore.getState().toggle()
+      }),
+      window.api.LISTENER('NOTIFICATION_POPUP', (data?: any) => {
+        if (data) {
+          useWebNotificationStore.getState().addNotification(data)
+        }
+      }),
+      window.api.LISTENER(IPC_RENDERER_EVENT.MEDIA_LIST_UPDATED, (data?: MediaTabEntry[]) => {
+        if (Array.isArray(data)) useMediaListStore.getState().setTabs(data)
+      }),
+      window.api.LISTENER('NOTIFICATION_STATE_SYNC', (data?: { notifications: any[]; unreadCount: number }) => {
+        if (data) {
+          useWebNotificationStore.setState({
+            notifications: data.notifications,
+            unreadCount: data.unreadCount,
+          })
+        }
+      }),
+    ]
+    return () => {
+      offUpdate?.()
+      unsubs.forEach((off) => off())
+    }
   }, [])
 
   useEffect(() => {
-    window.api.LISTENER('CAPTURE_PAGE', () => {
-      window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_PAGE)
-    })
-    window.api.LISTENER(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION, () => {
-      window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION)
-    })
-    window.api.LISTENER(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, (payload?: { text?: string; action?: string }) => {
-      const text = payload?.text?.trim()
-      if (!text) return
-      const action = payload?.action || 'explain'
-      const modeMap: Record<string, 'chat' | 'summarize' | 'explain'> = {
-        chat: 'chat',
-        summarize: 'summarize',
-        explain: 'explain',
-      }
-      useAiSidebarStore.getState().setPendingText(text)
-      useAiSidebarStore.getState().setMode(modeMap[action] || 'explain')
-      useAiSidebarStore.getState().open()
-    })
+    const unsubs = [
+      window.api.LISTENER('CAPTURE_PAGE', () => {
+        window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_PAGE)
+      }),
+      window.api.LISTENER(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION, () => {
+        window.api.INVOKE(IPC_INVOKE_CHANNEL.CAPTURE_SELECTION)
+      }),
+      window.api.LISTENER(IPC_RENDERER_EVENT.AI_SELECTION_AVAILABLE, (payload?: { text?: string; action?: string }) => {
+        const text = payload?.text?.trim()
+        if (!text) return
+        const action = payload?.action || 'explain'
+        const modeMap: Record<string, 'chat' | 'summarize' | 'explain'> = {
+          chat: 'chat',
+          summarize: 'summarize',
+          explain: 'explain',
+        }
+        useAiSidebarStore.getState().setPendingText(text)
+        useAiSidebarStore.getState().setMode(modeMap[action] || 'explain')
+        useAiSidebarStore.getState().open()
+      }),
+    ]
+    return () => unsubs.forEach((off) => off())
   }, [])
 
   return (
@@ -131,7 +147,9 @@ const Layout = () => {
               <Outlet context={tabEvent} />
             </ErrorBoundary>
           </div>
-          <AiSidebar />
+          <Suspense fallback={null}>
+            <AiSidebar />
+          </Suspense>
         </div>
       </div>
     </LayoutSideEffect>

@@ -82,24 +82,59 @@ async function createWindow() {
     setupUserAgent(browserSession)
     browser = win
 
-    viewController = new ViewController(win)
-    findbarService.init(win)
-    await viewController.ready()
-    if (Notification.isSupported()) {
-      new Notification({ title: 'Minus Browser', body: 'Welcome to Minus Browser!' }).show()
-    }
-    const commandController = new CommandController(viewController)
-    menuApplication.rebuild(commandController.menuItems)
-
-    win.webContents.on('did-finish-load', () => viewController?.syncTabsToWindows())
+    // Critical path: show window as soon as possible — don't block on
+    // tabController.initialize / adblocker fetch / DB migrations.
     setupWindowCrashHandlers(win)
     setupLogging()
     loadAppURL(win)
     win.show()
     if (process.env.NODE_ENV === 'development') win.webContents.openDevTools()
+
+    // Heavy work deferred off critical path
+    viewController = new ViewController(win)
+    findbarService.init(win)
+    win.webContents.on('did-finish-load', () => viewController?.syncTabsToWindows())
+
+    // Wire menu + notification after controllers are ready, without blocking win.show()
+    viewController
+      .ready()
+      .then(() => {
+        const commandController = new CommandController(viewController!)
+        menuApplication.rebuild(commandController.menuItems)
+        // Deferred notification — out of critical startup path
+        setTimeout(() => {
+          if (Notification.isSupported()) {
+            new Notification({ title: 'Minus Browser', body: 'Welcome to Minus Browser!' }).show()
+          }
+        }, 1500)
+      })
+      .catch((error) => {
+        console.error('[ERROR] ViewController ready failed - ', error)
+      })
   } catch (error) {
     alert('[ERROR] Create Window Error - ' + error)
     console.error('[ERROR] Create Window Error - ', error)
+  }
+}
+
+async function requestDarwinMediaAccess(): Promise<void> {
+  if (process.platform !== 'darwin') return
+  for (const media of ['microphone', 'camera'] as const) {
+    try {
+      const status = systemPreferences.getMediaAccessStatus(media)
+      if (status === 'not-determined') {
+        const granted = await systemPreferences.askForMediaAccess(media)
+        if (granted) {
+          console.log(`${media} access granted!`)
+        }
+      } else if (status === 'denied') {
+        console.warn(
+          `${media} access denied at OS level — go to System Settings → Privacy & Security → ${media === 'microphone' ? 'Microphone' : 'Camera'} to enable`
+        )
+      }
+    } catch (err) {
+      console.error(`Failed to request ${media} access:`, err)
+    }
   }
 }
 
@@ -142,26 +177,15 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
-  if (process.platform === 'darwin') {
-    for (const media of ['microphone', 'camera'] as const) {
-      try {
-        const status = systemPreferences.getMediaAccessStatus(media)
-        if (status === 'not-determined') {
-          const granted = await systemPreferences.askForMediaAccess(media)
-          if (granted) {
-            console.log(`${media} access granted!`)
-          }
-        } else if (status === 'denied') {
-          console.warn(
-            `${media} access denied at OS level — go to System Settings → Privacy & Security → ${media === 'microphone' ? 'Microphone' : 'Camera'} to enable`
-          )
-        }
-      } catch (err) {
-        console.error(`Failed to request ${media} access:`, err)
-      }
-    }
-  }
+  // Parallelize: start media permission prompt concurrently with session init;
+  // neither blocks the other more than necessary. Window creation still waits
+  // for session (needs browserSession) but not for media prompts.
+  const mediaPromise = requestDarwinMediaAccess()
+  // initializeUserAgent() already ran at import time; sessionInitPromise was
+  // kicked off by session/index.ts import — await it without blocking media.
   await sessionInitPromise
+  // Let media run in background; don't block window show on it
+  mediaPromise.catch((err) => console.error('mediaPromise error', err))
   await createWindow()
   const url = process.argv.pop()
   if (url && (url.startsWith('http://') || url.startsWith('https://'))) {

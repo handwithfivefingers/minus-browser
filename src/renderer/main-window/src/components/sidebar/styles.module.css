@@ -77,11 +77,18 @@
   border-bottom-right-radius: 0 !important;
 }
 
+.subMenuLabel {
+  display: block;
+}
+
 @container sidebar (width <= 56px) {
   .pinnedGroup {
     padding: 2px;
   }
   .pinnedLabel {
+    display: none;
+  }
+  .subMenuLabel {
     display: none;
   }
 }

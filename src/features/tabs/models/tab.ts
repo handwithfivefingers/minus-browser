@@ -73,6 +73,8 @@ export class Tab extends TabPermission {
   private scrollPosition?: { x: number; y: number }
   private pluginManager: TabPluginManager = new TabPluginManager()
   private pluginReady?: Promise<void>
+  private lastHistoryNavTime = 0
+  private lastHistoryNavUrl: string | null = null
 
   private _view: WebContentsView | null = null
   private _webContents: (Electron.WebContents & IDestroy) | null = null
@@ -276,6 +278,8 @@ export class Tab extends TabPermission {
           return
         }
         historyController.addEntry(url, this.title, this.favicon)
+        this.lastHistoryNavUrl = url
+        this.lastHistoryNavTime = Date.now()
       }
       this.clearError()
     })
@@ -283,7 +287,13 @@ export class Tab extends TabPermission {
       if (isMainFrame) {
         this.updateUrl(url)
         if (url && url !== 'about:blank') {
+          const now = Date.now()
+          if (this.lastHistoryNavUrl === url && now - this.lastHistoryNavTime < 1000) {
+            return
+          }
           historyController.addEntry(url, this.title, this.favicon)
+          this.lastHistoryNavUrl = url
+          this.lastHistoryNavTime = now
         }
       }
     })

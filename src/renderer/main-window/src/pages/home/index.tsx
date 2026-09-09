@@ -4,8 +4,6 @@ import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'rea
 
 import { useWebNotificationStore } from '~/shared/store/useNotificationStore'
 
-import { GravityStarsBackground } from '../../components/gravityStarsBackground'
-
 // @ts-ignore
 import styles from './styles.module.css'
 
@@ -91,7 +89,6 @@ const TodoHome = () => {
   const recentNotifications = notifications.slice(0, 5)
   return (
     <div className="items-start-safe flex h-full w-full flex-col justify-center gap-8 py-20">
-      <GravityStarsBackground className="absolute top-0 left-0 h-full w-full text-indigo-500" />
       <div className={clsx('flex w-full justify-center gap-8', styles.fadeSection)} style={{ animationDelay: '0.05s' }}>
         <div className="flex flex-col items-center gap-4">
           <div className="flex flex-1 shrink-0 gap-2">

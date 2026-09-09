@@ -3,7 +3,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { DatabaseSync } from 'node:sqlite'
-
 import { runMigrations } from './migrations'
 
 const devDataDir = path.resolve(process.cwd(), 'appData')
@@ -20,13 +19,17 @@ class AppDatabase {
   private db: DatabaseSync
 
   constructor() {
+    // mkdirSync + DatabaseSync init are intentionally sync: they must complete
+    // before the first query and are one-time startup cost (~ms). Keep minimal.
     fs.mkdirSync(baseDir, { recursive: true })
     this.db = new DatabaseSync(path.join(baseDir, 'minus-browser.db'))
     this.db.exec('PRAGMA journal_mode = WAL')
     this.db.exec('PRAGMA foreign_keys = ON')
     this.db.exec('PRAGMA busy_timeout = 5000')
     runMigrations(this.db)
-    this.migrateFromJsonFiles()
+    // Defer legacy JSON migration off the critical startup path; the DB is
+    // already usable for new writes while old files are migrated next tick.
+    setImmediate(() => this.migrateFromJsonFiles())
   }
 
   query<T>(sql: string, params?: any[]): T[] {
@@ -314,4 +317,25 @@ class AppDatabase {
   }
 }
 
-export const appDb = new AppDatabase()
+let _appDb: AppDatabase | null = null
+
+export function getAppDb(): AppDatabase {
+  if (!_appDb) _appDb = new AppDatabase()
+  return _appDb
+}
+
+// Lazy proxy: defers mkdirSync/DatabaseSync/migrations until first use.
+// Keeps existing `import { appDb }` callers working (viewController.ts:39,
+// tabs, download etc) while avoiding blocking module evaluation / window creation.
+export const appDb: AppDatabase = new Proxy({} as AppDatabase, {
+  get(_target, prop: string | symbol) {
+    const db = getAppDb()
+    const value = (db as unknown as Record<string | symbol, unknown>)[prop]
+    return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(db) : value
+  },
+}) as AppDatabase
+
+// For tests: allow resetting singleton between isolated test runs
+export function __resetAppDbForTests() {
+  _appDb = null
+}

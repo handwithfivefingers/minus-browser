@@ -7,6 +7,7 @@ export interface WindowOpenRequest {
   url: string
   frameName: string
   disposition: string
+  features?: string
 }
 
 /** Synchronous decision for a `window.open` request, returned from the popup
@@ -55,16 +56,28 @@ export class TabPermission {
   }
   requestPermissions(webContents: Electron.WebContents) {
     if (!webContents) return
-    webContents.setWindowOpenHandler(({ url, frameName, disposition }) => {
+    webContents.setWindowOpenHandler(({ url, frameName, disposition, features }) => {
       try {
         // Blank windows are how OAuth providers bootstrap their sign-in popups
         // (open about:blank, then navigate to the authorize URL). Allow those
         // like any other popup instead of making window.open() return null.
         if (!isSafeUrl(url) && !isBlankPopup(url)) return { action: 'deny' }
+        // Background/foreground tab dispositions (Ctrl/Cmd+click, etc.) and
+        // plain _blank links without popup features are navigations that must
+        // open as tabs, not as popup windows. Handle before the popup policy
+        // so they don't trigger the block/allow prompt and keep fallback working.
+        if (disposition === 'background-tab' || disposition === 'foreground-tab') {
+          BrowserWindow.getFocusedWindow()?.webContents?.send('CREATE_TAB', { url })
+          return { action: 'deny' }
+        }
+        if (disposition === 'new-window' && frameName === '_blank' && !features) {
+          BrowserWindow.getFocusedWindow()?.webContents?.send('CREATE_TAB', { url })
+          return { action: 'deny' }
+        }
         if (this.onWindowOpen) {
           // Policy lives in the window controller; it may allow the popup as a
           // real window (OAuth flows need window.opener) or deny it.
-          return this.onWindowOpen({ url, frameName, disposition })
+          return this.onWindowOpen({ url, frameName, disposition, features })
         }
         const browserView = BrowserWindow.getFocusedWindow()
         browserView?.webContents?.send('CREATE_TAB', { url: url })

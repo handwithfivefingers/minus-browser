@@ -2,13 +2,13 @@ import { IconDownload, IconEye, IconFolder, IconPlayerPause, IconPlayerPlay, Ico
 import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
+import { downloadService } from '~/renderer/main-window/src/services/download.service'
 import { IPC_DOWNLOAD_EMIT, IPC_DOWNLOAD_INVOKE } from '~/shared/constants/ipc/download'
+import { SUB_WINDOW_RENDERER_EVENT } from '~/shared/constants/ipc/sub-window'
 import { useDownloadStore } from '~/shared/store/useDownloadStore'
 import { DownloadItem } from '~/shared/types/download'
 import { formatBytes } from '~/shared/utils/download'
 
-import { downloadService } from '~/renderer/main-window/src/services/download.service'
-import { SUB_WINDOW_RENDERER_EVENT } from '~/shared/constants/ipc/sub-window'
 import { register } from '../../registry'
 
 const isActive = (d: DownloadItem) => d.state === 'progressing' || d.state === 'interrupted'
@@ -19,20 +19,22 @@ export function DownloadShelf() {
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const onItemUpdated = (item: DownloadItem) => {
-      useDownloadStore.getState().upsert(item)
-    }
-    const onListChanged = (data: DownloadItem[]) => useDownloadStore.getState().setDownloads(data)
-    downloadService.updatedItems().then(onItemUpdated)
-    downloadService.subscribeItems().then(onListChanged)
+    const unsubUpdated = downloadService.updatedItems((item) => {
+      useDownloadStore.getState().upsert(item as DownloadItem)
+    })
+    const unsubList = downloadService.subscribeItems((data) => {
+      if (Array.isArray(data)) useDownloadStore.getState().setDownloads(data as DownloadItem[])
+    })
     downloadService.getAll().then((data) => {
       if (Array.isArray(data)) useDownloadStore.getState().setDownloads(data)
     })
+    return () => {
+      if (typeof unsubUpdated === 'function') unsubUpdated()
+      if (typeof unsubList === 'function') unsubList()
+    }
   }, [])
 
   const items = useMemo(() => downloads.slice(0, 5), [downloads])
-  const left = Math.max(8, Math.min(16, window.innerWidth - 320))
-  const top = Math.max(8, Math.min(16, window.innerHeight - 360))
 
   const hide = useCallback(() => {
     window.api.EMIT(SUB_WINDOW_RENDERER_EVENT.CLOSE)
@@ -41,19 +43,20 @@ export function DownloadShelf() {
   if (items.length === 0) return null
 
   return (
-    <div className="fixed inset-0">
+    <div className="pointer-events-none fixed inset-0">
       <span
-        className="absolute top-0 left-0 z-49 h-full w-full bg-slate-900/5 "
+        className="absolute inset-0 bg-transparent"
         onClick={() => window.api.EMIT(IPC_DOWNLOAD_EMIT.POPUP_DISMISS)}
         aria-hidden
+        style={{ pointerEvents: 'auto' }}
       />
       <div
         ref={menuRef}
-        className="absolute z-50 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
-        style={{ right: 16, top, pointerEvents: 'auto' }}
+        className="pointer-events-auto absolute z-50 w-80 max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+        style={{ right: 12, top: 12 }}
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 dark:border-slate-700">
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Media</span>
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Downloads</span>
           <button
             type="button"
             className="cursor-pointer rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700"

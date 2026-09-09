@@ -1,6 +1,8 @@
+import { lazy } from 'react'
+
 import { register } from '~/renderer/sub-window/registry'
 
-import TranslatePage from './overlay/App'
+const TranslatePage = lazy(() => import('./overlay/App'))
 
 register({
   path: '/translate',

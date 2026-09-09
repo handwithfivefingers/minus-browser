@@ -1,6 +1,8 @@
+import { lazy } from 'react'
+
 import { register } from '~/renderer/sub-window/registry'
 
-import SiteInfoOverlay from './siteInfo/App'
+const SiteInfoOverlay = lazy(() => import('./siteInfo/App'))
 
 register({
   path: '/site-info',

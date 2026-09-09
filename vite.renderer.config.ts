@@ -8,6 +8,15 @@ export default defineConfig({
   base: '',
   build: {
     outDir: '../../../.vite/renderer/main_window',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router'],
+          vendor: ['zustand', 'clsx', 'tailwind-merge', 'fuse.js', 'uuid', 'zod'],
+          icons: ['@tabler/icons-react'],
+        },
+      },
+    },
   },
   resolve: {
     alias: [

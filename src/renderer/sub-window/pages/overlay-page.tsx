@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { Suspense, useCallback } from 'react'
 
 import { SUB_WINDOW_RENDERER_EVENT } from '~/shared/constants/ipc/sub-window'
 
@@ -17,12 +17,18 @@ export default function OverlayPage({ register }: OverlayPageProps) {
   }, [])
 
   if (register.shell === false) {
-    return <Comp />
+    return (
+      <Suspense fallback={<div className="p-4 text-sm text-white/40">Loading…</div>}>
+        <Comp />
+      </Suspense>
+    )
   }
 
   return (
     <Shell title={register.name} onClose={close}>
-      <Comp />
+      <Suspense fallback={<div className="p-4 text-sm text-white/40">Loading…</div>}>
+        <Comp />
+      </Suspense>
     </Shell>
   )
 }

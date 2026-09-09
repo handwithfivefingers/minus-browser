@@ -47,16 +47,21 @@ export const UserScriptForm = ({ form, isEdit, onClose, onSubmit }: UserScriptFo
       <div className="flex flex-col gap-1">
         <span className="text-sm text-slate-600 dark:text-slate-400">Run at</span>
         <div className="flex items-center justify-between">
-          <FormControl name="runAt" className="flex flex-col gap-1.5">
-            <select
-              className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
-              defaultValue={'document-end'}
-            >
-              <option value="document-start">Document Start</option>
-              <option value="document-idle">Document Idle</option>
-              <option value="document-end">Document End</option>
-            </select>
-          </FormControl>
+          <FormControl
+            name="runAt"
+            className="flex flex-col gap-1.5"
+            render={({ field }) => (
+              <select
+                value={field.value ?? 'document-end'}
+                onChange={field.onChange}
+                className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+              >
+                <option value="document-start">Document Start</option>
+                <option value="document-idle">Document Idle</option>
+                <option value="document-end">Document End</option>
+              </select>
+            )}
+          />
           <FormControl
             name="enabled"
             className="flex flex-col gap-1.5"

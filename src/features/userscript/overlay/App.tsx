@@ -1,7 +1,11 @@
 import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
+import { v7 as uuid_v7 } from 'uuid'
 
+import { useNotificationStore } from '~/renderer/main-window/src/stores/useNotificationStore'
+// Notification store is bundled via ~ alias but isolated to sub-window renderer instance.
+// Keep notify for overlay feedback; main-window toast will show after close via shared state if needed.
 import { IPC_INVOKE_CHANNEL } from '~/shared/constants/ipc'
 import { SUB_WINDOW_RENDERER_EVENT } from '~/shared/constants/ipc/sub-window'
 
@@ -21,6 +25,16 @@ const App = () => {
   const [items, setItems] = useState<ScriptItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [openState, setOpenState] = useState(false)
+  const { notify } = useNotificationStore()
+
+  const safeNotify: typeof notify = (opts) => {
+    try {
+      notify(opts)
+    } catch {
+      // Fallback: sub-window store isolated; log for main window toast after close
+      console.warn('[userscript overlay] notify fallback:', opts.title, opts.message)
+    }
+  }
 
   const originalIdsRef = useRef<Set<string>>(new Set())
   const form = useForm<UserScriptSchema>({
@@ -40,7 +54,8 @@ const App = () => {
         const data = JSON.parse(raw)
         const nextItems: ScriptItem[] = Array.isArray(data.items) ? data.items.map((item: any) => ({ ...item })) : []
         setItems(nextItems)
-        setSelectedId(nextItems[0]?.id ?? null)
+        setSelectedId(null)
+        form.reset({ enabled: false, grants: [], runAt: 'document-start' } as unknown as UserScriptSchema)
         setOpenState(true)
         originalIdsRef.current = new Set(nextItems.map((i) => i.id))
       } catch {
@@ -67,7 +82,7 @@ const App = () => {
   if (!openState) return <div style={{ display: 'none' }} />
 
   const createNew = () => {
-    const id = `new-${Math.random().toString(36).slice(2)}`
+    const id = uuid_v7()
     const item: ScriptItem = {
       id,
       name: 'New Script',
@@ -76,7 +91,7 @@ const App = () => {
       matches: ['*'],
       enabled: false,
     }
-    form.reset(item)
+    form.reset(item as unknown as UserScriptSchema)
     setItems((prev) => [item, ...prev])
     setSelectedId(id)
   }
@@ -84,31 +99,51 @@ const App = () => {
   const onSubmit = async () => {
     if (!selected) return
     const formValues = form.getValues()
-    // Save the form values back to the selected item in items
-    setItems((prev) => prev.map((it) => (it.id === selected.id ? { ...it, ...formValues, id: it.id } : it)))
-    const currentIds = new Set(items.map((i) => i.id))
-    for (const originalId of originalIdsRef.current) {
-      if (!currentIds.has(originalId)) {
-        await window.api.INVOKE(IPC_INVOKE_CHANNEL.DELETE_USERSCRIPT, originalId)
-      }
+    if (!formValues.source?.trim()) {
+      safeNotify({ title: 'Validation failed', message: 'Script source is required', type: 'error' })
+      return
     }
-    // Save all current items
-    const updatedItems = items.map((it) => (it.id === selected.id ? { ...it, ...formValues, id: it.id } : it))
-    for (const script of updatedItems) {
-      if (script?.id) {
-        await window.api.INVOKE(IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT, script)
+    // Normalize to match UserScriptSection.tsx:127-135
+    const normalizedValues = {
+      ...formValues,
+      name: formValues.name?.trim() || 'New Script',
+      matches: formValues.matches?.map((m: string) => m.trim()).filter(Boolean),
+      excludes: formValues.excludes?.map((m: string) => m.trim()).filter(Boolean),
+      includes: formValues.includes?.map((m: string) => m.trim()).filter(Boolean),
+      connect: formValues.connect?.filter(Boolean),
+    } as typeof formValues
+    if (!normalizedValues.matches?.length) normalizedValues.matches = ['*']
+    const updatedItems = items.map((it) => (it.id === selected.id ? { ...it, ...normalizedValues, id: it.id } : it))
+    try {
+      const currentIds = new Set(updatedItems.map((i) => i.id))
+      for (const originalId of originalIdsRef.current) {
+        if (!currentIds.has(originalId)) {
+          await window.api.INVOKE(IPC_INVOKE_CHANNEL.DELETE_USERSCRIPT, { id: originalId })
+        }
       }
+      for (const script of updatedItems) {
+        if (script?.id) {
+          await window.api.INVOKE(IPC_INVOKE_CHANNEL.SAVE_USERSCRIPT, script)
+        }
+      }
+      setItems(updatedItems)
+      safeNotify({ title: 'Scripts saved', type: 'success' })
+      window.api.EMIT(SUB_WINDOW_RENDERER_EVENT.CLOSE)
+    } catch (e) {
+      safeNotify({ title: 'Save failed', message: String(e), type: 'error' })
     }
-    window.api.EMIT(SUB_WINDOW_RENDERER_EVENT.CLOSE)
   }
 
   const removeSelected = () => {
     if (!selected) return
     const next = items.filter((it) => it.id !== selected.id)
     setItems(next)
-    setSelectedId(next[0]?.id || null)
-    if (next.length === 0) {
-      form.reset({ enabled: false, grants: [], runAt: 'document-start' })
+    if (next.length > 0) {
+      setSelectedId(next[0].id)
+      form.reset(next[0] as unknown as UserScriptSchema)
+    } else {
+      setSelectedId(null)
+      form.reset({ enabled: false, grants: [], runAt: 'document-start' } as unknown as UserScriptSchema)
     }
   }
 
